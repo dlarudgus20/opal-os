@@ -1,0 +1,13 @@
+# Build outputs
+build/
+kernel/build/
+
+# Kernel binary / images
+*.bin
+*.iso
+
+# Temporary/editor files
+*.swp
+*.swo
+*~
+.DS_Store
