@@ -56,6 +56,7 @@ LibkcApi load_api() {
     api.strncmp_ptr = load_symbol<strncmp_fn>(handle, "strncmp");
     api.strcpy_ptr = load_symbol<strcpy_fn>(handle, "strcpy");
     api.strncpy_ptr = load_symbol<strncpy_fn>(handle, "strncpy");
+    api.snprintf_s_ptr = load_symbol<snprintf_s_fn>(handle, "snprintf_s");
     return api;
 }
 

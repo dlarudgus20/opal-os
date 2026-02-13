@@ -70,6 +70,16 @@ size_t strlen(const char *s) {
     return len;
 }
 
+size_t strnlen_s(const char *s, size_t strsz) {
+    size_t len = 0;
+
+    while (len < strsz && s[len] != '\0') {
+        len++;
+    }
+
+    return len;
+}
+
 size_t strspn(const char *s, const char *accept) {
     size_t i;
     size_t j;

@@ -1,5 +1,5 @@
-#ifndef LIBKC_STRING_H
-#define LIBKC_STRING_H
+#ifndef KC_STRING_H
+#define KC_STRING_H
 
 #include <stddef.h>
 
@@ -9,6 +9,7 @@ void *memset(void *dest, int ch, size_t n);
 int memcmp(const void *lhs, const void *rhs, size_t n);
 
 size_t strlen(const char *s);
+size_t strnlen_s(const char *s, size_t strsz);
 size_t strspn(const char *s, const char *accept);
 char *strchr(const char *s, int ch);
 char *strnchr(const char *s, int ch, size_t n);

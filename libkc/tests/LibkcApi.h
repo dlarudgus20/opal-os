@@ -15,6 +15,7 @@ using strcmp_fn = int (*)(const char *, const char *);
 using strncmp_fn = int (*)(const char *, const char *, size_t);
 using strcpy_fn = char *(*)(char *, const char *);
 using strncpy_fn = char *(*)(char *, const char *, size_t);
+using snprintf_s_fn = int (*)(char *, size_t, const char *, ...);
 
 struct LibkcApi {
     void *handle;
@@ -30,6 +31,7 @@ struct LibkcApi {
     strncmp_fn strncmp_ptr;
     strcpy_fn strcpy_ptr;
     strncpy_fn strncpy_ptr;
+    snprintf_s_fn snprintf_s_ptr;
 };
 
 LibkcApi load_api();

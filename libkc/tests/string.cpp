@@ -1,21 +1,4 @@
-#include <gtest/gtest.h>
-
-#include "LibkcApi.h"
-
-class LibkcDlTest : public ::testing::Test {
-protected:
-    static LibkcApi api;
-
-    static void SetUpTestSuite() {
-        api = load_api();
-    }
-
-    static void TearDownTestSuite() {
-        unload_api(api);
-    }
-};
-
-LibkcApi LibkcDlTest::api{};
+#include "LibkcDlTest.h"
 
 TEST_F(LibkcDlTest, MemcpyCopiesBytes) {
     unsigned char src[5] = {1, 2, 3, 4, 5};
