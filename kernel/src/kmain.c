@@ -1,31 +1,5 @@
+#include <kc/string.h>
 #include <opal/drivers/uart.h>
-
-static int str_eq(const char *a, const char *b) {
-    while (*a != '\0' && *b != '\0') {
-        if (*a != *b) {
-            return 0;
-        }
-        a++;
-        b++;
-    }
-    return *a == *b;
-}
-
-static int str_starts_with(const char *s, const char *prefix) {
-    while (*prefix != '\0') {
-        if (*s++ != *prefix++) {
-            return 0;
-        }
-    }
-    return 1;
-}
-
-static const char *skip_spaces(const char *s) {
-    while (*s == ' ') {
-        s++;
-    }
-    return s;
-}
 
 static void print_banner(void) {
     uart_write("\n");

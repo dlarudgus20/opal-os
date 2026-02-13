@@ -1,6 +1,6 @@
-PLATFORM    := pc-x64
-TARGET_TYPE := executable
 TARGET_NAME := kernel
+TARGET_TYPE := executable
+PROJECT_REFS := libkc
 
 all: build
 

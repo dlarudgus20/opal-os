@@ -8,12 +8,14 @@ KERNEL_BIN  := kernel/$(BUILD_DIR)/kernel.sys
 ISO_DIR     := $(BUILD_DIR)/iso
 ISO_FILE    := $(BUILD_DIR)/opal-os.iso
 
+SUBDIRS     := kernel libkc
+
 .PHONY: all kernel iso run clean
 
 all: kernel
 
 kernel:
-	$(MAKE) -C kernel
+	$(MAKE) -C kernel CONFIG=$(CONFIG) PLATFORM=$(PLATFORM)
 
 iso: kernel
 	@mkdir -p $(ISO_DIR)/boot/grub
@@ -25,5 +27,7 @@ run: iso
 	qemu-system-x86_64 -cdrom $(ISO_FILE) -serial stdio
 
 clean:
-	$(MAKE) -C kernel clean
+	for dir in $(SUBDIRS); do \
+		$(MAKE) clean -C $$dir CONFIG=$(CONFIG) PLATFORM=$(PLATFORM) || exit 1; \
+	done
 	rm -rf $(BUILD_DIR)
