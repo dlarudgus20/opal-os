@@ -62,26 +62,39 @@ PHONY_TARGETS += all clean build-test test clean-test
 $(BUILD_DIR)/%.c.o: %.c
 	@mkdir -p $(dir $@)
 	$(TOOLSET_CC) $(CFLAGS) $(INCLUDE_FLAGS) -MMD -MP -MF $(patsubst %.o, %.d, $@) -c $< -o $@
+	$(TOOLSET_OBJDUMP) $(OBJDUMP_FLAGS) -D $@ > $(patsubst %.o, %.dump, $@)
 
 $(BUILD_DIR)/%.asm.o: %.asm
 	@mkdir -p $(dir $@)
-	$(TOOLSET_NASM) -f elf64 -MD $(patsubst %.o, %.d, $@) $< -o $@
+	$(TOOLSET_NASM) -f elf64 -MD $(patsubst %.o, %.d, $@) $< -o $@ -l $(patsubst %.o, %.lst, $@)
+	$(TOOLSET_OBJDUMP) $(OBJDUMP_FLAGS) -D $@ > $(patsubst %.o, %.dump, $@)
 
 ifneq ($(findstring $(TARGET_TYPE), executable shared-lib), )
 $(TARGET): $(C_OBJECTS) $(ASM_OBJECT) $(LD_SCRIPT) $(LIBRARIES)
-	$(TOOLSET_CC) $(CFLAGS) $(INCLUDE_FLAGS) $(LDFLAGS) $(LD_SCRIPT_FLAG) -o $@ $(ASM_OBJECT) $(C_OBJECTS) $(LIBRARIES)
+	$(TOOLSET_CC) $(CFLAGS) $(INCLUDE_FLAGS) $(LDFLAGS) $(LD_SCRIPT_FLAG) -o $@ $(ASM_OBJECT) $(C_OBJECTS) $(LIBRARIES) \
+		$(patsubst %.elf, -Xlinker -Map=%.map, $@)
+	$(TOOLSET_NM) $(NM_FLAGS) $@ > $(patsubst %.elf, %.nm, $@)
+	$(TOOLSET_OBJDUMP) $(OBJDUMP_FLAGS) -D $@ > $(patsubst %.elf, %.disasm, $@)
+	$(TOOLSET_NM) -C --numeric-sort $@ \
+		| perl -p -e 's/([0-9a-fA-F]*) ([0-9a-fA-F]* .|.) ([^\s]*)(^$$|.*)/\1 \3/g' \
+		> $(patsubst %.elf, %.sym, $@)
 else ifeq ($(TARGET_TYPE), static-lib)
 $(TARGET): $(C_OBJECTS) $(ASM_OBJECT)
 	$(TOOLSET_AR) rcs $@ $^
+	$(TOOLSET_NM) $(NM_FLAGS) $@ > $(patsubst %.a, %.nm, $@)
 endif
 
 ifeq ($(IS_TEST), 1)
 $(BUILD_DIR)/%.cpp.o: %.cpp
 	@mkdir -p $(dir $@)
 	$(TEST_CXX) $(TEST_CXXFLAGS) $(INCLUDE_FLAGS) -MMD -MP -MF $(patsubst %.o, %.d, $@) -c $< -o $@
+	$(TOOLSET_OBJDUMP) $(OBJDUMP_FLAGS) -D $@ > $(patsubst %.o, %.dump, $@)
 
 $(TEST_EXECUTABLE): $(TEST_OBJECTS) $(TARGET) $(LIBRARIES)
-	$(TEST_CXX) $(TEST_CXXFLAGS) $(INCLUDE_FLAGS) $(TEST_LDFLAGS) -o $@ $(TEST_OBJECTS) $(TEST_TARGET_LINK) $(LIBRARIES) -lgtest -lgtest_main
+	$(TEST_CXX) $(TEST_CXXFLAGS) $(INCLUDE_FLAGS) $(TEST_LDFLAGS) -o $@ $(TEST_OBJECTS) $(TEST_TARGET_LINK) $(LIBRARIES) -lgtest -lgtest_main \
+		-Wl,-Map,$(BUILD_DIR)/test.map
+	$(TOOLSET_NM) $(NM_FLAGS) $@ > $(BUILD_DIR)/test.nm
+	$(TOOLSET_OBJDUMP) $(OBJDUMP_FLAGS) -D $@ > $(BUILD_DIR)/test.disasm
 endif
 
 $(REFS_LIBS): .FORCE

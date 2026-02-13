@@ -39,6 +39,9 @@ TOOLSET_PREFIX     ?= x86_64-elf
 TOOLSET_CC         ?= $(TOOLSET_PREFIX)-gcc
 TOOLSET_AR         ?= $(TOOLSET_PREFIX)-gcc-ar
 TOOLSET_OBJCOPY    ?= $(TOOLSET_PREFIX)-objcopy
+TOOLSET_OBJDUMP    ?= $(TOOLSET_PREFIX)-objdump
+TOOLSET_NM         ?= $(TOOLSET_PREFIX)-gcc-nm
+TOOLSET_GDB        ?= gdb
 TOOLSET_NASM       ?= nasm
 
 CFLAGS             += -std=c23 -ggdb3 -ffreestanding -mno-red-zone -masm=intel \
@@ -52,6 +55,9 @@ BUILD_PREFIX       := build/tests
 TOOLSET_CC         ?= gcc
 TOOLSET_AR         ?= gcc-ar
 TOOLSET_OBJCOPY    ?= objcopy
+TOOLSET_OBJDUMP    ?= objdump
+TOOLSET_NM         ?= gcc-nm
+TOOLSET_GDB        ?= gdb
 TOOLSET_NASM       ?= nasm
 
 CFLAGS             += -std=c23 -ggdb3 -ffreestanding -masm=intel $(WARNING_FLAGS)

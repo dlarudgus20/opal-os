@@ -14,4 +14,4 @@ TARGET_STRIPPED := $(BUILD_DIR)/kernel.sys
 build: $(TARGET_STRIPPED)
 
 $(TARGET_STRIPPED): $(TARGET)
-	$(TOOLSET_OBJCOPY) -j .multiboot2 -j .text -j .rodata -j .data -j .bss -S $< $@
+	$(TOOLSET_OBJCOPY) -j .startup -j .text -j .rodata -j .data -j .bss -S $< $@
