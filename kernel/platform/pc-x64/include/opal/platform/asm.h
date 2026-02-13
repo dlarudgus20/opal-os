@@ -13,4 +13,12 @@ static inline uint8_t inb(uint16_t port) {
     return value;
 }
 
+static inline void disable_interrupts(void) {
+    __asm__ volatile ("cli" : : : "memory");
+}
+
+static inline void wait_for_interrupt(void) {
+    __asm__ volatile ("hlt" : : : "memory");
+}
+
 #endif

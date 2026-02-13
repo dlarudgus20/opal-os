@@ -3,72 +3,77 @@
 
 #include <kc/stdio.h>
 #include <kc/string.h>
+#include <kc/assert.h>
+#include <opal/tty.h>
 #include <opal/mm/map.h>
 #include <opal/drivers/uart.h>
 
 static void print_memory_map(void) {
     const struct mmap *mmap = mm_get_boot_map();
 
-    uart_write("mb2 memory map:\n");
+    tty0_puts("mb2 memory map:\n");
     for (uint32_t i = 0; i < mmap->length; i++) {
         const struct mmap_entry *entry = &mmap->entries[i];
-        char line[128];
-        snprintf_s(line, sizeof(line), "  [%d] base=0x%llx len=0x%llx type=%u\n",
+        tty0_printf("  [%d] base=0x%llx len=0x%llx type=%u\n",
             i, (unsigned long long)entry->addr, (unsigned long long)entry->len, entry->type);
-        uart_write(line);
     }
 }
 
 static void print_banner(void) {
-    uart_write("\n");
-    uart_write("========================================\n");
-    uart_write("  opal-os UART shell PoC (ssh-like)\n");
-    uart_write("========================================\n");
+    tty0_puts("\n");
+    tty0_puts("========================================\n");
+    tty0_puts("  opal-os UART shell PoC (ssh-like)\n");
+    tty0_puts("========================================\n");
 }
 
 static int handle_command(const char *cmd) {
     if (strcmp(cmd, "help") == 0) {
-        uart_write("commands:\n");
-        uart_write("  help      - show this message\n");
-        uart_write("  uname     - show kernel name\n");
-        uart_write("  whoami    - current user\n");
-        uart_write("  clear     - clear terminal\n");
-        uart_write("  echo TEXT - print TEXT\n");
-        uart_write("  exit      - logout\n");
+        tty0_puts("commands:\n");
+        tty0_puts("  help      - show this message\n");
+        tty0_puts("  uname     - show kernel name\n");
+        tty0_puts("  whoami    - current user\n");
+        tty0_puts("  clear     - clear terminal\n");
+        tty0_puts("  echo TEXT - print TEXT\n");
+        tty0_puts("  exit      - logout\n");
+        tty0_puts("  halt      - halt system\n");
         return 1;
     }
 
     if (strcmp(cmd, "uname") == 0) {
-        uart_write("opal-os pc-x64 (uart-poc)\n");
+        tty0_puts("opal-os pc-x64 (uart-poc)\n");
         return 1;
     }
 
     if (strcmp(cmd, "whoami") == 0) {
-        uart_write("root\n");
+        tty0_puts("root\n");
         return 1;
     }
 
     if (strcmp(cmd, "clear") == 0) {
-        uart_write("\x1b[2J\x1b[H");
+        tty0_puts("\x1b[2J\x1b[H");
         return 1;
     }
 
     if (strncmp(cmd, "echo", 4) == 0) {
         const char *text = cmd + 4 + strspn(cmd + 4, " ");
-        uart_write(text);
-        uart_write("\n");
+        tty0_puts(text);
+        tty0_puts("\n");
         return 1;
     }
 
     if (strcmp(cmd, "exit") == 0) {
-        uart_write("logout\n");
+        tty0_puts("logout\n");
         return 0;
     }
 
+    if (strcmp(cmd, "halt") == 0) {
+        panic("system halt is not implemented");
+    }
+
     if (cmd[0] != '\0') {
-        uart_write("unknown command: ");
-        uart_write(cmd);
-        uart_write("\n");
+        tty0_puts("unknown command: ");
+        tty0_puts(cmd);
+        tty0_puts("\n");
     }
 
     return 1;
@@ -78,7 +83,7 @@ static void run_shell(void) {
     char line[128];
 
     while (1) {
-        uart_write("root@opal:~$ ");
+        tty0_puts("root@opal:~$ ");
         uart_read_line(line, sizeof(line), 0);
 
         if (!handle_command(line)) {
@@ -92,24 +97,26 @@ static void login_loop(void) {
     char pass[32];
 
     while (1) {
-        uart_write("login: ");
+        tty0_puts("login: ");
         uart_read_line(user, sizeof(user), 0);
 
-        uart_write("password: ");
+        tty0_puts("password: ");
         uart_read_line(pass, sizeof(pass), 1);
 
         if (strcmp(user, "root") == 0 && strcmp(pass, "opal") == 0) {
-            uart_write("authentication successful\n");
+            tty0_puts("authentication successful\n");
             run_shell();
             return;
         }
 
-        uart_write("authentication failed\n\n");
+        tty0_puts("authentication failed\n\n");
     }
 }
 
 void kmain(void) {
     uart_init();
+    tty0_init();
+
     print_banner();
     print_memory_map();
 
