@@ -1,40 +1,17 @@
-PLATFORM       := pc-x64
-BUILD_DIR      := build
+PLATFORM    := pc-x64
+TARGET_TYPE := executable
+TARGET_NAME := kernel
 
-TOOLSET_PREFIX ?= x86_64-elf
-TOOLSET_CC     ?= $(TOOLSET_PREFIX)-gcc
-TOOLSET_LD     ?= $(TOOLSET_PREFIX)-ld
-TOOLSET_NASM   ?= nasm
+all: build
 
-CFLAGS         := -std=c11 -Wall -Wextra -ffreestanding -fno-stack-protector -fno-pic -m64 -mno-red-zone -mcmodel=kernel -Iinclude -Iplatform/$(PLATFORM)/include
-LDFLAGS        := -m elf_x86_64 -T platform/$(PLATFORM)/src/linker.ld -nostdlib
+LD_SCRIPT   := platform/$(PLATFORM)/src/linker.ld
 
-C_SOURCES      := \
-	src/kmain.c \
-	src/drivers/uart.c \
-	platform/$(PLATFORM)/src/drivers/uart.c
+include ../mkfiles/conf.mk
+include ../mkfiles/rules.mk
 
-ASM_SOURCES    := \
-	platform/$(PLATFORM)/src/boot.asm
+TARGET_STRIPPED := $(BUILD_DIR)/kernel.sys
 
-C_OBJECTS      := $(patsubst %.c,$(BUILD_DIR)/%.c.o,$(C_SOURCES))
-ASM_OBJECT     := $(patsubst %.asm,$(BUILD_DIR)/%.asm.o,$(ASM_SOURCES))
-KERNEL_BIN     := $(BUILD_DIR)/kernel.bin
+build: $(TARGET_STRIPPED)
 
-.PHONY: all clean
-
-all: $(KERNEL_BIN)
-
-$(BUILD_DIR)/%.c.o: %.c
-	@mkdir -p $(dir $@)
-	$(TOOLSET_CC) $(CFLAGS) -c $< -o $@
-
-$(BUILD_DIR)/%.asm.o: %.asm
-	@mkdir -p $(dir $@)
-	$(TOOLSET_NASM) -f elf64 $< -o $@
-
-$(KERNEL_BIN): $(C_OBJECTS) $(ASM_OBJECT)
-	$(TOOLSET_LD) $(LDFLAGS) -o $@ $(ASM_OBJECT) $(C_OBJECTS)
-
-clean:
-	rm -rf $(BUILD_DIR)
+$(TARGET_STRIPPED): $(TARGET)
+	$(TOOLSET_OBJCOPY) -j .multiboot2 -j .text -j .rodata -j .data -j .bss -S $< $@
