@@ -1,5 +1,23 @@
+#include <stddef.h>
+#include <stdint.h>
+
+#include <kc/stdio.h>
 #include <kc/string.h>
+#include <opal/mm/map.h>
 #include <opal/drivers/uart.h>
+
+static void print_memory_map(void) {
+    const struct mmap *mmap = mm_get_boot_map();
+
+    uart_write("mb2 memory map:\n");
+    for (uint32_t i = 0; i < mmap->length; i++) {
+        const struct mmap_entry *entry = &mmap->entries[i];
+        char line[128];
+        snprintf_s(line, sizeof(line), "  [%d] base=0x%llx len=0x%llx type=%u\n",
+            i, (unsigned long long)entry->addr, (unsigned long long)entry->len, entry->type);
+        uart_write(line);
+    }
+}
 
 static void print_banner(void) {
     uart_write("\n");
@@ -93,6 +111,7 @@ static void login_loop(void) {
 void kmain(void) {
     uart_init();
     print_banner();
+    print_memory_map();
 
     while (1) {
         login_loop();

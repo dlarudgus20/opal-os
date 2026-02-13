@@ -5,7 +5,7 @@
 
 extern __stack_top_lba
 extern __stack_bottom_lba
-extern kmain
+extern kmain_platform
 
 section .multiboot2
 
@@ -24,12 +24,15 @@ section .bss
 align 4096
 tmp_table: resb 0x5000
 
+mb2_info: resd 1
+
 section .startup alloc exec progbits
 
 bits 32
 global _start
 _start:
     cli
+    mov [mb2_info - DISPLACEMENT], ebx
     mov esp, __stack_top_lba
 
     ; PML4(0)
@@ -48,7 +51,8 @@ _start:
     add eax, 0x1000             ; ffff ffff 8*
     mov [ebx + 0xff0], eax
     ; PDT_low(0x3000)
-    add ebx, 0x1000             ; PDT_low[0x08:0x10] -> [2MB:6MB)
+    add ebx, 0x1000             ; PDT_low[0x00:0x10] -> [0MB:6MB)
+    mov dword [ebx], 0x00000083
     mov dword [ebx + 0x08], 0x00200083
     mov dword [ebx + 0x10], 0x00400083
     ; PDT_high(0x4000)
@@ -98,7 +102,9 @@ lm_start:
 
     mov rsp, STACK_TOP
     mov rbp, rsp
-    mov rax, kmain
+
+    mov edi, [mb2_info]
+    mov rax, kmain_platform
     call rax
 
 .hang:
