@@ -9,7 +9,7 @@ static void print_banner(void) {
 }
 
 static int handle_command(const char *cmd) {
-    if (str_eq(cmd, "help")) {
+    if (strcmp(cmd, "help") == 0) {
         uart_write("commands:\n");
         uart_write("  help      - show this message\n");
         uart_write("  uname     - show kernel name\n");
@@ -20,29 +20,29 @@ static int handle_command(const char *cmd) {
         return 1;
     }
 
-    if (str_eq(cmd, "uname")) {
+    if (strcmp(cmd, "uname") == 0) {
         uart_write("opal-os pc-x64 (uart-poc)\n");
         return 1;
     }
 
-    if (str_eq(cmd, "whoami")) {
+    if (strcmp(cmd, "whoami") == 0) {
         uart_write("root\n");
         return 1;
     }
 
-    if (str_eq(cmd, "clear")) {
+    if (strcmp(cmd, "clear") == 0) {
         uart_write("\x1b[2J\x1b[H");
         return 1;
     }
 
-    if (str_starts_with(cmd, "echo")) {
-        const char *text = skip_spaces(cmd + 4);
+    if (strncmp(cmd, "echo", 4) == 0) {
+        const char *text = cmd + 4 + strspn(cmd + 4, " ");
         uart_write(text);
         uart_write("\n");
         return 1;
     }
 
-    if (str_eq(cmd, "exit")) {
+    if (strcmp(cmd, "exit") == 0) {
         uart_write("logout\n");
         return 0;
     }
@@ -80,7 +80,7 @@ static void login_loop(void) {
         uart_write("password: ");
         uart_read_line(pass, sizeof(pass), 1);
 
-        if (str_eq(user, "root") && str_eq(pass, "opal")) {
+        if (strcmp(user, "root") == 0 && strcmp(pass, "opal") == 0) {
             uart_write("authentication successful\n");
             run_shell();
             return;

@@ -10,12 +10,12 @@ ISO_FILE    := $(BUILD_DIR)/opal-os.iso
 
 SUBDIRS     := kernel libkc
 
-.PHONY: all kernel iso run clean
+.PHONY: all kernel iso run clean build-test test clean-test
 
 all: kernel
 
 kernel:
-	$(MAKE) -C kernel CONFIG=$(CONFIG) PLATFORM=$(PLATFORM)
+	$(MAKE) -C kernel $(MAKE_ARG)
 
 iso: kernel
 	@mkdir -p $(ISO_DIR)/boot/grub
@@ -28,6 +28,21 @@ run: iso
 
 clean:
 	for dir in $(SUBDIRS); do \
-		$(MAKE) clean -C $$dir CONFIG=$(CONFIG) PLATFORM=$(PLATFORM) || exit 1; \
+		$(MAKE) clean -C $$dir $(MAKE_ARG) || exit 1; \
 	done
 	rm -rf $(BUILD_DIR)
+
+build-test:
+	for dir in $(SUBDIRS); do \
+		$(MAKE) build-test -C $$dir $(MAKE_ARG) || exit 1; \
+	done
+
+test:
+	for dir in $(SUBDIRS); do \
+		$(MAKE) test -C $$dir $(MAKE_ARG) || exit 1; \
+	done
+
+clean-test:
+	for dir in $(SUBDIRS); do \
+		$(MAKE) clean-test -C $$dir $(MAKE_ARG) || exit 1; \
+	done

@@ -8,6 +8,13 @@ C_DEPENDS          := $(patsubst %.o, %.d, $(C_OBJECTS))
 ASM_OBJECT         := $(patsubst %.asm, $(BUILD_DIR)/%.asm.o, $(ASM_SOURCES))
 ASM_DEPENDS        := $(patsubst %.o, %.d, $(ASM_OBJECT))
 
+ifeq ($(IS_TEST), 1)
+TEST_SOURCES       := $(wildcard $(TEST_DIR)/*.cpp)
+TEST_OBJECTS       := $(patsubst %.cpp, $(BUILD_DIR)/%.cpp.o, $(TEST_SOURCES))
+TEST_DEPENDS       := $(patsubst %.o, %.d, $(TEST_OBJECTS))
+TEST_EXECUTABLE    := $(BUILD_DIR)/test
+endif
+
 REFS_LIBS          := $(foreach ref, $(PROJECT_REFS), ../$(ref)/$(BUILD_DIR)/$(ref).a)
 REFS_INCS          := $(foreach ref, $(PROJECT_REFS), ../$(ref)/include ../$(ref)/platform/$(PLATFORM)/include)
 
@@ -20,19 +27,35 @@ $(error [rules.mk] TARGET_NAME is missing.)
 endif
 
 ifeq ($(TARGET_TYPE), executable)
+
 ifeq ($(LD_SCRIPT), )
 $(error [rules.mk] LD_SCRIPT is missing.)
 endif
 TARGET := $(BUILD_DIR)/$(TARGET_NAME).elf
+LD_SCRIPT_FLAG := -T $(LD_SCRIPT)
+
 else ifeq ($(TARGET_TYPE), static-lib)
+
 TARGET := $(BUILD_DIR)/$(TARGET_NAME).a
+TEST_TARGET_LINK := $(TARGET)
+
+else ifeq ($(TARGET_TYPE), shared-lib)
+
+TARGET := $(BUILD_DIR)/$(TARGET_NAME).so
+LD_SCRIPT_FLAG :=
+ifeq ($(TEST_AS_SHARED), 1)
+TEST_TARGET_LINK := -ldl
+else
+TEST_TARGET_LINK := $(TARGET)
+endif
+
 else
 $(error [rules.mk] '$(TARGET_TYPE)': unknown target type.)
 endif
 
 -include $(C_DEPENDS) $(ASM_DEPENDS)
 
-PHONY_TARGETS += all clean
+PHONY_TARGETS += all clean build-test test clean-test
 .PHONY: $(PHONY_TARGETS) .FORCE
 .FORCE:
 
@@ -44,18 +67,53 @@ $(BUILD_DIR)/%.asm.o: %.asm
 	@mkdir -p $(dir $@)
 	$(TOOLSET_NASM) -f elf64 -MD $(patsubst %.o, %.d, $@) $< -o $@
 
-ifeq ($(TARGET_TYPE), executable)
+ifneq ($(findstring $(TARGET_TYPE), executable shared-lib), )
 $(TARGET): $(C_OBJECTS) $(ASM_OBJECT) $(LD_SCRIPT) $(LIBRARIES)
-	$(TOOLSET_CC) $(CFLAGS) $(INCLUDE_FLAGS) $(LDFLAGS) -T $(LD_SCRIPT) -o $@ $(ASM_OBJECT) $(C_OBJECTS) $(LIBRARIES)
+	$(TOOLSET_CC) $(CFLAGS) $(INCLUDE_FLAGS) $(LDFLAGS) $(LD_SCRIPT_FLAG) -o $@ $(ASM_OBJECT) $(C_OBJECTS) $(LIBRARIES)
 else ifeq ($(TARGET_TYPE), static-lib)
 $(TARGET): $(C_OBJECTS) $(ASM_OBJECT)
 	$(TOOLSET_AR) rcs $@ $^
 endif
 
+ifeq ($(IS_TEST), 1)
+$(BUILD_DIR)/%.cpp.o: %.cpp
+	@mkdir -p $(dir $@)
+	$(TEST_CXX) $(TEST_CXXFLAGS) $(INCLUDE_FLAGS) -MMD -MP -MF $(patsubst %.o, %.d, $@) -c $< -o $@
+
+$(TEST_EXECUTABLE): $(TEST_OBJECTS) $(TARGET) $(LIBRARIES)
+	$(TEST_CXX) $(TEST_CXXFLAGS) $(INCLUDE_FLAGS) $(TEST_LDFLAGS) -o $@ $(TEST_OBJECTS) $(TEST_TARGET_LINK) $(LIBRARIES) -lgtest -lgtest_main
+endif
+
 $(REFS_LIBS): .FORCE
 	for dir in $(PROJECT_REFS); do \
-		$(MAKE) build -C ../$$dir CONFIG=$(CONFIG) PLATFORM=$(PLATFORM) || exit 1; \
+		$(MAKE) build -C ../$$dir $(MAKE_ARG) || exit 1; \
 	done
 
 clean:
 	rm -rf $(BUILD_DIR)
+
+ifeq ($(HAS_TEST), 1)
+ifeq ($(IS_TEST), 1)
+build-test: $(TEST_EXECUTABLE)
+
+test: $(TEST_EXECUTABLE)
+	./$(TEST_EXECUTABLE)
+
+clean-test: clean
+else
+build-test:
+	$(MAKE) build-test $(TEST_MAKE_ARG) $(MAKE_ARG)
+
+test: build-test
+	$(MAKE) test $(TEST_MAKE_ARG) $(MAKE_ARG)
+
+clean-test:
+	$(MAKE) clean $(TEST_MAKE_ARG) $(MAKE_ARG)
+endif
+else
+build-test:
+
+test:
+
+clean-test:
+endif

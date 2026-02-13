@@ -4,9 +4,9 @@ PROJECT_REFS := libkc
 
 all: build
 
-LD_SCRIPT   := platform/$(PLATFORM)/src/linker.ld
-
 include ../mkfiles/conf.mk
+
+LD_SCRIPT := platform/$(PLATFORM)/src/linker.ld
 include ../mkfiles/rules.mk
 
 TARGET_STRIPPED := $(BUILD_DIR)/kernel.sys

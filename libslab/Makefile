@@ -1,7 +1,5 @@
-TARGET_NAME := libkc
-TARGET_TYPE ?= static-lib
-
-TEST_AS_SHARED := 1
+TARGET_NAME := libslab
+TARGET_TYPE := static-lib
 
 all: build
 
