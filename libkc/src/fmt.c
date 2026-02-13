@@ -167,7 +167,7 @@ static void write_integer(struct fmt *restrict fmt,
     bool upper,
     char spec
 ) {
-    char rev[64];
+    char rev[sizeof(uintmax_t) * CHAR_BIT];
     int digits_len;
 
     int prefix_len = 0;
