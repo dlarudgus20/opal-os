@@ -72,12 +72,12 @@ $(BUILD_DIR)/%.asm.o: %.asm
 ifneq ($(findstring $(TARGET_TYPE), executable shared-lib), )
 $(TARGET): $(C_OBJECTS) $(ASM_OBJECT) $(LD_SCRIPT) $(LIBRARIES)
 	$(TOOLSET_CC) $(CFLAGS) $(INCLUDE_FLAGS) $(LDFLAGS) $(LD_SCRIPT_FLAG) -o $@ $(ASM_OBJECT) $(C_OBJECTS) $(LIBRARIES) \
-		$(patsubst %.elf, -Xlinker -Map=%.map, $@)
-	$(TOOLSET_NM) $(NM_FLAGS) $@ > $(patsubst %.elf, %.nm, $@)
-	$(TOOLSET_OBJDUMP) $(OBJDUMP_FLAGS) -D $@ > $(patsubst %.elf, %.disasm, $@)
+		-Wl,-Map,$(basename $@).map
+	$(TOOLSET_NM) $(NM_FLAGS) $@ > $(basename $@).nm
+	$(TOOLSET_OBJDUMP) $(OBJDUMP_FLAGS) -D $@ > $(basename $@).disasm
 	$(TOOLSET_NM) -C --numeric-sort $@ \
 		| perl -p -e 's/([0-9a-fA-F]*) ([0-9a-fA-F]* .|.) ([^\s]*)(^$$|.*)/\1 \3/g' \
-		> $(patsubst %.elf, %.sym, $@)
+		> $(basename $@).sym
 else ifeq ($(TARGET_TYPE), static-lib)
 $(TARGET): $(C_OBJECTS) $(ASM_OBJECT)
 	$(TOOLSET_AR) rcs $@ $^
