@@ -8,14 +8,14 @@ KERNEL_BIN  := kernel/$(BUILD_DIR)/kernel.sys
 ISO_DIR     := $(BUILD_DIR)/iso
 ISO_FILE    := $(BUILD_DIR)/opal-os.iso
 
-SUBDIRS     := kernel libkc
+SUBDIRS     := kernel libkc libcoll
 
 .PHONY: all kernel iso run clean build-test test clean-test
 
 all: kernel
 
 kernel:
-	$(MAKE) -C kernel $(MAKE_ARG)
+	$(MAKE) -C kernel
 
 iso: kernel
 	@mkdir -p $(ISO_DIR)/boot/grub
@@ -28,21 +28,21 @@ run: iso
 
 clean:
 	for dir in $(SUBDIRS); do \
-		$(MAKE) clean -C $$dir $(MAKE_ARG) || exit 1; \
+		$(MAKE) clean -C $$dir || exit 1; \
 	done
 	rm -rf $(BUILD_DIR)
 
 build-test:
 	for dir in $(SUBDIRS); do \
-		$(MAKE) build-test -C $$dir $(MAKE_ARG) || exit 1; \
+		$(MAKE) build-test -C $$dir || exit 1; \
 	done
 
 test:
 	for dir in $(SUBDIRS); do \
-		$(MAKE) test -C $$dir $(MAKE_ARG) || exit 1; \
+		$(MAKE) test -C $$dir || exit 1; \
 	done
 
 clean-test:
 	for dir in $(SUBDIRS); do \
-		$(MAKE) clean-test -C $$dir $(MAKE_ARG) || exit 1; \
+		$(MAKE) clean-test -C $$dir || exit 1; \
 	done

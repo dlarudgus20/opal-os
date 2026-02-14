@@ -1,5 +1,5 @@
-CONFIG             ?= debug
-PLATFORM           ?= pc-x64
+export CONFIG      ?= debug
+export PLATFORM    ?= pc-x64
 
 ifeq ($(CONFIG), debug)
 else ifeq ($(CONFIG), release)
@@ -20,19 +20,17 @@ HAS_TEST           := 1
 endif
 endif
 
-MAKE_ARG           := CONFIG=$(CONFIG) PLATFORM=$(PLATFORM)
-
-ifeq ($(HAS_TEST), 1)
-TEST_MAKE_ARG      := IS_TEST=1
+ifeq ($(IS_TEST), 1)
+IS_TEST_BUILD := 1
 ifeq ($(TEST_AS_SHARED), 1)
-TEST_MAKE_ARG      += TARGET_TYPE=shared-lib TEST_AS_SHARED=1
+TARGET_TYPE := shared-lib
 endif
 endif
 
 WARNING_FLAGS      := -pedantic -Wall -Wextra -Werror \
 	-Wno-switch -Wno-unused-parameter -Wno-error=unused-variable -Wno-error=unused-function
 
-ifneq ($(IS_TEST), 1)
+ifneq ($(IS_TEST_BUILD), 1)
 
 BUILD_PREFIX       := build
 TOOLSET_PREFIX     ?= x86_64-elf

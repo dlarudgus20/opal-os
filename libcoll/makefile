@@ -1,8 +1,10 @@
-TARGET_NAME := libkc
+TARGET_NAME := libcoll
 TARGET_TYPE := static-lib
+STATIC_REFS := libkc
 
 TEST_SHARED_REFS := libpanicimpl
-TEST_WITH_REDEF_SYMBOLS := tests/renaming.sym
+TEST_AS_SHARED := 1
+TEST_LDFLAGS :=
 
 all: build
 

@@ -1,6 +1,6 @@
 TARGET_NAME := kernel
 TARGET_TYPE := executable
-PROJECT_REFS := libkc
+STATIC_REFS := libkc
 
 all: build
 
