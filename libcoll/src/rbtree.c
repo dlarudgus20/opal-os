@@ -159,13 +159,12 @@ static void insertion_balancing(struct rbtree* tree, struct rbtree_node* node) {
 }
 
 void rbtree_remove(struct rbtree* tree, struct rbtree_node* node) {
-    struct rbtree_node* parent = node->parent;
-
     if (node->left != NULL && node->right != NULL) {
         // case 0: node has two non-null children
         struct rbtree_node* successor = get_min_node(node->right);
         rbtree_remove(tree, successor);
 
+        struct rbtree_node* parent = node->parent;
         if (parent != NULL) {
             if (parent->left == node) {
                 parent->left = successor;
@@ -190,6 +189,7 @@ void rbtree_remove(struct rbtree* tree, struct rbtree_node* node) {
         }
     } else {
         // replace node with its child
+        struct rbtree_node* parent = node->parent;
         struct rbtree_node* child = node->left != NULL ? node->left : node->right;
         struct rbtree_node* sibling = NULL;
         if (parent != NULL) {
