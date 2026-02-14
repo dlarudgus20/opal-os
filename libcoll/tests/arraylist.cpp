@@ -1,12 +1,13 @@
 #include <gtest/gtest.h>
-#include <iostream>
-#include <vector>
-#include <algorithm>
-#include <cstring>
 
 extern "C" {
-#include "collections/arraylist.h"
+#include <collections/arraylist.h>
 }
+
+#include <vector>
+#include <algorithm>
+#include <limits>
+#include <cstring>
 
 // Mock allocator for testing
 class MockAllocator {
@@ -55,6 +56,36 @@ size_t MockAllocator::total_allocated = 0;
 size_t MockAllocator::allocation_count = 0;
 size_t MockAllocator::deallocation_count = 0;
 
+class OverflowRecorderAllocator {
+public:
+    static size_t last_requested_len;
+    static size_t alloc_calls;
+    static char dummy;
+
+    static void reset() {
+        last_requested_len = 0;
+        alloc_calls = 0;
+    }
+
+    static void* alloc(size_t len, size_t* allocated_len) {
+        last_requested_len = len;
+        alloc_calls += 1;
+        *allocated_len = len;
+        return &dummy;
+    }
+
+    static void dealloc(void*, size_t) {
+    }
+
+    static size_t shrink(void*, size_t old_len, size_t) {
+        return old_len;
+    }
+};
+
+size_t OverflowRecorderAllocator::last_requested_len = 0;
+size_t OverflowRecorderAllocator::alloc_calls = 0;
+char OverflowRecorderAllocator::dummy = 0;
+
 class arraylist_test : public ::testing::Test {
 protected:
     void SetUp() override {
@@ -73,6 +104,58 @@ protected:
 
     struct arraylist_allocator allocator;
 };
+
+TEST(arraylist_overflow_test, push_back_size_addition_must_not_wrap) {
+    OverflowRecorderAllocator::reset();
+
+    struct arraylist list;
+    list.pa = {
+        OverflowRecorderAllocator::alloc,
+        OverflowRecorderAllocator::dealloc,
+        OverflowRecorderAllocator::shrink
+    };
+    list.data = &OverflowRecorderAllocator::dummy;
+    list.size = std::numeric_limits<size_t>::max() - 3;
+    list.capacity = list.size;
+
+    ASSERT_DEATH({
+        struct arraylist local = list;
+        (void)arraylist_push_back(&local, 8);
+    }, "arraylist: push_back size overflow");
+}
+
+TEST(arraylist_overflow_test, insert_size_addition_must_not_wrap) {
+    OverflowRecorderAllocator::reset();
+
+    struct arraylist list;
+    list.pa = {
+        OverflowRecorderAllocator::alloc,
+        OverflowRecorderAllocator::dealloc,
+        OverflowRecorderAllocator::shrink
+    };
+    list.data = &OverflowRecorderAllocator::dummy;
+    list.size = std::numeric_limits<size_t>::max() - 3;
+    list.capacity = list.size;
+
+    ASSERT_DEATH({
+        struct arraylist local = list;
+        (void)arraylist_insert(&local, local.size, 8);
+    }, "arraylist: insert size overflow");
+}
+
+TEST(arraylist_macro_test, foreach_empty_list_with_null_data_runs_zero_times) {
+    struct arraylist list = {};
+    list.data = nullptr;
+    list.size = 0;
+    list.capacity = 0;
+
+    int iterations = 0;
+    arraylist_foreach(int*, p, &list) {
+        (void)p;
+        iterations += 1;
+    }
+    ASSERT_EQ(iterations, 0);
+}
 
 TEST_F(arraylist_test, init_empty_list) {
     struct arraylist list;

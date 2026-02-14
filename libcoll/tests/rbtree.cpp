@@ -2,15 +2,15 @@
 
 extern "C" {
 #define restrict
-#include "collections/rbtree.h"
+#include <collections/rbtree.h>
 };
 
 #include <iostream>
+#include <algorithm>
+#include <random>
 #include <climits>
 #include <cstdlib>
 #include <cstdio>
-#include <algorithm>
-#include <random>
 
 enum { RED, BLK };
 

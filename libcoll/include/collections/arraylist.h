@@ -27,4 +27,5 @@ void arraylist_remove(struct arraylist* list, size_t pos, size_t data_size);
 #define arraylist_at(list, type, index) (*(type*)((char*)(list)->data + (index) * sizeof(type)))
 
 #define arraylist_foreach(type, ptr, list) \
-    for (type ptr = (type)(list)->data; ptr < (type)((char*)(list)->data + (list)->size); ptr++)
+    for (type ptr = (type)(list)->data; \
+        (list)->size != 0 && (char*)ptr < (char*)(list)->data + (list)->size; ptr++)

@@ -36,7 +36,7 @@ void linkedlist_push_back(struct linkedlist* restrict list, struct linkedlist_li
 
 struct linkedlist_link* linkedlist_pop_front(struct linkedlist* list) {
     struct linkedlist_link* removed = list->dummy.next;
-    if (removed == list->dummy.prev) {
+    if (removed == &list->dummy) {
         return NULL;
     }
     linkedlist_remove(list->dummy.next);
@@ -45,7 +45,7 @@ struct linkedlist_link* linkedlist_pop_front(struct linkedlist* list) {
 
 struct linkedlist_link* linkedlist_pop_back(struct linkedlist* list) {
     struct linkedlist_link* removed = list->dummy.prev;
-    if (removed == list->dummy.next) {
+    if (removed == &list->dummy) {
         return NULL;
     }
     linkedlist_remove(list->dummy.prev);

@@ -1,13 +1,14 @@
-#include <iostream>
 #include <gtest/gtest.h>
-#include <vector>
-#include <algorithm>
-#include <kc/stdlib.h>
 
 extern "C" {
 #define restrict
-#include "collections/singlylist.h"
+#include <collections/singlylist.h>
 }
+
+#include <vector>
+#include <algorithm>
+
+#include <kc/stdlib.h>
 
 // 테스트용 노드 구조체
 struct test_node {

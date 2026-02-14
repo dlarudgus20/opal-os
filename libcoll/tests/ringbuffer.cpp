@@ -1,7 +1,7 @@
 #include <gtest/gtest.h>
 
 extern "C" {
-#include "collections/ringbuffer.h"
+#include <collections/ringbuffer.h>
 }
 
 #include <stdexcept>

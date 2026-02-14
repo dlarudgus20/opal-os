@@ -1,5 +1,7 @@
+#include <stdint.h>
 #include <kc/string.h>
 #include <kc/assert.h>
+
 #include "collections/arraylist.h"
 
 struct tagged_ptr {
@@ -70,6 +72,7 @@ void arraylist_shrink_to(struct arraylist* list, size_t new_size) {
 }
 
 void* arraylist_push_back(struct arraylist* list, size_t data_size) {
+    assert(data_size <= SIZE_MAX - list->size, "arraylist: push_back size overflow");
     size_t size = list->size;
     arraylist_resize(list, size + data_size);
     return (char*)list->data + size;
@@ -82,6 +85,7 @@ void arraylist_pop_back(struct arraylist* list, size_t data_size) {
 
 void* arraylist_insert(struct arraylist* list, size_t pos, size_t data_size) {
     assert(pos <= list->size, "arraylist: insert out of bounds");
+    assert(data_size <= SIZE_MAX - list->size, "arraylist: insert size overflow");
 
     struct tagged_ptr old_data = reserve_without_copy(list, list->size + data_size);
     char* inserted = (char*)list->data + pos;

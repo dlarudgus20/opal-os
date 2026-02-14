@@ -1,13 +1,9 @@
-#include <iostream>
 #include <gtest/gtest.h>
 
 extern "C" {
 #define restrict
-#include "collections/linkedlist.h"
+#include <collections/linkedlist.h>
 };
-
-#include <stdlib.h>
-#include <stdio.h>
 
 TEST(linkedlist_test, empty_after_init) {
     linkedlist list;
@@ -125,4 +121,48 @@ TEST(linkedlist_test, iterate_backward) {
     }
 
     ASSERT_EQ(count, 3);
+}
+
+TEST(linkedlist_test, pop_front_single_element) {
+    linkedlist list;
+    linkedlist_link link;
+    linkedlist_init(&list);
+    linkedlist_push_back(&list, &link);
+
+    linkedlist_link* popped = linkedlist_pop_front(&list);
+    ASSERT_EQ(popped, &link);
+    ASSERT_EQ(linkedlist_head(&list), linkedlist_nil(&list));
+    ASSERT_EQ(linkedlist_tail(&list), linkedlist_nil(&list));
+}
+
+TEST(linkedlist_test, pop_back_single_element) {
+    linkedlist list;
+    linkedlist_link link;
+    linkedlist_init(&list);
+    linkedlist_push_back(&list, &link);
+
+    linkedlist_link* popped = linkedlist_pop_back(&list);
+    ASSERT_EQ(popped, &link);
+    ASSERT_EQ(linkedlist_head(&list), linkedlist_nil(&list));
+    ASSERT_EQ(linkedlist_tail(&list), linkedlist_nil(&list));
+}
+
+TEST(linkedlist_test, pop_front_zero_element) {
+    linkedlist list;
+    linkedlist_init(&list);
+
+    linkedlist_link* popped = linkedlist_pop_front(&list);
+    ASSERT_EQ(popped, nullptr);
+    ASSERT_EQ(linkedlist_head(&list), linkedlist_nil(&list));
+    ASSERT_EQ(linkedlist_tail(&list), linkedlist_nil(&list));
+}
+
+TEST(linkedlist_test, pop_back_zero_element) {
+    linkedlist list;
+    linkedlist_init(&list);
+
+    linkedlist_link* popped = linkedlist_pop_back(&list);
+    ASSERT_EQ(popped, nullptr);
+    ASSERT_EQ(linkedlist_head(&list), linkedlist_nil(&list));
+    ASSERT_EQ(linkedlist_tail(&list), linkedlist_nil(&list));
 }
