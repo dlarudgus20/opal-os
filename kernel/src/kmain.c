@@ -2,9 +2,12 @@
 #include <stdint.h>
 
 #include <kc/stdio.h>
+#include <kc/ctype.h>
 #include <kc/string.h>
 #include <kc/assert.h>
+
 #include <opal/tty.h>
+#include <opal/klog.h>
 #include <opal/mm/map.h>
 #include <opal/drivers/uart.h>
 
@@ -36,6 +39,8 @@ static int handle_command(const char *cmd) {
         tty0_puts("  echo TEXT - print TEXT\n");
         tty0_puts("  exit      - logout\n");
         tty0_puts("  halt      - halt system\n");
+        tty0_puts("  klog TEXT - log TEXT\n");
+        tty0_puts("  kmsg      - read logs\n");
         return 1;
     }
 
@@ -64,6 +69,33 @@ static int handle_command(const char *cmd) {
     if (strcmp(cmd, "exit") == 0) {
         tty0_puts("logout\n");
         return 0;
+    }
+
+    if (strcmp(cmd, "halt") == 0) {
+        panic("system halt is not implemented");
+    }
+
+    if (strncmp(cmd, "klog", 4) == 0) {
+        const char *text = cmd + 4 + strspn(cmd + 4, " ");
+        uint16_t level = KLOG_INFO;
+        if (isdigit(*text)) {
+            level = *text - '0';
+            text += strspn(text + 1, " ") + 1;
+        }
+        klogf(level, "%s", text);
+        return 1;
+    }
+
+    if (strcmp(cmd, "kmsg") == 0) {
+        struct klog_record_header header;
+        char msg[KLOG_MAX_MSGLEN + 1];
+        const char *colors[KLOG_LEVEL_COUNT] = {
+            "\x1b[1;97;41m", "\x1b[1;91m", "\x1b[1;93m", "\x1b[1;96m", "\x1b[1;92m", "\x1b[90m"
+        };
+        while (klog_read(&header, msg, sizeof(msg))) {
+            tty0_printf("%s[%u] %s\x1b[0m\n", colors[header.level], header.seq, msg);
+        }
+        return 1;
     }
 
     if (strcmp(cmd, "halt") == 0) {
@@ -116,6 +148,7 @@ static void login_loop(void) {
 void kmain(void) {
     uart_init();
     tty0_init();
+    klog_init();
 
     print_banner();
     print_memory_map();

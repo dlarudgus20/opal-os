@@ -1,4 +1,5 @@
 #include <stdarg.h>
+
 #include <kc/fmt.h>
 #include <kc/assert.h>
 
