@@ -2,7 +2,8 @@ TARGET_NAME := libkc
 TARGET_TYPE := static-lib
 
 TEST_SHARED_REFS := libpanicimpl
-TEST_WITH_REDEF_SYMBOLS := tests/renaming.sym
+TEST_AS_SHARED := 1
+TEST_DO_NOT_LINK := 1
 
 all: build
 

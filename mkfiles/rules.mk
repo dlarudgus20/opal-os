@@ -42,11 +42,11 @@ LD_SCRIPT_FLAG := -T $(LD_SCRIPT)
 else ifeq ($(TARGET_TYPE), static-lib)
 
 TARGET := $(BUILD_DIR)/$(TARGET_NAME).a
-TEST_TARGET_LINK := $(TARGET)
+TEST_TARGET_LIBS := $(TARGET)
 
 ifneq ($(TEST_WITH_REDEF_SYMBOLS), )
 TARGET_REDEF := $(BUILD_DIR)/$(TARGET_NAME)_redef.a
-TEST_TARGET_LINK := $(TARGET_REDEF)
+TEST_TARGET_LIBS := $(TARGET_REDEF)
 endif
 
 # shared-lib
@@ -55,9 +55,9 @@ else ifeq ($(TARGET_TYPE), shared-lib)
 TARGET := $(BUILD_DIR)/$(TARGET_NAME).so
 LD_SCRIPT_FLAG :=
 ifeq ($(TEST_AS_SHARED) $(TEST_DO_NOT_LINK), 1 1)
-TEST_TARGET_LINK := -ldl
+TEST_TARGET_LIBS := -ldl
 else
-TEST_TARGET_LINK := $(TARGET)
+TEST_TARGET_LIBS := $(TARGET)
 endif
 
 else
@@ -110,7 +110,8 @@ ifneq ($(TEST_WITH_REDEF_SYMBOLS), )
 	$(TOOLSET_OBJCOPY) $(patsubst %, --redefine-syms %, $(TEST_WITH_REDEF_SYMBOLS)) $(TARGET) $(TARGET_REDEF)
 endif
 endif
-	$(TEST_CXX) $(TEST_CXXFLAGS) $(INCLUDE_FLAGS) $(TEST_LDFLAGS) -o $@ $(TEST_OBJECTS) $(TEST_TARGET_LINK) $(LIBRARIES) -lgtest -lgtest_main \
+	$(TEST_CXX) $(TEST_CXXFLAGS) $(INCLUDE_FLAGS) $(TEST_LDFLAGS) -o $@ \
+		$(TEST_OBJECTS) $(TEST_TARGET_LIBS) $(LIBRARIES) -lgtest -lgtest_main \
 		-Wl,-Map,$(BUILD_DIR)/test.map
 	$(TOOLSET_NM) $(NM_FLAGS) $@ > $(BUILD_DIR)/test.nm
 	$(TOOLSET_OBJDUMP) $(OBJDUMP_FLAGS) -D $@ > $(BUILD_DIR)/test.disasm

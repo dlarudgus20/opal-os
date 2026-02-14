@@ -68,7 +68,7 @@ TEST_LDFLAGS       += -Wl,--fatal-warning
 ifeq ($(CONFIG), debug)
 TEST_CXXFLAGS      += -DDEBUG -fsanitize=address,undefined -fno-omit-frame-pointer
 else ifeq ($(CONFIG), release)
-TEST_CXXFLAGS      += -DNDEBUG -O3 -flto
+TEST_CXXFLAGS      += -DNDEBUG -O3 -flto=auto
 endif
 
 endif
@@ -86,7 +86,7 @@ else
 CFLAGS             += -fsanitize=address,undefined -fno-omit-frame-pointer
 endif
 else ifeq ($(CONFIG), release)
-CFLAGS             += -DNDEBUG -O3 -flto
+CFLAGS             += -DNDEBUG -O3 -flto=auto
 endif
 
 BUILD_DIR          := $(BUILD_PREFIX)/$(PLATFORM)/$(CONFIG)
