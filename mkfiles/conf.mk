@@ -66,7 +66,7 @@ TEST_CXXFLAGS      += -std=c++23 -ggdb3 -masm=intel $(WARNING_FLAGS)
 TEST_LDFLAGS       += -Wl,--fatal-warning
 
 ifeq ($(CONFIG), debug)
-TEST_CXXFLAGS      += -DDEBUG
+TEST_CXXFLAGS      += -DDEBUG -fsanitize=address,undefined -fno-omit-frame-pointer
 else ifeq ($(CONFIG), release)
 TEST_CXXFLAGS      += -DNDEBUG -O3 -flto
 endif
@@ -80,6 +80,11 @@ endif
 
 ifeq ($(CONFIG), debug)
 CFLAGS             += -DDEBUG
+ifneq ($(IS_TEST_BUILD), 1)
+CFLAGS             += -fsanitize=undefined -fno-omit-frame-pointer
+else
+CFLAGS             += -fsanitize=address,undefined -fno-omit-frame-pointer
+endif
 else ifeq ($(CONFIG), release)
 CFLAGS             += -DNDEBUG -O3 -flto
 endif

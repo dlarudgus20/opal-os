@@ -1,6 +1,6 @@
 TARGET_NAME := kernel
 TARGET_TYPE := executable
-STATIC_REFS := libkc
+STATIC_REFS := libkc libkubsan
 
 all: build
 
