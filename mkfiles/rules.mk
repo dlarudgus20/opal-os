@@ -5,14 +5,17 @@ ASM_SOURCES        := $(sort $(if $(STRIPPED_SRCDIRS), $(shell find $(STRIPPED_S
 
 C_OBJECTS          := $(patsubst %.c, $(BUILD_DIR)/%.c.o, $(C_SOURCES))
 C_DEPENDS          := $(patsubst %.o, %.d, $(C_OBJECTS))
-ASM_OBJECT         := $(patsubst %.asm, $(BUILD_DIR)/%.asm.o, $(ASM_SOURCES))
-ASM_DEPENDS        := $(patsubst %.o, %.d, $(ASM_OBJECT))
+ASM_OBJECTS        := $(patsubst %.asm, $(BUILD_DIR)/%.asm.o, $(ASM_SOURCES))
+ASM_DEPENDS        := $(patsubst %.o, %.d, $(ASM_OBJECTS))
+
+OBJECTS            := $(ASM_OBJECTS) $(C_OBJECTS)
 
 ifeq ($(IS_TEST_BUILD), 1)
 TEST_SOURCES       := $(wildcard $(TEST_DIR)/*.cpp)
 TEST_OBJECTS       := $(patsubst %.cpp, $(BUILD_DIR)/%.cpp.o, $(TEST_SOURCES))
 TEST_DEPENDS       := $(patsubst %.o, %.d, $(TEST_OBJECTS))
 TEST_EXECUTABLE    := $(BUILD_DIR)/test
+OBJECTS            := $(filter-out $(TEST_EXCLUDE_OBJ), $(OBJECTS))
 STATIC_REFS        += $(TEST_STATIC_REFS)
 SHARED_REFS        += $(TEST_SHARED_REFS)
 endif
@@ -54,7 +57,7 @@ else ifeq ($(TARGET_TYPE), shared-lib)
 
 TARGET := $(BUILD_DIR)/$(TARGET_NAME).so
 LD_SCRIPT_FLAG :=
-ifeq ($(TEST_AS_SHARED) $(TEST_DO_NOT_LINK), 1 1)
+ifeq ($(TEST_DO_NOT_LINK), 1)
 TEST_TARGET_LIBS := -ldl
 else
 TEST_TARGET_LIBS := $(TARGET)
@@ -84,8 +87,8 @@ $(BUILD_DIR)/%.asm.o: %.asm
 	$(TOOLSET_OBJDUMP) $(OBJDUMP_FLAGS) -D $@ > $(patsubst %.o, %.dump, $@)
 
 ifneq ($(findstring $(TARGET_TYPE), executable shared-lib), )
-$(TARGET): $(C_OBJECTS) $(ASM_OBJECT) $(LD_SCRIPT) $(LIBRARIES)
-	$(TOOLSET_CC) $(CFLAGS) $(INCLUDE_FLAGS) $(LDFLAGS) $(LD_SCRIPT_FLAG) -o $@ $(ASM_OBJECT) $(C_OBJECTS) $(LIBRARIES) \
+$(TARGET): $(OBJECTS) $(LD_SCRIPT) $(LIBRARIES)
+	$(TOOLSET_CC) $(CFLAGS) $(INCLUDE_FLAGS) $(LDFLAGS) $(LD_SCRIPT_FLAG) -o $@ $(OBJECTS) $(LIBRARIES) \
 		-Wl,-Map,$@.map
 	$(TOOLSET_NM) $(NM_FLAGS) $@ > $@.nm
 	$(TOOLSET_OBJDUMP) $(OBJDUMP_FLAGS) -D $@ > $@.disasm
@@ -93,7 +96,7 @@ $(TARGET): $(C_OBJECTS) $(ASM_OBJECT) $(LD_SCRIPT) $(LIBRARIES)
 		| perl -p -e 's/([0-9a-fA-F]*) ([0-9a-fA-F]* .|.) ([^\s]*)(^$$|.*)/\1 \3/g' \
 		> $@.sym
 else ifeq ($(TARGET_TYPE), static-lib)
-$(TARGET): $(C_OBJECTS) $(ASM_OBJECT)
+$(TARGET): $(OBJECTS)
 	$(TOOLSET_AR) rcs $@ $^
 	$(TOOLSET_NM) $(NM_FLAGS) $@ > $@.nm
 endif
@@ -104,14 +107,14 @@ $(BUILD_DIR)/%.cpp.o: %.cpp
 	$(TEST_CXX) $(TEST_CXXFLAGS) $(INCLUDE_FLAGS) -MMD -MP -MF $(patsubst %.o, %.d, $@) -c $< -o $@
 	$(TOOLSET_OBJDUMP) $(OBJDUMP_FLAGS) -D $@ > $(patsubst %.o, %.dump, $@)
 
-$(TEST_EXECUTABLE): $(TEST_OBJECTS) $(TARGET) $(LIBRARIES) $(TEST_WITH_REDEF_SYMBOLS)
+$(TEST_EXECUTABLE): $(TEST_OBJECTS) $(TARGET) $(REFS_SHARED_FILES) $(TEST_WITH_REDEF_SYMBOLS)
 ifeq ($(TARGET_TYPE), static-lib)
 ifneq ($(TEST_WITH_REDEF_SYMBOLS), )
 	$(TOOLSET_OBJCOPY) $(patsubst %, --redefine-syms %, $(TEST_WITH_REDEF_SYMBOLS)) $(TARGET) $(TARGET_REDEF)
 endif
 endif
 	$(TEST_CXX) $(TEST_CXXFLAGS) $(INCLUDE_FLAGS) $(TEST_LDFLAGS) -o $@ \
-		$(TEST_OBJECTS) $(TEST_TARGET_LIBS) $(LIBRARIES) -lgtest -lgtest_main \
+		$(TEST_OBJECTS) $(TEST_TARGET_LIBS) $(REFS_SHARED_FILES) -lgtest -lgtest_main \
 		-Wl,-Map,$(BUILD_DIR)/test.map
 	$(TOOLSET_NM) $(NM_FLAGS) $@ > $(BUILD_DIR)/test.nm
 	$(TOOLSET_OBJDUMP) $(OBJDUMP_FLAGS) -D $@ > $(BUILD_DIR)/test.disasm

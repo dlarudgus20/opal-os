@@ -14,16 +14,16 @@ endif
 
 TEST_DIR           := tests
 
-ifneq ($(findstring $(TARGET_TYPE), static-lib shared-lib), )
 ifneq ($(wildcard $(TEST_DIR)/*), )
 HAS_TEST           := 1
-endif
 endif
 
 ifeq ($(IS_TEST), 1)
 IS_TEST_BUILD := 1
-ifeq ($(TEST_AS_SHARED), 1)
+ifneq ($(filter $(TARGET_TYPE), executable static-lib), )
 TARGET_TYPE := shared-lib
+else ifneq ($(TARGET_TYPE), shared-lib)
+$(error "Test is unsupported for $(TARGET_TYPE) targets.")
 endif
 endif
 
@@ -58,8 +58,8 @@ TOOLSET_NM         ?= gcc-nm
 TOOLSET_GDB        ?= gdb
 TOOLSET_NASM       ?= nasm
 
-CFLAGS             += -std=c23 -ggdb3 -ffreestanding -masm=intel $(WARNING_FLAGS)
-LDFLAGS            += -Wl,--fatal-warning
+CFLAGS             += -std=c23 -ggdb3 -ffreestanding -masm=intel -fPIC -DTEST $(WARNING_FLAGS) $(CFLAGS_ON_TEST)
+LDFLAGS            += -Wl,--fatal-warning $(LDFLAGS_ON_TEST)
 
 TEST_CXX           ?= g++
 TEST_CXXFLAGS      += -std=c++23 -ggdb3 -masm=intel $(WARNING_FLAGS)
@@ -74,7 +74,9 @@ endif
 endif
 
 ifeq ($(TARGET_TYPE), shared-lib)
+ifneq ($(IS_TEST_BUILD), 1)
 CFLAGS             += -fPIC
+endif
 LDFLAGS            += -shared
 endif
 
