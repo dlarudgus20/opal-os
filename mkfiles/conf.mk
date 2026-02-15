@@ -33,6 +33,7 @@ WARNING_FLAGS      := -pedantic -Wall -Wextra -Werror \
 ifneq ($(IS_TEST_BUILD), 1)
 
 BUILD_PREFIX       := build
+BUILD_PREFIX_REF   := build
 TOOLSET_PREFIX     ?= x86_64-elf
 TOOLSET_CC         ?= $(TOOLSET_PREFIX)-gcc
 TOOLSET_AR         ?= $(TOOLSET_PREFIX)-gcc-ar
@@ -48,13 +49,24 @@ CFLAGS             += -std=c23 -ggdb3 -ffreestanding -mno-red-zone -masm=intel \
 LDFLAGS            += -nostdlib -Wl,--gc-sections -Wl,--fatal-warning
 
 ifeq ($(UNIT_TEST), 1)
+
+ifeq ($(TARGET_TYPE), root)
+export UNIT_TEST
+else ifeq ($(TARGET_TYPE), executable)
+unexport UNIT_TEST
+endif
+
+ifneq ($(filter $(TARGET_TYPE), executable root), )
 BUILD_PREFIX       := build/unit-test
 CFLAGS             += -DUNIT_TEST
+endif
+
 endif
 
 else
 
 BUILD_PREFIX       := build/tests
+BUILD_PREFIX_REF   := build/tests
 TOOLSET_CC         ?= gcc
 TOOLSET_AR         ?= gcc-ar
 TOOLSET_OBJCOPY    ?= objcopy
@@ -97,3 +109,4 @@ CFLAGS             += -DNDEBUG -O3 -flto=auto
 endif
 
 BUILD_DIR          := $(BUILD_PREFIX)/$(PLATFORM)/$(CONFIG)
+BUILD_DIR_REF      := $(BUILD_PREFIX_REF)/$(PLATFORM)/$(CONFIG)

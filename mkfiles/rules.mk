@@ -20,8 +20,8 @@ STATIC_REFS        += $(TEST_STATIC_REFS)
 SHARED_REFS        += $(TEST_SHARED_REFS)
 endif
 
-REFS_STATIC_FILES  := $(foreach ref, $(STATIC_REFS), ../$(ref)/$(BUILD_DIR)/$(ref).a)
-REFS_SHARED_FILES  := $(foreach ref, $(SHARED_REFS), ../$(ref)/$(BUILD_DIR)/$(ref).so)
+REFS_STATIC_FILES  := $(foreach ref, $(STATIC_REFS), ../$(ref)/$(BUILD_DIR_REF)/$(ref).a)
+REFS_SHARED_FILES  := $(foreach ref, $(SHARED_REFS), ../$(ref)/$(BUILD_DIR_REF)/$(ref).so)
 REFS_INCS          := $(foreach ref, $(STATIC_REFS) $(SHARED_REFS), ../$(ref)/include ../$(ref)/platform/$(PLATFORM)/include)
 
 LIBRARIES          += $(REFS_STATIC_FILES) $(REFS_SHARED_FILES)
@@ -72,7 +72,7 @@ ifeq ($(IS_TEST_BUILD), 1)
 -include $(TEST_DEPENDS)
 endif
 
-PHONY_TARGETS += all clean build-test test clean-test
+PHONY_TARGETS += all clean fullclean build-test test clean-test
 .PHONY: $(PHONY_TARGETS) .FORCE
 .FORCE:
 
@@ -126,7 +126,10 @@ $(REFS_STATIC_FILES) $(REFS_SHARED_FILES): .FORCE
 	done
 
 clean:
-	rm -rf $(BUILD_DIR)
+	-rm -rf $(BUILD_DIR)
+
+fullclean:
+	-rm -rf build
 
 ifeq ($(HAS_TEST), 1)
 ifeq ($(IS_TEST), 1)
@@ -134,22 +137,22 @@ build-test: $(TEST_EXECUTABLE)
 
 test: $(TEST_EXECUTABLE)
 	./$(TEST_EXECUTABLE)
-
-clean-test: clean
 else
 build-test:
 	$(MAKE) build-test IS_TEST=1
 
 test: build-test
 	$(MAKE) test IS_TEST=1
-
-clean-test:
-	$(MAKE) clean IS_TEST=1
 endif
 else
 build-test:
 
 test:
+endif
 
+ifeq ($(IS_TEST_BUILD), 1)
+clean-test: clean
+else
 clean-test:
+	$(MAKE) clean IS_TEST=1
 endif

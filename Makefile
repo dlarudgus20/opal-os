@@ -1,3 +1,4 @@
+TARGET_TYPE := root
 PLATFORM    := pc-x64
 
 include mkfiles/conf.mk
@@ -8,9 +9,9 @@ KERNEL_BIN  := kernel/$(BUILD_DIR)/kernel.sys
 ISO_DIR     := $(BUILD_DIR)/iso
 ISO_FILE    := $(BUILD_DIR)/opal-os.iso
 
-SUBDIRS     := kernel libkc libcoll
+SUBDIRS     := kernel libkubsan libkc libpanicimpl libcoll libslab
 
-.PHONY: all kernel iso run clean build-test test clean-test
+.PHONY: all kernel iso run clean fullclean build-test test clean-test unit-test clean-unit-test
 
 all: kernel
 
@@ -30,7 +31,13 @@ clean:
 	for dir in $(SUBDIRS); do \
 		$(MAKE) clean -C $$dir || exit 1; \
 	done
-	rm -rf $(BUILD_DIR)
+	-rm -rf $(BUILD_DIR)
+
+fullclean:
+	for dir in $(SUBDIRS); do \
+		$(MAKE) fullclean -C $$dir || exit 1; \
+	done
+	-rm -rf build
 
 build-test:
 	for dir in $(SUBDIRS); do \
@@ -46,3 +53,9 @@ clean-test:
 	for dir in $(SUBDIRS); do \
 		$(MAKE) clean-test -C $$dir || exit 1; \
 	done
+
+unit-test:
+	$(MAKE) run UNIT_TEST=1
+
+clean-unit-test:
+	$(MAKE) clean -C kernel UNIT_TEST=1
