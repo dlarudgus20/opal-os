@@ -6,6 +6,7 @@ all: build
 
 # configurations
 
+TEST_SHARED_REFS := libpanicimpl
 LDFLAGS_ON_TEST := -Wl,--exclude-libs=libkc
 
 include ../mkfiles/conf.mk

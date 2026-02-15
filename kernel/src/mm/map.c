@@ -4,6 +4,7 @@
 
 #include <kc/stdlib.h>
 
+#include <opal/test.h>
 #include <opal/mm/map.h>
 #include <opal/platform/boot/boot.h>
 
@@ -40,7 +41,7 @@ static int mmap_entry_compare(const void *lhs, const void *rhs) {
     return 0;
 }
 
-static void boot_map_sanitize(struct mmap *mmap_out, uint32_t max_entries, const struct mmap *boot_map) {
+STATIC_OR_TEST void boot_map_sanitize(struct mmap *mmap_out, uint32_t max_entries, const struct mmap *boot_map) {
     uint32_t filtered_len = 0;
     uint32_t out_len = 0;
 
