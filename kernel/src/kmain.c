@@ -8,18 +8,23 @@
 
 #include <opal/tty.h>
 #include <opal/klog.h>
+#include <opal/mm/mm.h>
 #include <opal/mm/map.h>
 #include <opal/drivers/uart.h>
 
-static void print_memory_map(void) {
-    const struct mmap *mmap = mm_get_boot_map();
-
-    tty0_puts("mb2 memory map:\n");
+static void print_mmap(const struct mmap *mmap) {
     for (uint32_t i = 0; i < mmap->length; i++) {
         const struct mmap_entry *entry = &mmap->entries[i];
         tty0_printf("  [%d] base=0x%llx len=0x%llx type=%u\n",
             i, (unsigned long long)entry->addr, (unsigned long long)entry->len, entry->type);
     }
+}
+
+static void print_memory_map(void) {
+    tty0_puts("boot memory map:\n");
+    print_mmap(mm_get_boot_map());
+    tty0_puts("sanitized memory map:\n");
+    print_mmap(mm_get_sanitized_map());
 }
 
 static void print_banner(void) {
@@ -149,6 +154,7 @@ void kmain(void) {
     uart_init();
     tty0_init();
     klog_init();
+    mm_init();
 
     print_banner();
     print_memory_map();

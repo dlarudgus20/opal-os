@@ -4,6 +4,7 @@
 #include <stdbool.h>
 
 #include <kc/stdio.h>
+#include <kc/stdlib.h>
 #include <kc/string.h>
 #include <kc/assert.h>
 
@@ -34,13 +35,8 @@ static struct klog_queue klog_queue = {
     .full = false,
 };
 
-static size_t align_ceil(size_t x, size_t align) {
-    const size_t mask = align - 1;
-    return (x + mask) & ~mask;
-}
-
 static size_t get_record_size(size_t msglen) {
-    return align_ceil(sizeof(struct klog_record_header) + msglen, sizeof(struct klog_record_header));
+    return align_ceil_sz_p2(sizeof(struct klog_record_header) + msglen, sizeof(struct klog_record_header));
 }
 
 static uint32_t count_records(uint32_t from, uint32_t to) {

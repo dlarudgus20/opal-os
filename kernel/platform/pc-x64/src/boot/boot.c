@@ -1,5 +1,7 @@
 #include <stdint.h>
 
+#include <kc/stdlib.h>
+
 #include <opal/platform/boot/boot.h>
 #include <opal/mm/map.h>
 #include <opal/kmain.h>
@@ -29,11 +31,6 @@ struct mb2_mmap_entry {
     uint64_t len;
     uint32_t type;
 };
-
-static uint32_t align_ceil(uint32_t x, uint32_t align) {
-    const uint32_t mask = align - 1;
-    return (x + mask) & ~mask;
-}
 
 static void parse_mb2_mmap(const struct mb2_mmap_tag *mmap) {
     const uint8_t *entry_ptr = (const uint8_t *)mmap + sizeof(*mmap);
@@ -84,7 +81,7 @@ static void parse_mb2_info(uint32_t mb2_info_lba) {
             break;
         }
 
-        const uint32_t next_off = align_ceil(off + tag->size, 8);
+        const uint32_t next_off = align_ceil_u32_p2(off + tag->size, 8);
         if (next_off <= off || next_off > total_size) {
             // panic("mb2: invalid tag bounds\n");
             return;

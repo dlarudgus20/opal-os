@@ -5,7 +5,7 @@
 
 struct mmap_entry {
     phys_addr_t addr;
-    phys_addr_t len;
+    phys_size_t len;
     mmap_entry_type_t type;
 };
 
@@ -14,6 +14,9 @@ struct mmap {
     uint32_t length;
 };
 
+void mm_map_init(void);
+
 const struct mmap *mm_get_boot_map(void);
+const struct mmap *mm_get_sanitized_map(void);
 
 #endif
