@@ -23,6 +23,11 @@ SECTIONS {
 
     .rodata ALIGN(4K) : AT(ADDR(.rodata) - __higher_half_displacement) {
         *(.rodata* .gnu.linkonce.r.*)
+
+        . = ALIGN(8);
+        unit_test_start__ = .;
+        KEEP(*(.unittest))
+        unit_test_end__ = .;
     } >HIGH
 
     .data ALIGN(4K) : AT(ADDR(.data) - __higher_half_displacement) {

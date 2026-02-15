@@ -47,6 +47,11 @@ CFLAGS             += -std=c23 -ggdb3 -ffreestanding -mno-red-zone -masm=intel \
 
 LDFLAGS            += -nostdlib -Wl,--gc-sections -Wl,--fatal-warning
 
+ifeq ($(UNIT_TEST), 1)
+BUILD_PREFIX       := build/unit-test
+CFLAGS             += -DUNIT_TEST
+endif
+
 else
 
 BUILD_PREFIX       := build/tests

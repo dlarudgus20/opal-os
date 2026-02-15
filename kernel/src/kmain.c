@@ -6,6 +6,7 @@
 #include <kc/string.h>
 #include <kc/assert.h>
 
+#include <opal/test.h>
 #include <opal/tty.h>
 #include <opal/klog.h>
 #include <opal/mm/mm.h>
@@ -156,10 +157,16 @@ void kmain(void) {
     klog_init();
     mm_init();
 
+    unit_test_run();
     print_banner();
     print_memory_map();
 
     while (1) {
         login_loop();
     }
+}
+
+DEFINE_UNIT_TEST(simple_test) {
+    TEST_EXPECT_EQ(1, 1);
+    TEST_EXPECT_TRUE(2 > 1);
 }
