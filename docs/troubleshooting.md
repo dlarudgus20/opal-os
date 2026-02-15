@@ -39,8 +39,8 @@ objdump -T <target>.so | rg " memcpy$| memmove$| memset$| strlen$"
 - 서브프로젝트 링크 시 `../<ref>/...` 산출물을 찾지 못함
 
 점검 포인트:
-- `mkfiles/conf.mk`의 `BUILD_DIR` / `BUILD_DIR_REF`
-- `mkfiles/rules.mk`의 `REFS_STATIC_FILES` / `REFS_SHARED_FILES`
+- [`mkfiles/conf.mk`](../mkfiles/conf.mk)의 `BUILD_DIR` / `BUILD_DIR_REF`
+- [`mkfiles/rules.mk`](../mkfiles/rules.mk)의 `REFS_STATIC_FILES` / `REFS_SHARED_FILES`
 - `IS_TEST`, `UNIT_TEST`, `CONFIG`, `PLATFORM` 조합
 
 권장:

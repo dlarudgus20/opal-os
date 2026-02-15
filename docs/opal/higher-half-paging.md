@@ -1,6 +1,6 @@
 # Higher-Half Paging (pc-x64)
 
-이 문서는 현재 구현된 `kernel/platform/pc-x64/src/boot/boot.asm` 기준 higher-half paging 초기화 과정을 설명합니다.
+이 문서는 현재 구현된 [`kernel/platform/pc-x64/src/boot/boot.asm`](../../kernel/platform/pc-x64/src/boot/boot.asm) 기준 higher-half paging 초기화 과정을 설명합니다.
 
 ## 0. 메모리 맵
 
@@ -31,7 +31,7 @@ Key constants
 - 커널 코드/데이터와 스택을 higher-half 주소로 접근 가능하게 구성
 
 ## 2. 링크 배치와 주소 기준
-링커 스크립트(`kernel/platform/pc-x64/src/linker.ld`)는 다음 기준을 사용합니다.
+링커 스크립트([`kernel/platform/pc-x64/src/linker.ld`](../../kernel/platform/pc-x64/src/linker.ld))는 다음 기준을 사용합니다.
 
 - 물리 로드 시작: `0x00200000` (2 MiB)
 - higher-half 시작: `0xffffffff80000000`
@@ -41,7 +41,7 @@ Key constants
 즉 커널 섹션은 higher-half 가상 주소에 배치되지만, 실제 로드는 2 MiB 물리 주소부터 이뤄집니다 (`AT(...)` 사용).
 
 ## 3. 부트 코드의 임시 페이지 테이블
-`boot.asm`의 `.bss`에 임시 테이블 버퍼를 확보합니다.
+[`boot.asm`](../../kernel/platform/pc-x64/src/boot/boot.asm)의 `.bss`에 임시 테이블 버퍼를 확보합니다.
 
 - `tmp_table: resb 0x5000`
 - 사용 구조:
@@ -95,7 +95,7 @@ Key constants
 - 부트 후 64비트 진입에서 `rsp = 0xffffffff8f200000`
 
 ## 6. 전환 절차
-`boot.asm` 기준:
+[`boot.asm`](../../kernel/platform/pc-x64/src/boot/boot.asm) 기준:
 
 1. `CR4.PAE = 1`
 2. `EFER.LME = 1` (MSR `0xC0000080`)
@@ -115,7 +115,7 @@ Key constants
 - 이후 VM 서브시스템이 확장되면 이 초기 맵은 bootstrap 단계로 한정될 가능성이 큼
 
 ## 8. 관련 파일
-- `kernel/platform/pc-x64/src/boot/boot.asm`
-- `kernel/platform/pc-x64/src/linker.ld`
-- `kernel/platform/pc-x64/src/boot/boot.c`
-- `kernel/src/kmain.c`
+- [`kernel/platform/pc-x64/src/boot/boot.asm`](../../kernel/platform/pc-x64/src/boot/boot.asm)
+- [`kernel/platform/pc-x64/src/linker.ld`](../../kernel/platform/pc-x64/src/linker.ld)
+- [`kernel/platform/pc-x64/src/boot/boot.c`](../../kernel/platform/pc-x64/src/boot/boot.c)
+- [`kernel/src/kmain.c`](../../kernel/src/kmain.c)

@@ -20,7 +20,6 @@
 
 ## 적용 범위
 - 루트 및 모든 하위 서브프로젝트
-- `kernel/`, `libkc/`, `libcoll/`, `libkubsan/`, `libpanicimpl/`, `libslab/`, `mkfiles/`
 
 ## 프로젝트 맥락
 - 타깃: `pc-x64`

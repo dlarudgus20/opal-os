@@ -10,12 +10,12 @@
 - assert/panic 매크로 지원 헤더
 
 ## 공개 헤더 (`<kc/...>`)
-- `kc/string.h`
-- `kc/stdlib.h`
-- `kc/stdio.h`
-- `kc/fmt.h`
-- `kc/assert.h`
-- `kc/ctype.h`, `kc/attributes.h`
+- [`kc/string.h`](include/kc/string.h)
+- [`kc/stdlib.h`](include/kc/stdlib.h)
+- [`kc/stdio.h`](include/kc/stdio.h)
+- [`kc/fmt.h`](include/kc/fmt.h)
+- [`kc/assert.h`](include/kc/assert.h)
+- [`kc/ctype.h`](include/kc/ctype.h), [`kc/attributes.h`](include/kc/attributes.h)
 
 ## 빌드
 ```bash
@@ -43,5 +43,5 @@ LDFLAGS_ON_TEST := -Wl,--exclude-libs=libkc
 ```
 
 대표 적용 위치:
-- `kernel/Makefile`
-- `libcoll/makefile`
+- [`kernel/Makefile`](../kernel/Makefile)
+- [`libcoll/makefile`](../libcoll/makefile)

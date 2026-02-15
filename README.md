@@ -9,14 +9,14 @@ opal-os는 `pc-x64` 타깃의 freestanding 커널과 보조 라이브러리들�
 - 커널 내장 유닛 테스트 (`UNIT_TEST=1`)
 
 ## 저장소 구성
-- `kernel/`: 커널 본체 (UART shell, klog, 메모리 맵 정리, 유닛 테스트 프레임워크)
-- `libkc/`: 커널용 C 라이브러리 성격의 기본 함수들
-- `libcoll/`: 자료구조 라이브러리
-- `libkubsan/`: 커널용 UBSAN 런타임
-- `libpanicimpl/`: 테스트 환경 panic/assert 구현(shared)
-- `libslab/`: slab 관련 실험/테스트용 라이브러리
-- `mkfiles/`: 공통 빌드 규칙 (`conf.mk`, `rules.mk`)
-- `docs/`: 상세 문서
+- [`kernel/`](kernel/): 커널 본체 (UART shell, klog, 메모리 맵 정리, 유닛 테스트 프레임워크)
+- [`libkc/`](libkc/): 커널용 C 라이브러리 성격의 기본 함수들
+- [`libcoll/`](libcoll/): 자료구조 라이브러리
+- [`libkubsan/`](libkubsan/): 커널용 UBSAN 런타임
+- [`libpanicimpl/`](libpanicimpl/): 테스트 환경 panic/assert 구현(shared)
+- [`libslab/`](libslab/): slab 관련 실험/테스트용 라이브러리
+- [`mkfiles/`](mkfiles/): 공통 빌드 규칙 ([`conf.mk`](mkfiles/conf.mk), [`rules.mk`](mkfiles/rules.mk))
+- [`docs/`](docs/): 상세 문서
 
 ## 요구 도구
 - GNU make
@@ -87,10 +87,10 @@ make -C kernel build CONFIG=debug PLATFORM=pc-x64 UNIT_TEST=1
 - `make fullclean`: 전체 `build/` 정리
 
 ## 문서
-- `docs/README.md`: 문서 인덱스
-- `docs/build-system.md`: Makefile 시스템 상세
-- `docs/testing.md`: 테스트 실행/트러블슈팅
-- `docs/troubleshooting.md`: 자주 발생하는 빌드/테스트 문제 모음
-- `docs/kernel-unit-test.md`: 커널 유닛 테스트 프레임워크
-- `docs/components.md`: 컴포넌트 구조
-- `AGENTS.md`: 협업/운영 가이드
+- [`docs/README.md`](docs/README.md): 문서 인덱스
+- [`docs/build-system.md`](docs/build-system.md): Makefile 시스템 상세
+- [`docs/testing.md`](docs/testing.md): 테스트 실행/트러블슈팅
+- [`docs/troubleshooting.md`](docs/troubleshooting.md): 자주 발생하는 빌드/테스트 문제 모음
+- [`docs/kernel-unit-test.md`](docs/kernel-unit-test.md): 커널 유닛 테스트 프레임워크
+- [`docs/components.md`](docs/components.md): 컴포넌트 구조
+- [`AGENTS.md`](AGENTS.md): 협업/운영 가이드

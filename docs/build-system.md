@@ -1,9 +1,9 @@
 # Build System (Makefile) 상세
 
-이 문서는 루트 `Makefile`, `mkfiles/conf.mk`, `mkfiles/rules.mk`, 각 서브프로젝트 `Makefile`이 어떻게 결합되는지 설명합니다.
+이 문서는 루트 [`Makefile`](../Makefile), [`mkfiles/conf.mk`](../mkfiles/conf.mk), [`mkfiles/rules.mk`](../mkfiles/rules.mk), 각 서브프로젝트 `Makefile`이 어떻게 결합되는지 설명합니다.
 
 ## 1. 상위 빌드 그래프
-루트 `Makefile`은 서브프로젝트 디렉터리를 순회합니다.
+루트 [`Makefile`](../Makefile)은 서브프로젝트 디렉터리를 순회합니다.
 
 핵심 타깃:
 - `make kernel`: `kernel/` 빌드
@@ -12,8 +12,8 @@
 - `make test`: 각 서브프로젝트 테스트 순회
 - `make unit-test`: `UNIT_TEST=1`로 커널 유닛테스트 실행
 
-## 2. 공통 설정: `mkfiles/conf.mk`
-`conf.mk`는 빌드 모드와 툴체인, 공통 CFLAGS/LDFLAGS를 결정합니다.
+## 2. 공통 설정: [`mkfiles/conf.mk`](../mkfiles/conf.mk)
+[`conf.mk`](../mkfiles/conf.mk)는 빌드 모드와 툴체인, 공통 CFLAGS/LDFLAGS를 결정합니다.
 
 주요 입력 변수:
 - `CONFIG`: `debug`/`release`
@@ -29,8 +29,8 @@
 `BUILD_DIR_REF`는 "의존 라이브러리 참조 경로"를 안정적으로 맞추기 위한 변수입니다.
 예: 커널 UNIT_TEST 빌드에서 참조 라이브러리는 일반 `build/...`를 사용하도록 분리할 수 있습니다.
 
-## 3. 공통 규칙: `mkfiles/rules.mk`
-`rules.mk`는 타깃 생성과 테스트 실행의 본체입니다.
+## 3. 공통 규칙: [`mkfiles/rules.mk`](../mkfiles/rules.mk)
+[`rules.mk`](../mkfiles/rules.mk)는 타깃 생성과 테스트 실행의 본체입니다.
 
 ### 3.1 소스 자동 수집
 - `SOURCE_DIRS := src platform/$(PLATFORM)/src`
@@ -55,15 +55,15 @@
   - `../<ref>/<BUILD_DIR_REF>/<ref>.a|.so`
 
 ## 4. 서브프로젝트 설정 패턴
-각 프로젝트 `Makefile`은 보통 다음만 정의합니다.
+각 프로젝트 [`Makefile`](../kernel/Makefile)은 보통 다음만 정의합니다.
 - `TARGET_NAME`
 - `TARGET_TYPE`
 - `STATIC_REFS`/`TEST_SHARED_REFS`
 - (필요 시) `LDFLAGS_ON_TEST`, `TEST_DO_NOT_LINK`
-- 이후 `include ../mkfiles/conf.mk` + `include ../mkfiles/rules.mk`
+- 이후 `include [../mkfiles/conf.mk](../mkfiles/conf.mk)` + `include [../mkfiles/rules.mk](../mkfiles/rules.mk)`
 
 예시:
-- `kernel/Makefile`
+- [`kernel/Makefile`](../kernel/Makefile)
   - 일반 빌드: `libkc` + `libkubsan` 정적 링크
   - 테스트: `libpanicimpl` shared, `--exclude-libs=libkc`
 

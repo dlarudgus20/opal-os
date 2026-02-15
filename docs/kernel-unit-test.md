@@ -2,7 +2,7 @@
 
 ## 1. 개요
 커널 내부 유닛 테스트는 `UNIT_TEST=1` 빌드에서 활성화됩니다.
-핵심 API는 `kernel/include/opal/test.h`에 정의되어 있습니다.
+핵심 API는 [`kernel/include/opal/test.h`](../kernel/include/opal/test.h)에 정의되어 있습니다.
 
 ## 2. 테스트 정의
 ```c

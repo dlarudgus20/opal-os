@@ -10,16 +10,11 @@
 - 커널 내장 유닛 테스트 실행기(`unit_test_run`)
 
 ## 주요 소스
-- `src/kmain.c`: 커널 진입 이후 초기화와 shell
-- `src/klog.c`: 로그 링버퍼
-- `src/mm/map.c`: boot mmap sanitize
-- `src/test.c`: UNIT_TEST 실행기
-- `platform/pc-x64/src/boot/*`: 부트 초기화
-
-## 공개 헤더
-- `include/opal/klog.h`
-- `include/opal/mm/map.h`
-- `include/opal/test.h`
+- [`src/kmain.c`](src/kmain.c): 커널 진입 이후 초기화와 shell
+- [`src/klog.c`](src/klog.c): 로그 링버퍼
+- [`src/mm/map.c`](src/mm/map.c): boot mmap sanitize
+- [`src/test.c`](src/test.c): UNIT_TEST 실행기
+- [`platform/pc-x64/src/boot/`](platform/pc-x64/src/boot/): 부트 초기화
 
 ## 빌드
 ```bash

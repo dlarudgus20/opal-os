@@ -7,7 +7,7 @@
 - 향후 slab allocator 확장을 위한 자리
 
 ## 공개 헤더
-- `slab/slab.h`
+- [`slab/slab.h`](include/slab/slab.h)
 
 ## 빌드
 ```bash
