@@ -18,4 +18,11 @@ int strncmp(const char *lhs, const char *rhs, size_t n);
 char *strcpy(char *restrict dest, const char *restrict src);
 char *strncpy(char *restrict dest, const char *restrict src, size_t n);
 
+#ifndef NO_BUILTIN_MACRO
+#define memcpy(dest, src, count) __builtin_memcpy(dest, src, count)
+#define memmove(dest, src, count) __builtin_memmove(dest, src, count)
+#define memset(dest, ch, count) __builtin_memset(dest, ch, count)
+#define memcmp(lhs, rhs, count) __builtin_memcmp(lhs, rhs, count)
+#endif
+
 #endif

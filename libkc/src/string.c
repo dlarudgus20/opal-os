@@ -1,3 +1,4 @@
+#define NO_BUILTIN_MACRO
 #include <kc/string.h>
 
 void *memcpy(void *restrict dest, const void *restrict src, size_t n) {
