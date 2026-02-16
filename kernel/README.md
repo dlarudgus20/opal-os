@@ -5,7 +5,7 @@
 ## 역할
 - UART 기반 초기 입출력
 - 간단한 shell 루프
-- 부트 메모리 맵 정리(`boot_map_sanitize`)
+- 부트 메모리 맵 정리(`construct_usable_map`)
 - 커널 로그(`klog`)
 - 커널 내장 유닛 테스트 실행기(`unit_test_run`)
 

@@ -24,8 +24,8 @@ static void print_mmap(const struct mmap *mmap) {
 static void print_memory_map(void) {
     tty0_puts("boot memory map:\n");
     print_mmap(mm_get_boot_map());
-    tty0_puts("sanitized memory map:\n");
-    print_mmap(mm_get_sanitized_map());
+    tty0_puts("usable memory map:\n");
+    print_mmap(mm_get_usable_map());
 }
 
 static void print_banner(void) {

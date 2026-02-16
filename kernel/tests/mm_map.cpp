@@ -22,7 +22,7 @@ static struct mmap sanitize_with_capacity(
         .length = 0,
     };
 
-    boot_map_sanitize(&out_map, out_cap, &in_map);
+    construct_usable_map(&out_map, out_cap, &in_map);
     return out_map;
 }
 
@@ -98,10 +98,10 @@ TEST(BootMapSanitizeTest, HandlesNullAndZeroCapacity) {
         .length = 123,
     };
 
-    boot_map_sanitize(&out, static_cast<uint32_t>(out_storage.size()), nullptr);
+    construct_usable_map(&out, static_cast<uint32_t>(out_storage.size()), nullptr);
     EXPECT_EQ(out.length, 0u);
 
     out.length = 456;
-    boot_map_sanitize(&out, 0, &out);
+    construct_usable_map(&out, 0, &out);
     EXPECT_EQ(out.length, 0u);
 }

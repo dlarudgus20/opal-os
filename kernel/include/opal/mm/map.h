@@ -17,10 +17,10 @@ struct mmap {
 void mm_map_init(void);
 
 const struct mmap *mm_get_boot_map(void);
-const struct mmap *mm_get_sanitized_map(void);
+const struct mmap *mm_get_usable_map(void);
 
 #ifdef TEST
-void boot_map_sanitize(struct mmap *mmap_out, uint32_t max_entries, const struct mmap *boot_map);
+void construct_usable_map(struct mmap *mmap_out, uint32_t max_entries, const struct mmap *boot_map);
 #endif
 
 #endif

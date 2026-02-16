@@ -10,9 +10,9 @@
 
 #define MM_BOOT_MAP_MAX_ENTRIES 128
 
-static struct mmap_entry g_sanitized_entries[MM_BOOT_MAP_MAX_ENTRIES];
-static struct mmap g_sanitized_map = {
-    .entries = g_sanitized_entries,
+static struct mmap_entry g_usable_entries[MM_BOOT_MAP_MAX_ENTRIES];
+static struct mmap g_usable_map = {
+    .entries = g_usable_entries,
     .length = 0,
 };
 
@@ -41,7 +41,7 @@ static int mmap_entry_compare(const void *lhs, const void *rhs) {
     return 0;
 }
 
-STATIC_OR_TEST void boot_map_sanitize(struct mmap *mmap_out, uint32_t max_entries, const struct mmap *boot_map) {
+STATIC_OR_TEST void construct_usable_map(struct mmap *mmap_out, uint32_t max_entries, const struct mmap *boot_map) {
     uint32_t filtered_len = 0;
     uint32_t out_len = 0;
 
@@ -123,14 +123,14 @@ STATIC_OR_TEST void boot_map_sanitize(struct mmap *mmap_out, uint32_t max_entrie
     mmap_out->length = out_len;
 }
 
+void mm_map_init(void) {
+    construct_usable_map(&g_usable_map, MM_BOOT_MAP_MAX_ENTRIES, boot_get_mmap());
+}
+
 const struct mmap *mm_get_boot_map(void) {
     return boot_get_mmap();
 }
 
-const struct mmap *mm_get_sanitized_map(void) {
-    return &g_sanitized_map;
-}
-
-void mm_map_init(void) {
-    boot_map_sanitize(&g_sanitized_map, MM_BOOT_MAP_MAX_ENTRIES, boot_get_mmap());
+const struct mmap *mm_get_usable_map(void) {
+    return &g_usable_map;
 }
