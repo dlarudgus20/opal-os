@@ -11,27 +11,36 @@
 #include <opal/klog.h>
 #include <opal/mm/mm.h>
 #include <opal/mm/map.h>
+#include <opal/mm/page.h>
 #include <opal/drivers/uart.h>
+#include <opal/platform/mm/pagetable.h>
 
-static void print_mmap(const struct mmap *mmap) {
+static void print_mmap(const struct mmap *mmap, const char *(*entry_type_str)(mmap_entry_type_t)) {
     for (uint32_t i = 0; i < mmap->length; i++) {
         const struct mmap_entry *entry = &mmap->entries[i];
-        tty0_printf("  [%d] base=0x%llx len=0x%llx type=%u\n",
-            i, (unsigned long long)entry->addr, (unsigned long long)entry->len, entry->type);
+
+        phys_addr_t end = entry->addr + entry->len;
+        if (entry->addr <= end) {
+            tty0_printf("  [%#018"PRIphys", %#018"PRIphys") %s\n",
+                entry->addr, end, entry_type_str(entry->type));
+        } else {
+            tty0_printf("  [%#018"PRIphys", %#018"PRIphys"] %s\n",
+                entry->addr, PHYS_ADDR_MAX, entry_type_str(entry->type));
+        }
     }
 }
 
 static void print_memory_map(void) {
     tty0_puts("boot memory map:\n");
-    print_mmap(mm_get_boot_map());
+    print_mmap(mm_get_boot_map(), mmap_entry_type_str);
     tty0_puts("usable memory map:\n");
-    print_mmap(mm_get_usable_map());
+    print_mmap(mm_get_usable_map(), usable_entry_type_str);
 }
 
 static void print_banner(void) {
     tty0_puts("\n");
     tty0_puts("========================================\n");
-    tty0_puts("  opal-os UART shell PoC (ssh-like)\n");
+    tty0_puts("  opal-os shell\n");
     tty0_puts("========================================\n");
 }
 
@@ -47,6 +56,8 @@ static int handle_command(const char *cmd) {
         tty0_puts("  halt      - halt system\n");
         tty0_puts("  klog TEXT - log TEXT\n");
         tty0_puts("  kmsg      - read logs\n");
+        tty0_puts("  ptable    - show pagetable\n");
+        tty0_puts("  pfns      - show pfn list\n");
         return 1;
     }
 
@@ -104,6 +115,16 @@ static int handle_command(const char *cmd) {
         return 1;
     }
 
+    if (strcmp(cmd, "ptable") == 0) {
+        mm_pagetable_print();
+        return 1;
+    }
+
+    if (strcmp(cmd, "pfns") == 0) {
+        mm_pfn_print_all();
+        return 1;
+    }
+
     if (strcmp(cmd, "halt") == 0) {
         panic("system halt is not implemented");
     }
@@ -130,27 +151,6 @@ static void run_shell(void) {
     }
 }
 
-static void login_loop(void) {
-    char user[32];
-    char pass[32];
-
-    while (1) {
-        tty0_puts("login: ");
-        uart_read_line(user, sizeof(user), 0);
-
-        tty0_puts("password: ");
-        uart_read_line(pass, sizeof(pass), 1);
-
-        if (strcmp(user, "root") == 0 && strcmp(pass, "opal") == 0) {
-            tty0_puts("authentication successful\n");
-            run_shell();
-            return;
-        }
-
-        tty0_puts("authentication failed\n\n");
-    }
-}
-
 void kmain(void) {
     uart_init();
     tty0_init();
@@ -159,10 +159,12 @@ void kmain(void) {
 
     unit_test_run();
     print_banner();
+
     print_memory_map();
 
     while (1) {
-        login_loop();
+        run_shell();
+        tty0_puts("\n");
     }
 }
 

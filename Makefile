@@ -25,7 +25,7 @@ iso: kernel
 	grub-mkrescue -o $(ISO_FILE) $(ISO_DIR)
 
 run: iso
-	qemu-system-x86_64 -cdrom $(ISO_FILE) -serial stdio
+	qemu-system-x86_64 -cdrom $(ISO_FILE) -serial stdio -no-reboot -d int -D qemu.log
 
 clean:
 	for dir in $(SUBDIRS); do \

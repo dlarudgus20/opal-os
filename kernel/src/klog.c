@@ -162,10 +162,27 @@ int klog_format(uint16_t level, const char *fmt, const char *file, const char *f
     char buf[KLOG_MAX_MSGLEN + 1];
     va_list args;
     va_start(args, line);
-    int written = vsnprintf_s(buf, sizeof(buf), fmt, args);
-    if (written > 0) {
+
+    int prefix = 0;
+    int body = 0;
+
+    prefix = snprintf_s(buf, sizeof(buf), "[%s:%s:%u] ", file, func, line);
+    if (prefix < 0) {
+        prefix = 0;
+    }
+
+    if ((size_t)prefix + 1 < sizeof(buf)) {
+        body = vsnprintf_s(buf + prefix, sizeof(buf) - prefix, fmt, args);
+    }
+
+    if (body >= 0) {
+        int written = prefix + body;
+        if ((size_t)written + 1 >= sizeof(buf)) {
+            written = sizeof(buf) - 1;
+        }
         klog_write(level, buf, written);
     }
+
     va_end(args);
-    return written;
+    return body >= 0 ? prefix + body : body;
 }

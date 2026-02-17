@@ -6,9 +6,7 @@
 #include <opal/mm/map.h>
 #include <opal/kmain.h>
 
-#define MAX_MMAP_ENTRIES 128
-
-static struct mmap_entry g_mmap_entries[MAX_MMAP_ENTRIES];
+static struct mmap_entry g_mmap_entries[MAX_BOOT_MMAP_ENTRIES];
 static struct mmap g_boot_mmap = {
     .entries = g_mmap_entries,
     .length = 0
@@ -46,7 +44,7 @@ static void parse_mb2_mmap(const struct mb2_mmap_tag *mmap) {
     while (entry_ptr + mmap->entry_size <= entry_end) {
         const struct mb2_mmap_entry *entry = (const struct mb2_mmap_entry *)entry_ptr;
 
-        if (g_boot_mmap.length >= MAX_MMAP_ENTRIES) {
+        if (g_boot_mmap.length >= MAX_BOOT_MMAP_ENTRIES) {
             // log("mb2: too many mmap entries, some entries are ignored\n");
             break;
         }

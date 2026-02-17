@@ -8,6 +8,7 @@ MEMORY {
 
 SECTIONS {
     . = 0x200000;
+    __kernel_phys_start = .;
     __higher_half_displacement = 0xffffffff80000000 - .;
 
     .startup ALIGN(4K) : {
@@ -43,4 +44,6 @@ SECTIONS {
         . += 0x200000;
         __stack_top_lba = . - __higher_half_displacement;
     } >HIGH
+
+    __kernel_phys_end = . - __higher_half_displacement;
 }

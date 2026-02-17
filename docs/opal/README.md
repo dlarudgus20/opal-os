@@ -1,3 +1,3 @@
 # opal-os 문서
 
-- [`higher-half-paging.md`](higher-half-paging.md): 현재 `pc-x64` 부트 경로의 higher-half paging 초기화 상세
+- [`memory-map.md`](memory-map.md): 메모리 맵 상세

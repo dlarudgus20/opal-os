@@ -64,14 +64,14 @@ TEST(KlogTest, ReadTruncatesAndTerminatesOutput) {
 TEST(KlogTest, FormatWritesRecord) {
     drain_klog();
 
-    const int written = klog_format(KLOG_WARNING, "x=%d y=%s", __FILE__, __func__, __LINE__, 42, "ok");
+    const int written = klog_format(KLOG_WARNING, "x=%d y=%s", "src/test.c", "foo", 123, 42, "ok");
     ASSERT_GT(written, 0);
 
     struct klog_record_header header = {};
     std::array<char, 32> out = {};
     ASSERT_TRUE(klog_read(&header, out.data(), out.size()));
     EXPECT_EQ(header.level, KLOG_WARNING);
-    EXPECT_STREQ(out.data(), "x=42 y=ok");
+    EXPECT_STREQ(out.data(), "[src/test.c:foo:123] x=42 y=ok");
 }
 
 TEST(KlogDeathTest, ReadRejectsNullHeaderOut) {

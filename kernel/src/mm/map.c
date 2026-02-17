@@ -7,14 +7,25 @@
 #include <opal/test.h>
 #include <opal/mm/map.h>
 #include <opal/platform/boot/boot.h>
+#include <opal/platform/mm/pagetable.h>
 
-#define MM_BOOT_MAP_MAX_ENTRIES 128
+// usable_map is a memory map containing usable memory areas for kernel.
+// Kernel uses part of them as areas for page metadata. They are marked as type=USABLE_ENTRY_METADATA.
+// Others are free for kernel to use. They are marked as type=MMAP_ENTRY_USABLE.
+// If not empty, usable_map has an type=0, len=0 entry at front initially.
+// Thus paging initialization code can safely insert metadata areas before the first usable entry.
+// usable_map is initialized by boot mmap after sorted, aligned in PAGE_SIZE, and its adjacent/overlapped entries merged.
+// After page metadata is initialized, usable_map must not be changed.
 
-static struct mmap_entry g_usable_entries[MM_BOOT_MAP_MAX_ENTRIES];
+static struct mmap_entry g_usable_entries[MAX_USABLE_ENTRIES];
 static struct mmap g_usable_map = {
     .entries = g_usable_entries,
     .length = 0,
 };
+
+static phys_addr_t usable_floor_addr(void) {
+    return align_ceil_sz_p2((phys_addr_t)(uintptr_t)__kernel_phys_end, PAGE_SIZE);
+}
 
 static phys_addr_t entry_last(const struct mmap_entry *entry) {
     return entry->addr + entry->len - 1;
@@ -42,17 +53,19 @@ static int mmap_entry_compare(const void *lhs, const void *rhs) {
 }
 
 STATIC_OR_TEST void construct_usable_map(struct mmap *mmap_out, uint32_t max_entries, const struct mmap *boot_map) {
+    assert(boot_map && boot_map->entries, "boot_map or its entries is null");
+    assert(max_entries >= 2, "max_entries is too small");
+
+    // skip first element for USABLE_ENTRY_METADATA entry
+    struct mmap_entry *const entries_out = mmap_out->entries + 1;
     uint32_t filtered_len = 0;
-    uint32_t out_len = 0;
 
-    mmap_out->length = 0;
-    if (boot_map == NULL || boot_map->entries == NULL || max_entries == 0) {
-        return;
-    }
+    const phys_addr_t floor_addr = usable_floor_addr();
 
+    // write aligned boot_map
     for (uint32_t i = 0; i < boot_map->length; i++) {
         const struct mmap_entry *entry = &boot_map->entries[i];
-        const phys_addr_t start_aligned = align_ceil_sz_p2(entry->addr, PAGE_SIZE);
+        phys_addr_t start_aligned = align_ceil_sz_p2(entry->addr, PAGE_SIZE);
 
         if (start_aligned < entry->addr) {
             continue;
@@ -63,8 +76,13 @@ STATIC_OR_TEST void construct_usable_map(struct mmap *mmap_out, uint32_t max_ent
         if (entry->len == 0) {
             continue;
         }
-        if (filtered_len >= max_entries) {
-            break;
+
+        if (filtered_len + 1 >= max_entries) {
+            panic("usable_map entry buffer overflow");
+        }
+
+        if (start_aligned < floor_addr) {
+            start_aligned = floor_addr;
         }
 
         const phys_addr_t end = entry->addr + entry->len;
@@ -80,25 +98,41 @@ STATIC_OR_TEST void construct_usable_map(struct mmap *mmap_out, uint32_t max_ent
             last_aligned = end_aligned - 1;
         }
 
-        mmap_out->entries[filtered_len++] = (struct mmap_entry){
+        entries_out[filtered_len++] = (struct mmap_entry){
             .addr = start_aligned,
             .len = last_aligned - start_aligned + 1,
             .type = MMAP_ENTRY_USABLE,
         };
     }
 
-    sort(mmap_out->entries, filtered_len, sizeof(mmap_out->entries[0]), mmap_entry_compare);
+    if (filtered_len == 0) {
+        mmap_out->length = 0;
+        return;
+    }
+
+    // sort entries
+    sort(entries_out, filtered_len, sizeof(entries_out[0]), mmap_entry_compare);
+
+    // insert USABLE_ENTRY_METADATA entry at front
+    mmap_out->entries[0] = (struct mmap_entry) {
+        .addr = entries_out[0].addr,
+        .len = 0,
+        .type = USABLE_ENTRY_METADATA,
+    };
+
+    // merge adjacent/overlapped entries
+    uint32_t out_len = 0;
 
     for (uint32_t i = 0; i < filtered_len; i++) {
-        phys_addr_t seg_start = mmap_out->entries[i].addr;
-        phys_addr_t seg_last = entry_last(&mmap_out->entries[i]);
+        phys_addr_t seg_start = entries_out[i].addr;
+        phys_addr_t seg_last = entry_last(&entries_out[i]);
 
         if (seg_last < seg_start) {
             continue;
         }
 
         if (out_len > 0) {
-            struct mmap_entry *prev = &mmap_out->entries[out_len - 1];
+            struct mmap_entry *prev = &entries_out[out_len - 1];
             phys_addr_t prev_last = entry_last(prev);
 
             if (prev_last == PHYS_ADDR_MAX || seg_start <= prev_last + 1) {
@@ -109,22 +143,54 @@ STATIC_OR_TEST void construct_usable_map(struct mmap *mmap_out, uint32_t max_ent
             }
         }
 
-        if (out_len >= max_entries) {
-            break;
+        if (out_len + 1 >= max_entries) {
+            panic("usable_map entry buffer overflow");
         }
 
-        mmap_out->entries[out_len++] = (struct mmap_entry){
+        entries_out[out_len++] = (struct mmap_entry){
             .addr = seg_start,
             .len = seg_last - seg_start + 1,
             .type = MMAP_ENTRY_USABLE,
         };
     }
 
-    mmap_out->length = out_len;
+    mmap_out->length = out_len + 1;
 }
 
 void mm_map_init(void) {
-    construct_usable_map(&g_usable_map, MM_BOOT_MAP_MAX_ENTRIES, boot_get_mmap());
+    construct_usable_map(&g_usable_map, MAX_USABLE_ENTRIES, boot_get_mmap());
+}
+
+// this function must not be called after paging is initialized.
+phys_addr_t mm_usable_alloc_metadata(size_t max_pages, size_t *allocated_pages) {
+    for (uint32_t i = 0; i + 1 < g_usable_map.length; i++) {
+        struct mmap_entry *const entry = &g_usable_map.entries[i];
+        struct mmap_entry *const next = &g_usable_map.entries[i + 1];
+
+        if (entry->type == MMAP_ENTRY_USABLE) {
+            panic("usable_map is corrupted");
+        }
+
+        if (next->len < PAGE_SIZE) {
+            next->type = USABLE_ENTRY_METADATA;
+            continue;
+        }
+
+        phys_size_t allocated = next->len / PAGE_SIZE;
+        if (allocated > max_pages) {
+            allocated = max_pages;
+        }
+
+        const phys_addr_t addr = next->addr;
+
+        entry->len += allocated * PAGE_SIZE;
+        next->addr += allocated * PAGE_SIZE;
+        next->len -= allocated * PAGE_SIZE;
+        *allocated_pages = allocated;
+        return addr;
+    }
+
+    panic("usable_map is already full of metadata page");
 }
 
 const struct mmap *mm_get_boot_map(void) {

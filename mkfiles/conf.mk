@@ -28,7 +28,7 @@ endif
 endif
 
 WARNING_FLAGS      := -pedantic -Wall -Wextra -Werror \
-	-Wno-switch -Wno-unused-parameter -Wno-error=unused-variable -Wno-error=unused-function
+	-Wno-error=unused-variable -Wno-error=unused-function
 
 ifneq ($(IS_TEST_BUILD), 1)
 
