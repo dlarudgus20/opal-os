@@ -33,7 +33,7 @@ void tty0_printf(const char *fmt, ...) {
     va_end(args);
 }
 
-#ifndef TEST
+#ifndef OPAL_TEST
 noreturn void panic_format(const char *fmt, const char *file, const char *func, unsigned line, ...) {
     disable_interrupts();
 

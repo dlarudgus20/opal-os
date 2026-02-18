@@ -7,6 +7,7 @@ extern "C" {
 #include <vector>
 #include <algorithm>
 #include <limits>
+#include <cstdlib>
 #include <cstring>
 
 // Mock allocator for testing
@@ -25,7 +26,7 @@ public:
     }
 
     static void* alloc(size_t len, size_t* allocated_len) {
-        void* ptr = malloc(len);
+        void* ptr = std::malloc(len);
         if (ptr) {
             allocated_blocks.push_back({ptr, len});
             total_allocated += len;
@@ -43,7 +44,7 @@ public:
             allocated_blocks.erase(it);
             deallocation_count++;
         }
-        free(ptr);
+        std::free(ptr);
     }
 
     static size_t shrink(void* ptr, size_t old_len, size_t new_len) {

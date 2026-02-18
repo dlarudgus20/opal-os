@@ -22,7 +22,6 @@ mb2_header_end:
 section .bss
 
 align 4096
-global tmp_table
 tmp_table: resb 0x5000
 
 mb2_info: resd 1

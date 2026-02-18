@@ -8,7 +8,8 @@ MEMORY {
 
 SECTIONS {
     . = 0x200000;
-    __kernel_phys_start = .;
+
+    __kernel_start_lba = .;
     __higher_half_displacement = 0xffffffff80000000 - .;
 
     .startup ALIGN(4K) : {
@@ -31,6 +32,9 @@ SECTIONS {
         unit_test_end__ = .;
     } >HIGH
 
+    . = ALIGN(4K);
+    __rodata_end_lba = . - __higher_half_displacement;
+
     .data ALIGN(4K) : AT(ADDR(.data) - __higher_half_displacement) {
         *(.data* .gnu.linkonce.d.*)
     } >HIGH
@@ -38,6 +42,8 @@ SECTIONS {
     .bss ALIGN(4K) : AT(ADDR(.bss) - __higher_half_displacement) {
         *(COMMON)
         *(.bss* .gnu.linkonce.b.*)
+        . = ALIGN(4K);
+        __before_stack_lba = . - __higher_half_displacement;
 
         . = ALIGN(2M);
         __stack_bottom_lba = . - __higher_half_displacement;
@@ -45,5 +51,5 @@ SECTIONS {
         __stack_top_lba = . - __higher_half_displacement;
     } >HIGH
 
-    __kernel_phys_end = . - __higher_half_displacement;
+    __kernel_end_lba = . - __higher_half_displacement;
 }

@@ -24,8 +24,6 @@ bool mm_pfn_is_valid(pfn_t pfn);
 struct page *mm_page_by_pfn(pfn_t pfn);
 pfn_t mm_pfn_by_page(struct page *page);
 
-bool phys_to_virt_metadata(phys_addr_t pa, virt_addr_t *va_out);
-
 void mm_pfn_print_all(void);
 
 #endif

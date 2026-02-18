@@ -5,7 +5,7 @@
 #include <opal/test.h>
 #include <opal/tty.h>
 
-#ifdef UNIT_TEST
+#ifdef OPAL_UNIT_TEST
 
 extern const struct unit_test_info *unit_test_start__[];
 extern const struct unit_test_info *unit_test_end__[];

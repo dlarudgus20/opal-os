@@ -24,7 +24,7 @@ static struct mmap g_usable_map = {
 };
 
 static phys_addr_t usable_floor_addr(void) {
-    return align_ceil_sz_p2((phys_addr_t)(uintptr_t)__kernel_phys_end, PAGE_SIZE);
+    return align_ceil_sz_p2((phys_addr_t)__kernel_end_lba, PAGE_SIZE);
 }
 
 static phys_addr_t entry_last(const struct mmap_entry *entry) {

@@ -7,7 +7,7 @@
 #include <kc/string.h>
 #include <kc/assert.h>
 
-#ifdef TEST
+#ifdef OPAL_TEST
 #define STATIC_OR_TEST
 #else
 #define STATIC_OR_TEST static
@@ -18,7 +18,7 @@ typedef void (*unit_test_ptr)(void);
 #define PROTOTYPE_UNIT_TEST(name) \
     static void unit_test_func__##name (void)
 
-#ifdef UNIT_TEST
+#ifdef OPAL_UNIT_TEST
 
 struct unit_test_info {
     void (*fn)(void);

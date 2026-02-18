@@ -27,7 +27,7 @@ phys_addr_t mm_usable_alloc_metadata(size_t max_pages, size_t *allocated_pages);
 const struct mmap *mm_get_boot_map(void);
 const struct mmap *mm_get_usable_map(void);
 
-#ifdef TEST
+#ifdef OPAL_TEST
 void construct_usable_map(struct mmap *mmap_out, uint32_t max_entries, const struct mmap *boot_map);
 #endif
 

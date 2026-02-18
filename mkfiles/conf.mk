@@ -30,23 +30,14 @@ endif
 WARNING_FLAGS      := -pedantic -Wall -Wextra -Werror \
 	-Wno-error=unused-variable -Wno-error=unused-function
 
+TEST_WARNING_FLAGS := -Wno-unused-parameter
+
+DEFINE_FLAGS       := -DOPAL_CONFIG=\"$(CONFIG)\" -DOPAL_PLATFORM=\"$(PLATFORM)\"
+
 ifneq ($(IS_TEST_BUILD), 1)
 
 BUILD_PREFIX       := build
 BUILD_PREFIX_REF   := build
-TOOLSET_PREFIX     ?= x86_64-elf
-TOOLSET_CC         ?= $(TOOLSET_PREFIX)-gcc
-TOOLSET_AR         ?= $(TOOLSET_PREFIX)-gcc-ar
-TOOLSET_OBJCOPY    ?= $(TOOLSET_PREFIX)-objcopy
-TOOLSET_OBJDUMP    ?= $(TOOLSET_PREFIX)-objdump
-TOOLSET_NM         ?= $(TOOLSET_PREFIX)-gcc-nm
-TOOLSET_GDB        ?= gdb
-TOOLSET_NASM       ?= nasm
-
-CFLAGS             += -std=c23 -ggdb3 -ffreestanding -mno-red-zone -masm=intel \
-	-mcmodel=kernel -mno-mmx -mno-sse -mno-sse2 $(WARNING_FLAGS)
-
-LDFLAGS            += -nostdlib -Wl,--gc-sections -Wl,--fatal-warning
 
 ifeq ($(UNIT_TEST), 1)
 
@@ -58,12 +49,28 @@ endif
 
 ifneq ($(filter $(TARGET_TYPE), executable root), )
 BUILD_PREFIX       := build/unit-test
-CFLAGS             += -DUNIT_TEST
+DEFINE_FLAGS       += -DOPAL_UNIT_TEST
 endif
 
 endif
+
+TOOLSET_PREFIX     ?= x86_64-elf
+TOOLSET_CC         ?= $(TOOLSET_PREFIX)-gcc
+TOOLSET_AR         ?= $(TOOLSET_PREFIX)-gcc-ar
+TOOLSET_OBJCOPY    ?= $(TOOLSET_PREFIX)-objcopy
+TOOLSET_OBJDUMP    ?= $(TOOLSET_PREFIX)-objdump
+TOOLSET_NM         ?= $(TOOLSET_PREFIX)-gcc-nm
+TOOLSET_GDB        ?= gdb
+TOOLSET_NASM       ?= nasm
+
+CFLAGS             += -std=c23 -ggdb3 -ffreestanding -mno-red-zone -masm=intel \
+	-mcmodel=kernel -mno-mmx -mno-sse -mno-sse2 $(DEFINE_FLAGS) $(WARNING_FLAGS)
+
+LDFLAGS            += -nostdlib -Wl,--gc-sections -Wl,--fatal-warning
 
 else
+
+DEFINE_FLAGS       += -DOPAL_TEST
 
 BUILD_PREFIX       := build/tests
 BUILD_PREFIX_REF   := build/tests
@@ -75,11 +82,11 @@ TOOLSET_NM         ?= gcc-nm
 TOOLSET_GDB        ?= gdb
 TOOLSET_NASM       ?= nasm
 
-CFLAGS             += -std=c23 -ggdb3 -ffreestanding -masm=intel -fPIC -DTEST $(WARNING_FLAGS) $(CFLAGS_ON_TEST)
+CFLAGS             += -std=c23 -ggdb3 -ffreestanding -masm=intel -fPIC $(DEFINE_FLAGS) $(WARNING_FLAGS) $(CFLAGS_ON_TEST)
 LDFLAGS            += -Wl,--fatal-warning $(LDFLAGS_ON_TEST)
 
 TEST_CXX           ?= g++
-TEST_CXXFLAGS      += -std=c++23 -ggdb3 -masm=intel $(WARNING_FLAGS)
+TEST_CXXFLAGS      += -std=c++23 -ggdb3 -masm=intel $(DEFINE_FLAGS) $(WARNING_FLAGS) $(TEST_WARNING_FLAGS)
 TEST_LDFLAGS       += -Wl,--fatal-warning
 
 ifeq ($(CONFIG), debug)

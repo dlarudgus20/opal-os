@@ -9,9 +9,10 @@
 
 #define KERNEL_START_PHYS       0x00200000u
 #define KERNEL_START_VIRT       0xffffffff80000000u
+#define KSTACK_START_VIRT       0xffffffff8f000000u
 
-#define PAGETABLE_START_VIRT    0xffff800000000000u
-#define PAGES_START_VIRT        0xffff900000000000u
+#define DIRECT_MAP_START_VIRT   0xffff900000000000u
+#define PAGES_START_VIRT        0xffffe00000000000u
 
 typedef uint64_t page_entry_t;
 
@@ -28,15 +29,23 @@ typedef uint64_t page_entry_t;
 #define PTE_MASK_ADDR           ((page_entry_t)0x000ffffffffff000)
 
 void mm_pagetable_init(const struct mmap *snapshot);
-void mm_pagetable_map(virt_addr_t va, phys_addr_t pa, uint64_t flags, bool alloc);
+virt_addr_t mm_pagetable_map(virt_addr_t va, phys_addr_t pa, phys_size_t len, page_entry_t flags);
 
 void mm_pagetable_print(void);
 
-#ifdef TEST
-#define __kernel_phys_end ((char*)1)
+#ifdef OPAL_TEST
+#define __kernel_start_lba  ((char*)1)
+#define __rodata_end_lba    ((char*)1)
+#define __before_stack_lba  ((char*)1)
+#define __stack_bottom_lba  ((char*)1)
+#define __kernel_end_lba    ((char*)1)
 #else
 // linker script
-extern char __kernel_phys_end[];
+extern char __kernel_start_lba[];
+extern char __rodata_end_lba[];
+extern char __before_stack_lba[];
+extern char __stack_bottom_lba[];
+extern char __kernel_end_lba[];
 #endif
 
 #endif

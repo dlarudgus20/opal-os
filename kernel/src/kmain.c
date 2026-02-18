@@ -15,6 +15,8 @@
 #include <opal/drivers/uart.h>
 #include <opal/platform/mm/pagetable.h>
 
+#define UNAME_MSG "opal-os ("OPAL_PLATFORM" "OPAL_CONFIG")"
+
 static void print_mmap(const struct mmap *mmap, const char *(*entry_type_str)(mmap_entry_type_t)) {
     for (uint32_t i = 0; i < mmap->length; i++) {
         const struct mmap_entry *entry = &mmap->entries[i];
@@ -40,7 +42,7 @@ static void print_memory_map(void) {
 static void print_banner(void) {
     tty0_puts("\n");
     tty0_puts("========================================\n");
-    tty0_puts("  opal-os shell\n");
+    tty0_puts("  "UNAME_MSG"\n");
     tty0_puts("========================================\n");
 }
 
@@ -49,25 +51,20 @@ static int handle_command(const char *cmd) {
         tty0_puts("commands:\n");
         tty0_puts("  help      - show this message\n");
         tty0_puts("  uname     - show kernel name\n");
-        tty0_puts("  whoami    - current user\n");
         tty0_puts("  clear     - clear terminal\n");
         tty0_puts("  echo TEXT - print TEXT\n");
         tty0_puts("  exit      - logout\n");
         tty0_puts("  halt      - halt system\n");
         tty0_puts("  klog TEXT - log TEXT\n");
         tty0_puts("  kmsg      - read logs\n");
+        tty0_puts("  mmap      - show memory map\n");
         tty0_puts("  ptable    - show pagetable\n");
         tty0_puts("  pfns      - show pfn list\n");
         return 1;
     }
 
     if (strcmp(cmd, "uname") == 0) {
-        tty0_puts("opal-os pc-x64 (uart-poc)\n");
-        return 1;
-    }
-
-    if (strcmp(cmd, "whoami") == 0) {
-        tty0_puts("root\n");
+        tty0_puts(UNAME_MSG"\n");
         return 1;
     }
 
@@ -112,6 +109,11 @@ static int handle_command(const char *cmd) {
         while (klog_read(&header, msg, sizeof(msg))) {
             tty0_printf("%s[%u] %s\x1b[0m\n", colors[header.level], header.seq, msg);
         }
+        return 1;
+    }
+
+    if (strcmp(cmd, "mmap") == 0) {
+        print_memory_map();
         return 1;
     }
 

@@ -3,13 +3,22 @@
 ## 1. 메모리 맵
 
 ```text
+memory map (bootstrap)
+
 virtual range                                physical range                    note
 --------------------------------------------|---------------------------------|----------------------------
 [0x00000000 00000000 ~ 0x00000000 00600000)  [0x00000000 ~ 0x00600000)         identity map
-[0xffff8000 00000000 ~      <dynamic>     )          <dynamic>                 page table
-[0xffff9000 00000000 ~      <dynamic>     )          <dynamic>                 struct page
-[0xffffffff 80000000 ~ 0xffffffff 80800000)  [0x00200000 ~ 0x00a00000)         higher-half bootstrap window
-[0xffffffff 8f000000 ~ 0xffffffff 8f200000)  [__stack_bottom_lba ~ +0x200000)  kernel stack mapping
+[0xffffffff 80000000 ~ 0xffffffff 80800000)  [0x00200000 ~ 0x00a00000)         kernel image + bootstrap window
+[0xffffffff 8f000000 ~ 0xffffffff 8f200000)  [__stack_bottom_lba ~ +0x200000)  kernel stack
+
+memory map (after mm_init())
+
+virtual range                                physical range                    note
+--------------------------------------------|---------------------------------|----------------------------
+[0xffff9000 00000000 ~ 0xffffd000 00000000)        <full memory>               direct map (64TB)
+[0xffffe000 00000000 ~ 0xfffff000 00000000)          <dynamic>                 struct page
+[0xffffffff 80000000 ~ 0xffffffff 8e000000)  [0x00200000 ~ +kernel size)       kernel image
+[0xffffffff 8f000000 ~ 0xffffffff 8f200000)  [__stack_bottom_lba ~ +0x200000)  kernel stack
 ```
 
 ## 2. 부트 코드의 임시 페이지 테이블
