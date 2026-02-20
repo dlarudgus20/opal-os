@@ -1,3 +1,3 @@
-# opal-os 문서
+# opal-os 내부 문서
 
-- [`memory-map.md`](memory-map.md): 메모리 맵 상세
+- [`memory-map.md`](memory-map.md): 메모리 맵 요약

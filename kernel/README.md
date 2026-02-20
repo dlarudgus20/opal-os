@@ -1,20 +1,21 @@
 # kernel
 
-`kernel/`은 opal-os의 커널 실행 이미지(`kernel.elf`, `kernel.sys`)를 만드는 서브프로젝트입니다.
+`kernel/`은 opal-os 커널 실행 이미지(`kernel.elf`, `kernel.sys`)를 생성합니다.
 
-## 역할
-- UART 기반 초기 입출력
-- 간단한 shell 루프
-- 부트 메모리 맵 정리(`construct_usable_map`)
-- 커널 로그(`klog`)
-- 커널 내장 유닛 테스트 실행기(`unit_test_run`)
+## 기능
+- UART 기반 콘솔/shell
+- `klog` 로그 링버퍼
+- 메모리 맵 정제(`refine_mmap`)와 section map 구성
+- higher-half 페이징 초기화
+- 커널 유닛 테스트 실행
 
-## 주요 소스
-- [`src/kmain.c`](src/kmain.c): 커널 진입 이후 초기화와 shell
-- [`src/klog.c`](src/klog.c): 로그 링버퍼
-- [`src/mm/map.c`](src/mm/map.c): boot mmap sanitize
-- [`src/test.c`](src/test.c): UNIT_TEST 실행기
-- [`platform/pc-x64/src/boot/`](platform/pc-x64/src/boot/): 부트 초기화
+## 주요 파일
+- [`src/kmain.c`](src/kmain.c): 커널 진입/초기화/shell
+- [`src/mm/map.c`](src/mm/map.c): 메모리 맵
+- [`src/mm/mm.c`](src/mm/mm.c): mm 초기화 오케스트레이션
+- [`src/mm/page.c`](src/mm/page.c): PFN 메타데이터(`struct page`)
+- [`platform/pc-x64/src/mm/pagetable.c`](platform/pc-x64/src/mm/pagetable.c): 페이지 테이블
+- [`src/test.c`](src/test.c): 커널 유닛 테스트 러너
 
 ## 빌드
 ```bash
@@ -22,22 +23,23 @@ make -C kernel build CONFIG=debug PLATFORM=pc-x64
 ```
 
 산출물:
-- `build/pc-x64/<config>/kernel.elf`
-- `build/pc-x64/<config>/kernel.sys`
+- `build/<platform>/<config>/kernel.elf`
+- `build/<platform>/<config>/kernel.sys`
 
-## 호스트 테스트
+## hosted 테스트
 ```bash
 make -C kernel test CONFIG=debug PLATFORM=pc-x64
 ```
 
 ## 커널 유닛 테스트
 ```bash
-make -C kernel build CONFIG=debug PLATFORM=pc-x64 UNIT_TEST=1
+# 프로젝트 루트에서
+make unit-test CONFIG=debug PLATFORM=pc-x64
 ```
 
-이 모드에서는 `build/unit-test/...` 경로에 산출물이 생성됩니다.
+유닛테스트 경로 산출물:
+- `build/unit-test/<platform>/<config>/...`
 
 ## 의존성
-- 정적: `libkc`
-- 일반 빌드에서 추가 정적: `libkubsan`
-- 테스트 모드 shared: `libpanicimpl`
+- 일반 빌드: `libkc`, `libkubsan`
+- hosted 테스트: `libpanicimpl`(shared)

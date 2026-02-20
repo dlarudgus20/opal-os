@@ -9,23 +9,25 @@ KERNEL_BIN  := kernel/$(BUILD_DIR)/kernel.sys
 ISO_DIR     := $(BUILD_DIR)/iso
 ISO_FILE    := $(BUILD_DIR)/opal-os.iso
 
-SUBDIRS     := kernel libkubsan libkc libpanicimpl libcoll libslab
+QEMU_FLAGS  += -serial stdio -no-reboot -d int
 
-.PHONY: all kernel iso run clean fullclean build-test test clean-test unit-test clean-unit-test
+SUBDIRS     := test-pch kernel libkubsan libkc libpanicimpl libcoll libslab
 
-all: kernel
+.PHONY: all build iso run clean fullclean build-test test clean-test unit-test clean-unit-test
 
-kernel:
+all: build
+
+build:
 	$(MAKE) -C kernel
 
-iso: kernel
+iso: build
 	@mkdir -p $(ISO_DIR)/boot/grub
 	cp $(KERNEL_BIN) $(ISO_DIR)/boot/kernel.sys
 	cp grub/grub.cfg $(ISO_DIR)/boot/grub/grub.cfg
 	grub-mkrescue -o $(ISO_FILE) $(ISO_DIR)
 
 run: iso
-	qemu-system-x86_64 -cdrom $(ISO_FILE) -serial stdio -no-reboot -d int -D qemu.log
+	qemu-system-x86_64 $(QEMU_FLAGS) -cdrom $(ISO_FILE) -D qemu.log
 
 clean:
 	for dir in $(SUBDIRS); do \
@@ -40,13 +42,11 @@ fullclean:
 	-rm -rf build
 
 build-test:
-	make build -C test-pch
 	for dir in $(SUBDIRS); do \
 		$(MAKE) build-test -C $$dir || exit 1; \
 	done
 
 test:
-	make build -C test-pch
 	for dir in $(SUBDIRS); do \
 		$(MAKE) test -C $$dir || exit 1; \
 	done

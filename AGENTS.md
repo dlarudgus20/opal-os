@@ -3,7 +3,8 @@
 이 문서는 `opal-os` 저장소에서 작업하는 인간/에이전트를 위한 운영 가이드입니다.
 권장사항 중심으로 작성되어 있으며, 반복적으로 발생한 빌드/테스트 이슈를 빠르게 피하는 데 목적이 있습니다.
 
-## Markdown 규칙
+## **중요** Markdown 규칙
+Markdown 문서를 편집할 때 아래 규칙을 준수해야 합니다.
 - Ordered list 아래 Unordered list를 중첩할 때, 하위 불릿(`-`)은 상위 항목의 본문 시작 위치와 정렬합니다.
 - 즉, 고정 공백 수를 강제하지 않고 “상위 항목 텍스트 시작 컬럼 정렬”을 기준으로 합니다.
 - 예시:
@@ -32,7 +33,7 @@
 ## 표준 명령
 ### 빌드/실행
 ```bash
-make kernel
+make
 make iso
 make run
 ```
@@ -46,14 +47,14 @@ make -C kernel test CONFIG=debug PLATFORM=pc-x64
 ### 커널 유닛테스트
 ```bash
 make unit-test
-make clean-unit-test
 ```
 
-### 정리
+### 빌드 결과물 삭제
 ```bash
-make clean
-make clean-test
-make fullclean
+make clean           # 현재 구성만
+make clean-test      # 현재 구성 테스트만
+make clean-unit-test # 현재 구성 유닛테스트만
+make fullclean       # 전부
 ```
 
 ## 작업 원칙 (권장)
@@ -65,13 +66,16 @@ make fullclean
      - `mkfiles/conf.mk`
      - `mkfiles/rules.mk`
    - 해당 서브프로젝트 `Makefile`/`makefile`
-   - `BUILD_DIR_REF` 경로 일관성
 
 3. 변경 후 최소 검증
    - 가능한 경우 최소 1개 이상 빌드/테스트를 실행하고 결과를 남깁니다.
 
 4. 큰 구조 변경 시 문서 동반 업데이트
-   - `README.md`, `docs/build-system.md`, `docs/testing.md`를 우선 검토합니다.
+   - `README.md`와 `docs/` 내 문서들을 우선 검토합니다.
+
+### *중요* `docs/opal/memory-map.md 수정 시 유의점
+- `1. 가상 주소 공간 요약` 부분에 텍스트로 그려진 표 양식은 함부로 바꾸지 말 것.
+  - 표 내용을 바꿔야 할 땐 기존 양식 엄수
 
 ## 자주 발생한 이슈와 예방
 ### 1) sanitizer/LSan 환경 이슈
@@ -84,15 +88,6 @@ ASAN_OPTIONS=detect_leaks=0 make -C kernel test CONFIG=debug PLATFORM=pc-x64
 `libkc`의 libc 유사 심볼 노출로 테스트 링크 충돌 가능성이 있습니다.
 - 테스트 링크 플래그에서 `--exclude-libs=libkc` 적용 여부를 확인합니다.
 
-### 3) `UNIT_TEST` + `release` + LTO
-`DEFINE_UNIT_TEST` 등록 엔트리가 제거되지 않도록 아래 조합을 유지합니다.
-- `__attribute__((used, section(".unittest")))`
-- linker script의 `KEEP(*(.unittest))`
-
-### 4) 비-`UNIT_TEST` 빌드 흔적 해석
-- `kernel.elf`에는 디버그/심볼 문자열이 남을 수 있습니다.
-- 실제 로드 이미지는 `kernel.sys` 기준으로 확인합니다.
-
 ## 커널 유닛테스트 작성 가이드
 - 테스트 등록: `DEFINE_UNIT_TEST(name)`
 - 검증 매크로: `TEST_EXPECT_*`, `TEST_ASSERT_*`
@@ -103,7 +98,7 @@ ASAN_OPTIONS=detect_leaks=0 make -C kernel test CONFIG=debug PLATFORM=pc-x64
 
 ## 서브프로젝트별 포인트
 ### kernel
-- 런타임 동작, hosted 테스트, `UNIT_TEST` 경로를 함께 고려해야 합니다.
+- 런타임 동작, hosted 테스트, 유닛테스트 경로를 함께 고려해야 합니다.
 
 ### libkc
 - libc 호환 이름 함수가 많아 링크 노출 영향에 주의합니다.
@@ -139,4 +134,3 @@ ASAN_OPTIONS=detect_leaks=0 make -C kernel test CONFIG=debug PLATFORM=pc-x64
 - `docs/build-system.md`
 - `docs/testing.md`
 - `docs/kernel-unit-test.md`
-- `docs/components.md`
