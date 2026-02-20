@@ -7,7 +7,7 @@ all: build
 
 include ../mkfiles/conf.mk
 
-TARGET := build/test-pch.h.gch
+TARGET := build/$(PLATFORM)/test-pch.h.gch
 SOURCE := include/test-pch.h
 
 $(TARGET): $(SOURCE)

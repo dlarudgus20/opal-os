@@ -3,6 +3,7 @@
 #include <kc/string.h>
 
 #include <opal/mm/mm.h>
+#include <opal/mm/buddy.h>
 #include <opal/mm/map.h>
 #include <opal/mm/page.h>
 #include <opal/platform/mm/pagetable.h>
@@ -16,4 +17,5 @@ void mm_init(void) {
     mm_page_init();
 
     mm_tmp_alloc_finalize();
+    mm_buddy_init();
 }

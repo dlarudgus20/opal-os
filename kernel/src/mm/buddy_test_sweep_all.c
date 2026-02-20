@@ -1,0 +1,104 @@
+#include <stdint.h>
+
+#include <kc/string.h>
+
+#include <opal/mm/buddy.h>
+#include <opal/mm/map.h>
+#include <opal/mm/page.h>
+#include <opal/platform/mm/defines.h>
+#include <opal/test.h>
+#include <opal/tty.h>
+
+static uint64_t hash64(pfn_t pfn, uint64_t qword_index) {
+    uint64_t x = ((uint64_t)pfn << 32) ^ qword_index ^ 0x9e3779b97f4a7c15ull;
+    x ^= x >> 30;
+    x *= 0xbf58476d1ce4e5b9ull;
+    x ^= x >> 27;
+    x *= 0x94d049bb133111ebull;
+    x ^= x >> 31;
+    return x;
+}
+
+static uint64_t *block_qwords_by_pfn(pfn_t pfn) {
+    return (uint64_t *)(DIRECT_MAP_START_VIRT + pfn * PAGE_SIZE);
+}
+
+static pfn_t align_up_pfn(pfn_t pfn, pfn_t align_pages) {
+    pfn_t mask = align_pages - 1;
+    return (pfn + mask) & ~mask;
+}
+
+static void write_block_pattern(pfn_t pfn, pfn_t block_pages) {
+    uint64_t *qwords = block_qwords_by_pfn(pfn);
+    uint64_t count = (uint64_t)(block_pages * PAGE_SIZE / sizeof(uint64_t));
+    for (uint64_t i = 0; i < count; i++) {
+        qwords[i] = hash64(pfn, i);
+    }
+}
+
+static void verify_block_pattern(pfn_t pfn, pfn_t block_pages) {
+    uint64_t *qwords = block_qwords_by_pfn(pfn);
+    uint64_t count = (uint64_t)(block_pages * PAGE_SIZE / sizeof(uint64_t));
+    for (uint64_t i = 0; i < count; i++) {
+        TEST_ASSERT_EQ(hash64(pfn, i), qwords[i]);
+    }
+}
+
+DEFINE_UNIT_TEST(heavy__buddy_hash_sweep_all_orders) {
+    size_t global_before = mm_buddy_get_free_pages();
+    uint8_t max_order = mm_buddy_get_max_order();
+
+    for (uint8_t order = 0; order <= max_order; order++) {
+        pfn_t block_pages = (pfn_t)1 << order;
+        size_t before = mm_buddy_get_free_pages();
+        size_t allocated_blocks = 0;
+        size_t freed_blocks = 0;
+
+        tty0_printf("sweep order %u\n", order);
+        tty0_printf("alloc & write: ");
+
+        while (1) {
+            pfn_t pfn = mm_buddy_alloc(order);
+            if (pfn == PFN_INVALID) {
+                break;
+            }
+            write_block_pattern(pfn, block_pages);
+            allocated_blocks++;
+            tty0_puts(".");
+        }
+
+        tty0_printf("\n = %zu block(s)\n", allocated_blocks);
+        tty0_printf("verify & free: ");
+
+        const struct mmap *section_map = mm_get_section_map();
+        for (uint32_t i = 0; i < section_map->length; i++) {
+            const struct mmap_entry *entry = &section_map->entries[i];
+            if (entry->type != MM_SEC_ENTRY_USABLE) {
+                continue;
+            }
+
+            pfn_t start = entry->addr / PAGE_SIZE;
+            pfn_t end = start + entry->len / PAGE_SIZE;
+            pfn_t pfn = align_up_pfn(start, block_pages);
+
+            while (pfn + block_pages <= end) {
+                struct page *page = mm_page_by_pfn(pfn);
+                if ((page->flags & PAGE_FLAG_BUDDY_FREE) == 0) {
+                    verify_block_pattern(pfn, block_pages);
+                    memset(block_qwords_by_pfn(pfn), 0, block_pages * PAGE_SIZE);
+                    mm_buddy_free(pfn, order);
+                    freed_blocks++;
+                    tty0_puts(".");
+                }
+                pfn += block_pages;
+            }
+        }
+
+        tty0_printf("\n = %zu block(s)\n", freed_blocks);
+
+        TEST_EXPECT_EQ(allocated_blocks, freed_blocks);
+        TEST_EXPECT_EQ(before, mm_buddy_get_free_pages());
+    }
+
+    TEST_EXPECT_EQ(global_before, mm_buddy_get_free_pages());
+}

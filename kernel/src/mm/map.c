@@ -7,7 +7,7 @@
 #include <opal/test.h>
 #include <opal/mm/map.h>
 #include <opal/platform/boot.h>
-#include <opal/platform/mm/pagetable.h>
+#include <opal/platform/mm/defines.h>
 
 static struct mmap_entry g_mmap_entries[MAX_MMAP_ENTRIES];
 static struct mmap g_mmap = {

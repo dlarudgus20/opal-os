@@ -1,6 +1,8 @@
 #ifndef KC_INTTYPES_H
 #define KC_INTTYPES_H
 
+#include <stdint.h>
+
 #define PRI64_PREFIX    "l"
 #define PRIPTR_PREFIX   "l"
 

@@ -71,8 +71,10 @@ static void initialize_pages(pfn_t pfn_start, pfn_t pfn_end, bool is_metadata) {
 
     for (struct page *ptr = ptr_start; ptr < ptr_end; ptr++) {
         *ptr = (struct page){
-            .flags = is_metadata ? PAGE_FLAG_METADATA : PAGE_FLAG_FREE,
+            .flags = is_metadata ? PAGE_FLAG_METADATA : 0,
             .refcount = 0,
+            .buddy_order = 0,
+            .buddy_next = PFN_INVALID,
         };
     }
 }
@@ -163,19 +165,27 @@ pfn_t mm_pfn_by_page(struct page *page) {
 
 #include <opal/tty.h>
 
-static const char *page_flags_str(uint16_t flags) {
-    switch (flags) {
-        case PAGE_FLAG_FREE:
-            return "Free";
-        case PAGE_FLAG_METADATA:
-            return "Metadata";
-        default:
-            return "(unknown)";
+static void print_page_flags(page_entry_t entry) {
+    bool printed = false;
+#define FLAG(name) \
+    if (entry & PAGE_FLAG_##name) { \
+        if (!printed) printed = true; \
+        else tty0_printf(" | "); \
+        tty0_printf(#name); \
+    }
+    FLAG(METADATA)
+    FLAG(BUDDY_FREE)
+    FLAG(BUDDY_HEAD)
+#undef FLAG
+    if (!printed) {
+        tty0_printf("0");
     }
 }
 
 static void print_pfns(pfn_t pfn_start, pfn_t pfn_end, uint16_t flags) {
-    tty0_printf("PFN [%#015"PRIpfn", %#015"PRIpfn") %s\n", pfn_start, pfn_end, page_flags_str(flags));
+    tty0_printf("PFN [%#015"PRIpfn", %#015"PRIpfn") ", pfn_start, pfn_end);
+    print_page_flags(flags);
+    tty0_printf("\n");
 }
 
 void mm_pfn_print_all(void) {

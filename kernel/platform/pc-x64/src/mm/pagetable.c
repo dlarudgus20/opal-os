@@ -169,7 +169,19 @@ void mm_pagetable_init(void) {
             len -= BOOTSTRAP_MAP_END_PHYS - entry->addr;
         }
 
-        map_range_len(DIRECT_MAP_START_VIRT + addr, addr, len, PTE_FLAG_PRESENT | PTE_FLAG_WRITABLE);
+        const virt_addr_t va_start = DIRECT_MAP_START_VIRT + addr;
+        virt_addr_t va_end = va_start + len;
+
+        if (va_start >= DIRECT_MAP_END_VIRT) {
+            // too much lowmem
+            break;
+        }
+
+        if (va_end < va_start || va_end > DIRECT_MAP_END_VIRT) {
+            len = DIRECT_MAP_END_VIRT - va_start;
+        }
+
+        map_range_len(va_start, addr, len, PTE_FLAG_PRESENT | PTE_FLAG_WRITABLE);
     }
 }
 

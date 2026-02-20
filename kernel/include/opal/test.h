@@ -42,6 +42,8 @@ struct unit_test_info {
     PROTOTYPE_UNIT_TEST(name)
 
 void unit_test_run(void);
+void unit_test_run_heavy(void);
+
 void unit_test_expect_true_failed(const char *expr, const char *file, unsigned line);
 void unit_test_expect_eq_u64_failed(
     const char *expected_expr,
@@ -125,16 +127,17 @@ void unit_test_expect_streq_failed(
 
 #define DEFINE_UNIT_TEST(name) UNUSED_ATTR PROTOTYPE_UNIT_TEST(name)
 static inline void unit_test_run(void) {}
+static inline void unit_test_run_heavy(void) {}
 
 #define TEST_PANIC()                        panic("This executable is not configured as unit test.")
-#define TEST_EXPECT_TRUE(expr)              TEST_PANIC()
-#define TEST_EXPECT_FALSE(expr)             TEST_PANIC()
-#define TEST_EXPECT_EQ(expected, actual)    TEST_PANIC()
-#define TEST_EXPECT_STREQ(expected, actual) TEST_PANIC()
-#define TEST_ASSERT_TRUE(expr)              TEST_PANIC()
-#define TEST_ASSERT_FALSE(expr)             TEST_PANIC()
-#define TEST_ASSERT_EQ(expected, actual)    TEST_PANIC()
-#define TEST_ASSERT_STREQ(expected, actual) TEST_PANIC()
+#define TEST_EXPECT_TRUE(expr)              do { TEST_PANIC(); (void)(expr); } while (0)
+#define TEST_EXPECT_FALSE(expr)             do { TEST_PANIC(); (void)(expr); } while (0)
+#define TEST_EXPECT_EQ(expected, actual)    do { TEST_PANIC(); (void)(expected); (void)(actual); } while (0)
+#define TEST_EXPECT_STREQ(expected, actual) do { TEST_PANIC(); (void)(expected); (void)(actual); } while (0)
+#define TEST_ASSERT_TRUE(expr)              do { TEST_PANIC(); (void)(expr); } while (0)
+#define TEST_ASSERT_FALSE(expr)             do { TEST_PANIC(); (void)(expr); } while (0)
+#define TEST_ASSERT_EQ(expected, actual)    do { TEST_PANIC(); (void)(expected); (void)(actual); } while (0)
+#define TEST_ASSERT_STREQ(expected, actual) do { TEST_PANIC(); (void)(expected); (void)(actual); } while (0)
 
 #endif
 

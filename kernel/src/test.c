@@ -1,5 +1,7 @@
 #include <stdarg.h>
+#include <stdbool.h>
 
+#include <kc/string.h>
 #include <kc/fmt.h>
 
 #include <opal/test.h>
@@ -80,7 +82,7 @@ void unit_test_expect_streq_failed(
     );
 }
 
-void unit_test_run(void) {
+static void test_run(bool heavy) {
     g_test_state.run_count = 0;
     g_test_state.pass_count = 0;
     g_test_state.fail_count = 0;
@@ -92,10 +94,14 @@ void unit_test_run(void) {
             continue;
         }
         const struct unit_test_info *p = *pp;
-        tty0_printf("\x1b[1;92m[ RUN      ]\x1b[0m %s\n", p->item);
-        unit_test_begin(p->item);
-        p->fn();
-        unit_test_end();
+        bool is_heavy = strncmp(p->item, "heavy__", 7) == 0;
+        if (is_heavy == heavy)
+        {
+            tty0_printf("\x1b[1;92m[ RUN      ]\x1b[0m %s\n", p->item);
+            unit_test_begin(p->item);
+            p->fn();
+            unit_test_end();
+        }
     }
     tty0_printf(
         "==== unit test end ==== run=%u pass=%u fail=%u\n",
@@ -106,6 +112,14 @@ void unit_test_run(void) {
     if (g_test_state.fail_count != 0) {
         panicf("unit test failed: %u", g_test_state.fail_count);
     }
+}
+
+void unit_test_run(void) {
+    test_run(false);
+}
+
+void unit_test_run_heavy(void) {
+    test_run(true);
 }
 
 #endif

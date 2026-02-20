@@ -2,7 +2,6 @@
 #define OPAL_PLATFORM_MM_TYPES_H
 
 #include <limits.h>
-#include <stdint.h>
 
 #include <kc/inttypes.h>
 

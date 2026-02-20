@@ -14,4 +14,6 @@ enum {
 
 typedef virt_addr_t pfn_t;
 
+#define PFN_INVALID VIRT_ADDR_MAX
+
 #endif

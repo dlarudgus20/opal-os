@@ -23,8 +23,8 @@ TEST_PCH_DIR       := ../test-pch
 TEST_PCH_FILE      := test-pch.h
 TEST_PCH_SRC       := $(wildcard $(TEST_PCH_DIR)/include/$(TEST_PCH_FILE))
 ifneq ($(TEST_PCH_SRC), )
-TEST_PCH           := $(TEST_PCH_DIR)/build/$(TEST_PCH_FILE).gch
-TEST_INCLUDE_FLAGS += -iquote $(TEST_PCH_DIR)/build/ -iquote $(TEST_PCH_DIR)/include/
+TEST_PCH           := $(TEST_PCH_DIR)/build/$(PLATFORM)/$(TEST_PCH_FILE).gch
+TEST_INCLUDE_FLAGS += -iquote $(TEST_PCH_DIR)/build/$(PLATFORM)/ -iquote $(TEST_PCH_DIR)/include/
 else
 TEST_PCH           :=
 endif

@@ -52,6 +52,9 @@ static void print_banner(void) {
 static int handle_command(const char *cmd) {
     if (strcmp(cmd, "help") == 0) {
         tty0_puts("commands:\n");
+#ifdef OPAL_UNIT_TEST
+        tty0_puts("  unit      - run heavy unit test\n");
+#endif
         tty0_puts("  help      - show this message\n");
         tty0_puts("  uname     - show kernel name\n");
         tty0_puts("  clear     - clear terminal\n");
@@ -65,6 +68,13 @@ static int handle_command(const char *cmd) {
         tty0_puts("  pfns      - show pfn list\n");
         return 1;
     }
+
+#ifdef OPAL_UNIT_TEST
+    if (strcmp(cmd, "unit") == 0) {
+        unit_test_run_heavy();
+        return 1;
+    }
+#endif
 
     if (strcmp(cmd, "uname") == 0) {
         tty0_puts(UNAME_MSG"\n");
@@ -164,8 +174,6 @@ void kmain(void) {
 
     unit_test_run();
     print_banner();
-
-    print_memory_map();
 
     while (1) {
         run_shell();
