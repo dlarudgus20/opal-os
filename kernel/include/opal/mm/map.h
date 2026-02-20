@@ -26,8 +26,16 @@ struct mmap {
     uint32_t length;
 };
 
+struct mm_tmp_alloc {
+    struct mmap mm;
+};
+
 void mm_map_init(void);
-phys_addr_t mm_sec_alloc_metadata(size_t max_pages, size_t *allocated_pages);
+
+void mm_tmp_alloc_create(void);
+void mm_tmp_alloc_finalize(void);
+const struct mm_tmp_alloc *mm_tmp_alloc_get(void);
+phys_addr_t mm_tmp_alloc_pages(size_t max_pages, size_t *allocated_pages);
 
 const struct mmap *mm_get_memory_map(void);
 const struct mmap *mm_get_section_map(void);

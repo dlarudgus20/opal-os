@@ -28,7 +28,7 @@ typedef uint64_t page_entry_t;
 #define PTE_FLAG_NO_EXECUTE     ((page_entry_t)1 << 63)
 #define PTE_MASK_ADDR           ((page_entry_t)0x000ffffffffff000)
 
-void mm_pagetable_init(const struct mmap *snapshot);
+void mm_pagetable_init(void);
 virt_addr_t mm_pagetable_map(virt_addr_t va, phys_addr_t pa, phys_size_t len, page_entry_t flags);
 
 void mm_pagetable_print(void);

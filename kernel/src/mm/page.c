@@ -54,7 +54,7 @@ static virt_addr_t allocate_pages(virt_addr_t va, virt_size_t pages_needed, virt
 
     while (pages_needed > 0) {
         size_t pages_allocated;
-        phys_addr_t pa = mm_sec_alloc_metadata(pages_needed, &pages_allocated);
+        phys_addr_t pa = mm_tmp_alloc_pages(pages_needed, &pages_allocated);
 
         mm_pagetable_map(va, pa, pages_allocated * PAGE_SIZE, PTE_FLAG_WRITABLE | PTE_FLAG_PRESENT);
 
@@ -100,15 +100,15 @@ static void build_metadata(const struct mmap *section_map, enum build_stage stag
     }
 }
 
-static void build_metadata_run(const struct mmap *snapshot) {
+static void build_metadata_run(void) {
     // STAGE_PREPARE
-    build_metadata(snapshot, STAGE_PREPARE);
+    build_metadata(mm_get_section_map(), STAGE_PREPARE);
 
     // STAGE_ALLOC
-    build_metadata(snapshot, STAGE_ALLOC);
+    build_metadata(mm_get_section_map(), STAGE_ALLOC);
 
     // STAGE_INIT
-    build_metadata(mm_get_section_map(), STAGE_INIT);
+    build_metadata(&mm_tmp_alloc_get()->mm, STAGE_INIT);
 }
 
 static pfn_t get_pfn_end(void) {
@@ -122,8 +122,8 @@ static pfn_t get_pfn_end(void) {
     return ranges.pfn_end;
 }
 
-void mm_page_init(const struct mmap *snapshot) {
-    build_metadata_run(snapshot);
+void mm_page_init(void) {
+    build_metadata_run();
     g_pfn_end = get_pfn_end();
 }
 

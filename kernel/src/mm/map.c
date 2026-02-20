@@ -15,11 +15,17 @@ static struct mmap g_mmap = {
     .length = 0,
 };
 
-static struct mmap_entry g_mm_sec_sentries[MAX_MMAP_ENTRIES];
+static struct mmap_entry g_mm_sec_entries[MAX_MMAP_ENTRIES];
 static struct mmap g_mm_sec = {
-    .entries = g_mm_sec_sentries,
+    .entries = g_mm_sec_entries,
     .length = 0,
 };
+
+static struct mmap_entry g_tmp_alloc_entries[MAX_MMAP_ENTRIES];
+static struct mm_tmp_alloc g_tmp_alloc = { {
+    .entries = g_tmp_alloc_entries,
+    .length = 0,
+} };
 
 static bool align_if_usable(struct mmap_entry* entry) {
     if (entry->type != MMAP_ENTRY_USABLE) {
@@ -271,11 +277,31 @@ void mm_map_init(void) {
     init_mm_section();
 }
 
-// this function must not be called after paging is initialized.
-phys_addr_t mm_sec_alloc_metadata(size_t max_pages, size_t *allocated_pages) {
-    for (uint32_t i = 0; i + 1 < g_mm_sec.length; i++) {
-        struct mmap_entry *const entry = &g_mm_sec.entries[i];
-        struct mmap_entry *const next = &g_mm_sec.entries[i + 1];
+void mm_tmp_alloc_create(void) {
+    assert(g_tmp_alloc.mm.entries && g_tmp_alloc.mm.length == 0, "tmp_alloc cannot created twice");
+
+    memcpy(g_tmp_alloc_entries, g_mm_sec.entries, g_mm_sec.length * sizeof(struct mmap_entry));
+    g_tmp_alloc.mm.length = g_mm_sec.length;
+}
+
+void mm_tmp_alloc_finalize(void) {
+    assert(g_tmp_alloc.mm.entries, "tmp_alloc is already finalized");
+
+    memcpy(g_mm_sec.entries, g_tmp_alloc_entries, g_tmp_alloc.mm.length * sizeof(struct mmap_entry));
+    g_mm_sec.length = g_tmp_alloc.mm.length;
+    g_tmp_alloc.mm.entries = NULL;
+}
+
+const struct mm_tmp_alloc *mm_tmp_alloc_get(void) {
+    return &g_tmp_alloc;
+}
+
+phys_addr_t mm_tmp_alloc_pages(size_t max_pages, size_t *allocated_pages) {
+    assert(allocated_pages);
+
+    for (uint32_t i = 0; i + 1 < g_tmp_alloc.mm.length; i++) {
+        struct mmap_entry *const entry = &g_tmp_alloc.mm.entries[i];
+        struct mmap_entry *const next = &g_tmp_alloc.mm.entries[i + 1];
 
         if (entry->type == MM_SEC_ENTRY_USABLE) {
             panic("mm_section is corrupted");

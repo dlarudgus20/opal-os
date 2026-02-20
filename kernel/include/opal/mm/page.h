@@ -17,7 +17,7 @@ struct page {
     uint16_t refcount;
 };
 
-void mm_page_init(const struct mmap *snapshot);
+void mm_page_init(void);
 
 pfn_t mm_get_pfn_end(void);
 bool mm_pfn_is_valid(pfn_t pfn);
