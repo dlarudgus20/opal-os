@@ -1,0 +1,49 @@
+{
+    "configurations": [
+        {
+            "name": "kernel pc-x64",
+            "includePath": [
+                "${workspaceFolder}/**/include"
+            ],
+            "defines": [
+                "OPAL_PLATFORM=\"pc-x64\"",
+                "OPAL_CONFIG=\"debug\""
+            ],
+            "compilerPath": "/home/dlaru/.local/x86_64-elf/bin/x86_64-elf-gcc",
+            "compilerArgs": [
+                "-ffreestanding",
+                "-pedantic",
+                "-Wall",
+                "-Wextra",
+                "-Werror"
+            ],
+            "cStandard": "c23",
+            "cppStandard": "c++23",
+            "intelliSenseMode": "linux-gcc-x64"
+        },
+        {
+            "name": "test pc-x64",
+            "includePath": [
+                "${workspaceFolder}/**/include"
+            ],
+            "defines": [
+                "OPAL_PLATFORM=\"pc-x64\"",
+                "OPAL_CONFIG=\"debug\"",
+                "OPAL_TEST"
+            ],
+            "compilerPath": "/usr/bin/gcc",
+            "compilerArgs": [
+                "-iquote",
+                "${workspaceFolder}/test-pch/include",
+                "-pedantic",
+                "-Wall",
+                "-Wextra",
+                "-Werror"
+            ],
+            "cStandard": "c23",
+            "cppStandard": "c++23",
+            "intelliSenseMode": "linux-gcc-x64"
+        }
+    ],
+    "version": 4
+}

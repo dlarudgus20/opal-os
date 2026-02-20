@@ -37,9 +37,9 @@ static virt_addr_t phys_to_virt_table(phys_addr_t pa) {
     }
 }
 
-static phys_addr_t alloc_usable_page(void) {
+static phys_addr_t allocate_page(void) {
     size_t allocated;
-    return mm_usable_alloc_metadata(1, &allocated);
+    return mm_sec_alloc_metadata(1, &allocated);
 }
 
 static pagetable_t *get_or_alloc_table(pagetable_t *parent, size_t index) {
@@ -52,7 +52,7 @@ static pagetable_t *get_or_alloc_table(pagetable_t *parent, size_t index) {
         return (pagetable_t *)phys_to_virt_table(entry & PTE_MASK_ADDR);
     }
 
-    const phys_addr_t child_pa = alloc_usable_page();
+    const phys_addr_t child_pa = allocate_page();
     pagetable_t *child = (pagetable_t *)phys_to_virt_table(child_pa);
 
     memset(child, 0, sizeof(pagetable_t));
@@ -133,7 +133,7 @@ virt_addr_t mm_pagetable_map(virt_addr_t va, phys_addr_t pa, phys_size_t len, pa
 }
 
 void mm_pagetable_init(const struct mmap *snapshot) {
-    const phys_addr_t new_pml4_pa = alloc_usable_page();
+    const phys_addr_t new_pml4_pa = allocate_page();
     g_ptable = (pagetable_t *)phys_to_virt_kernel(new_pml4_pa);
     memset(g_ptable, 0, sizeof(*g_ptable));
 

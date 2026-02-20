@@ -5,10 +5,15 @@
 
 #include <opal/mm/types.h>
 
-#define MAX_BOOT_MMAP_ENTRIES 128
+#define MAX_MMAP_ENTRIES 128
 
 // +1 required for metadata entry
-#define MAX_USABLE_ENTRIES (MAX_BOOT_MMAP_ENTRIES + 1)
+#define MAX_MM_SEC_ENTRIES (MAX_MMAP_ENTRIES + 1)
+
+enum {
+    MM_SEC_ENTRY_METADATA = 0,
+    MM_SEC_ENTRY_USABLE = 1,
+};
 
 struct mmap_entry {
     phys_addr_t addr;
@@ -22,13 +27,15 @@ struct mmap {
 };
 
 void mm_map_init(void);
-phys_addr_t mm_usable_alloc_metadata(size_t max_pages, size_t *allocated_pages);
+phys_addr_t mm_sec_alloc_metadata(size_t max_pages, size_t *allocated_pages);
 
-const struct mmap *mm_get_boot_map(void);
-const struct mmap *mm_get_usable_map(void);
+const struct mmap *mm_get_memory_map(void);
+const struct mmap *mm_get_section_map(void);
 
 #ifdef OPAL_TEST
-void construct_usable_map(struct mmap *mmap_out, uint32_t max_entries, const struct mmap *boot_map);
+void refine_mmap(struct mmap *mmap_out, uint32_t max_entries, const struct mmap *boot_map);
 #endif
+
+const char *mm_sec_entry_type_str(mmap_entry_type_t type);
 
 #endif

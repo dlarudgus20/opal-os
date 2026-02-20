@@ -1,4 +1,4 @@
-#include <gtest/gtest.h>
+#include "test-pch.h"
 
 extern "C" {
 #include <slab/slab.h>

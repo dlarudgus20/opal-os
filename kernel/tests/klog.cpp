@@ -1,7 +1,4 @@
-#include <gtest/gtest.h>
-
-#include <array>
-#include <cstring>
+#include "test-pch.h"
 
 extern "C" {
 #define restrict

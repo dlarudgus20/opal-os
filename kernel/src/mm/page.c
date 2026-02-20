@@ -41,7 +41,7 @@ static void prepare_pagetable(virt_addr_t va, virt_size_t pages_needed) {
     mm_pagetable_map(va, 0, pages_needed * PAGE_SIZE, 0);
 }
 
-static virt_addr_t allocate_usables(virt_addr_t va, virt_size_t pages_needed, virt_addr_t allocated_end) {
+static virt_addr_t allocate_pages(virt_addr_t va, virt_size_t pages_needed, virt_addr_t allocated_end) {
     if (allocated_end > va) {
         size_t pages_allocated = (allocated_end - va) / PAGE_SIZE;
         if (pages_needed <= pages_allocated) {
@@ -54,7 +54,7 @@ static virt_addr_t allocate_usables(virt_addr_t va, virt_size_t pages_needed, vi
 
     while (pages_needed > 0) {
         size_t pages_allocated;
-        phys_addr_t pa = mm_usable_alloc_metadata(pages_needed, &pages_allocated);
+        phys_addr_t pa = mm_sec_alloc_metadata(pages_needed, &pages_allocated);
 
         mm_pagetable_map(va, pa, pages_allocated * PAGE_SIZE, PTE_FLAG_WRITABLE | PTE_FLAG_PRESENT);
 
@@ -79,11 +79,11 @@ static void initialize_pages(pfn_t pfn_start, pfn_t pfn_end, bool is_metadata) {
 
 enum build_stage { STAGE_PREPARE, STAGE_ALLOC, STAGE_INIT };
 
-static void build_metadata(const struct mmap *usable, enum build_stage stage) {
+static void build_metadata(const struct mmap *section_map, enum build_stage stage) {
     virt_addr_t allocated_end = PAGES_START_VIRT;
 
-    for (uint32_t i = 0; i < usable->length; i++) {
-        const struct mmap_entry *entry = &usable->entries[i];
+    for (uint32_t i = 0; i < section_map->length; i++) {
+        const struct mmap_entry *entry = &section_map->entries[i];
         const struct meta_ranges ranges = meta_ranges_for_entry(entry);
 
         const virt_size_t pages_needed = ranges.page_end - ranges.page_start;
@@ -92,9 +92,9 @@ static void build_metadata(const struct mmap *usable, enum build_stage stage) {
         if (stage == STAGE_PREPARE) {
             prepare_pagetable(va_start, pages_needed);
         } else if (stage == STAGE_ALLOC) {
-            allocated_end = allocate_usables(va_start, pages_needed, allocated_end);
+            allocated_end = allocate_pages(va_start, pages_needed, allocated_end);
         } else {
-            bool is_metadata = entry->type == USABLE_ENTRY_METADATA;
+            bool is_metadata = entry->type == MM_SEC_ENTRY_METADATA;
             initialize_pages(ranges.pfn_start, ranges.pfn_end, is_metadata);
         }
     }
@@ -108,16 +108,16 @@ static void build_metadata_run(const struct mmap *snapshot) {
     build_metadata(snapshot, STAGE_ALLOC);
 
     // STAGE_INIT
-    build_metadata(mm_get_usable_map(), STAGE_INIT);
+    build_metadata(mm_get_section_map(), STAGE_INIT);
 }
 
 static pfn_t get_pfn_end(void) {
-    const struct mmap *usable = mm_get_usable_map();
-    if (usable->length == 0) {
+    const struct mmap *section_map = mm_get_section_map();
+    if (section_map->length == 0) {
         return 0;
     }
 
-    const struct mmap_entry *entry = &usable->entries[usable->length - 1];
+    const struct mmap_entry *entry = &section_map->entries[section_map->length - 1];
     const struct meta_ranges ranges = meta_ranges_for_entry(entry);
     return ranges.pfn_end;
 }
@@ -132,10 +132,10 @@ pfn_t mm_get_pfn_end(void) {
 }
 
 bool mm_pfn_is_valid(pfn_t pfn) {
-    const struct mmap *usable = mm_get_usable_map();
+    const struct mmap *section_map = mm_get_section_map();
 
-    for (uint32_t i = 0; i < usable->length; i++) {
-        const struct mmap_entry *entry = &usable->entries[i];
+    for (uint32_t i = 0; i < section_map->length; i++) {
+        const struct mmap_entry *entry = &section_map->entries[i];
         const struct meta_ranges ranges = meta_ranges_for_entry(entry);
 
         if (pfn < ranges.pfn_start) {
@@ -179,8 +179,8 @@ static void print_pfns(pfn_t pfn_start, pfn_t pfn_end, uint16_t flags) {
 }
 
 void mm_pfn_print_all(void) {
-    const struct mmap *usable = mm_get_usable_map();
-    if (usable->length == 0) {
+    const struct mmap *section_map = mm_get_section_map();
+    if (section_map->length == 0) {
         return;
     }
 
@@ -188,8 +188,8 @@ void mm_pfn_print_all(void) {
     pfn_t run_start = 0;
     pfn_t prev_pfn = 0;
 
-    for (uint32_t i = 0; i < usable->length; i++) {
-        const struct mmap_entry *entry = &usable->entries[i];
+    for (uint32_t i = 0; i < section_map->length; i++) {
+        const struct mmap_entry *entry = &section_map->entries[i];
         const struct meta_ranges ranges = meta_ranges_for_entry(entry);
 
         for (pfn_t pfn = ranges.pfn_start; pfn < ranges.pfn_end; pfn++) {

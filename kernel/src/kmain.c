@@ -13,6 +13,7 @@
 #include <opal/mm/map.h>
 #include <opal/mm/page.h>
 #include <opal/drivers/uart.h>
+#include <opal/platform/boot.h>
 #include <opal/platform/mm/pagetable.h>
 
 #define UNAME_MSG "opal-os ("OPAL_PLATFORM" "OPAL_CONFIG")"
@@ -34,9 +35,11 @@ static void print_mmap(const struct mmap *mmap, const char *(*entry_type_str)(mm
 
 static void print_memory_map(void) {
     tty0_puts("boot memory map:\n");
-    print_mmap(mm_get_boot_map(), mmap_entry_type_str);
-    tty0_puts("usable memory map:\n");
-    print_mmap(mm_get_usable_map(), usable_entry_type_str);
+    print_mmap(boot_get_mmap(), mmap_entry_type_str);
+    tty0_puts("canonical memory map:\n");
+    print_mmap(mm_get_memory_map(), mmap_entry_type_str);
+    tty0_puts("memory section map:\n");
+    print_mmap(mm_get_section_map(), mm_sec_entry_type_str);
 }
 
 static void print_banner(void) {

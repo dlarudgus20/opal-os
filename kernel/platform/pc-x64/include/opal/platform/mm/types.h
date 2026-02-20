@@ -29,5 +29,6 @@ enum {
 typedef uint32_t mmap_entry_type_t;
 
 const char *mmap_entry_type_str(mmap_entry_type_t type);
+int mmap_entry_overlap_priority(mmap_entry_type_t type);
 
 #endif

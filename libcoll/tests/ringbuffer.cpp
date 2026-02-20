@@ -1,10 +1,8 @@
-#include <gtest/gtest.h>
+#include "test-pch.h"
 
 extern "C" {
 #include <collections/ringbuffer.h>
 }
-
-#include <stdexcept>
 
 struct testbuffer {
     void* buffer;

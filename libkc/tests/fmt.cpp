@@ -1,3 +1,5 @@
+#include "test-pch.h"
+
 #include "LibkcTest.h"
 
 TEST_F(LibkcTest, SnprintfSWritesLiteralAndReturnsCount) {

@@ -51,5 +51,6 @@ SECTIONS {
         __stack_top_lba = . - __higher_half_displacement;
     } >HIGH
 
+    . = ALIGN(4K);
     __kernel_end_lba = . - __higher_half_displacement;
 }

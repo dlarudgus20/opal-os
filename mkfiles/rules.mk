@@ -18,6 +18,16 @@ TEST_EXECUTABLE    := $(BUILD_DIR)/test
 OBJECTS            := $(filter-out $(TEST_EXCLUDE_OBJ), $(OBJECTS))
 STATIC_REFS        += $(TEST_STATIC_REFS)
 SHARED_REFS        += $(TEST_SHARED_REFS)
+
+TEST_PCH_DIR       := ../test-pch
+TEST_PCH_FILE      := test-pch.h
+TEST_PCH_SRC       := $(wildcard $(TEST_PCH_DIR)/include/$(TEST_PCH_FILE))
+ifneq ($(TEST_PCH_SRC), )
+TEST_PCH           := $(TEST_PCH_DIR)/build/$(TEST_PCH_FILE).gch
+TEST_INCLUDE_FLAGS += -iquote $(TEST_PCH_DIR)/build/ -iquote $(TEST_PCH_DIR)/include/
+else
+TEST_PCH           :=
+endif
 endif
 
 REFS_STATIC_FILES  := $(foreach ref, $(STATIC_REFS), ../$(ref)/$(BUILD_DIR_REF)/$(ref).a)
@@ -102,10 +112,15 @@ $(TARGET): $(OBJECTS)
 endif
 
 ifeq ($(IS_TEST_BUILD), 1)
-$(BUILD_DIR)/%.cpp.o: %.cpp
+$(BUILD_DIR)/%.cpp.o: %.cpp $(TEST_PCH)
 	@mkdir -p $(dir $@)
-	$(TEST_CXX) $(TEST_CXXFLAGS) $(INCLUDE_FLAGS) -MMD -MP -MF $(patsubst %.o, %.d, $@) -c $< -o $@
+	$(TEST_CXX) $(TEST_CXXFLAGS) $(INCLUDE_FLAGS) $(TEST_INCLUDE_FLAGS) -MMD -MP -MF $(patsubst %.o, %.d, $@) -c $< -o $@
 	$(TOOLSET_OBJDUMP) $(OBJDUMP_FLAGS) -D $@ > $(patsubst %.o, %.dump, $@)
+
+ifneq ($(TEST_PCH_SRC), )
+$(TEST_PCH): $(TEST_PCH_SRC)
+	make -C $(TEST_PCH_DIR)
+endif
 
 $(TEST_EXECUTABLE): $(TEST_OBJECTS) $(TARGET) $(REFS_SHARED_FILES) $(TEST_WITH_REDEF_SYMBOLS)
 ifeq ($(TARGET_TYPE), static-lib)
@@ -113,7 +128,7 @@ ifneq ($(TEST_WITH_REDEF_SYMBOLS), )
 	$(TOOLSET_OBJCOPY) $(patsubst %, --redefine-syms %, $(TEST_WITH_REDEF_SYMBOLS)) $(TARGET) $(TARGET_REDEF)
 endif
 endif
-	$(TEST_CXX) $(TEST_CXXFLAGS) $(INCLUDE_FLAGS) $(TEST_LDFLAGS) -o $@ \
+	$(TEST_CXX) $(TEST_CXXFLAGS) $(INCLUDE_FLAGS) $(TEST_INCLUDE_FLAGS) $(TEST_LDFLAGS) -o $@ \
 		$(TEST_OBJECTS) $(TEST_TARGET_LIBS) $(REFS_SHARED_FILES) -lgtest -lgtest_main \
 		-Wl,-Map,$(BUILD_DIR)/test.map
 	$(TOOLSET_NM) $(NM_FLAGS) $@ > $(BUILD_DIR)/test.nm

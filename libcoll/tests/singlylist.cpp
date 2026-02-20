@@ -1,12 +1,9 @@
-#include <gtest/gtest.h>
+#include "test-pch.h"
 
 extern "C" {
 #define restrict
 #include <collections/singlylist.h>
 }
-
-#include <vector>
-#include <algorithm>
 
 #include <kc/stdlib.h>
 

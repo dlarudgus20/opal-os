@@ -40,11 +40,13 @@ fullclean:
 	-rm -rf build
 
 build-test:
+	make build -C test-pch
 	for dir in $(SUBDIRS); do \
 		$(MAKE) build-test -C $$dir || exit 1; \
 	done
 
 test:
+	make build -C test-pch
 	for dir in $(SUBDIRS); do \
 		$(MAKE) test -C $$dir || exit 1; \
 	done

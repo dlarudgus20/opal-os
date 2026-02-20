@@ -16,3 +16,20 @@ const char *mmap_entry_type_str(mmap_entry_type_t type) {
             return "(unknown)";
     }
 }
+
+int mmap_entry_overlap_priority(mmap_entry_type_t type) {
+    switch (type) {
+        case MMAP_ENTRY_USABLE:
+            return 100;
+        case MMAP_ENTRY_RESERVED:
+            return 2;
+        case MMAP_ENTRY_ACPI:
+            return 52;
+        case MMAP_ENTRY_NVS:
+            return 51;
+        case MMAP_ENTRY_BAD:
+            return 1;
+        default:
+            return 50;
+    }
+}

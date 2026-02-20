@@ -1,9 +1,6 @@
 #ifndef LIBKC_TEST_H
 #define LIBKC_TEST_H
 
-#include <gtest/gtest.h>
-#include <stddef.h>
-
 struct LibkcApi {
     void load_api();
     void unload_api();

@@ -1,16 +1,9 @@
-#include <gtest/gtest.h>
+#include "test-pch.h"
 
 extern "C" {
 #define restrict
 #include <collections/rbtree.h>
 };
-
-#include <iostream>
-#include <algorithm>
-#include <random>
-#include <climits>
-#include <cstdlib>
-#include <cstdio>
 
 enum { RED, BLK };
 

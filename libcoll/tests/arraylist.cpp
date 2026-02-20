@@ -1,14 +1,8 @@
-#include <gtest/gtest.h>
+#include "test-pch.h"
 
 extern "C" {
 #include <collections/arraylist.h>
 }
-
-#include <vector>
-#include <algorithm>
-#include <limits>
-#include <cstdlib>
-#include <cstring>
 
 // Mock allocator for testing
 class MockAllocator {
