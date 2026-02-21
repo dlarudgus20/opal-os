@@ -6,7 +6,7 @@
 #include <kc/stdlib.h>
 
 #include <opal/mm/map.h>
-#include <opal/mm/page.h>
+#include <opal/mm/pfn.h>
 #include <opal/platform/asm.h>
 #include <opal/platform/mm/pagetable.h>
 
@@ -124,7 +124,7 @@ static pfn_t get_pfn_end(void) {
     return ranges.pfn_end;
 }
 
-void mm_page_init(void) {
+void mm_pfn_init(void) {
     build_metadata_run();
     g_pfn_end = get_pfn_end();
 }

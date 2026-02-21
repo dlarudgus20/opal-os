@@ -6,9 +6,10 @@
 
 #include <opal/mm/buddy.h>
 #include <opal/mm/map.h>
-#include <opal/mm/page.h>
+#include <opal/mm/pfn.h>
 #include <opal/platform/mm/defines.h>
 
+// TODO: calculate max_orders from log2( 2^64 / PAGE_SIZE )
 enum {
     BUDDY_MAX_ORDERS = sizeof(pfn_t) * 8,
 };

@@ -4,7 +4,7 @@
 
 #include <opal/mm/buddy.h>
 #include <opal/mm/map.h>
-#include <opal/mm/page.h>
+#include <opal/mm/pfn.h>
 #include <opal/platform/mm/defines.h>
 #include <opal/test.h>
 #include <opal/tty.h>

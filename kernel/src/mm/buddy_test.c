@@ -1,5 +1,5 @@
 #include <opal/mm/buddy.h>
-#include <opal/mm/page.h>
+#include <opal/mm/pfn.h>
 #include <opal/test.h>
 
 DEFINE_UNIT_TEST(buddy_alloc_free_order0) {

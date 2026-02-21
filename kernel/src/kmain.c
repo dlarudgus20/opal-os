@@ -11,7 +11,7 @@
 #include <opal/klog.h>
 #include <opal/mm/mm.h>
 #include <opal/mm/map.h>
-#include <opal/mm/page.h>
+#include <opal/mm/pfn.h>
 #include <opal/drivers/uart.h>
 #include <opal/platform/boot.h>
 #include <opal/platform/mm/pagetable.h>
