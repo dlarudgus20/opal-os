@@ -73,8 +73,7 @@ static void initialize_pages(pfn_t pfn_start, pfn_t pfn_end, bool is_metadata) {
         *ptr = (struct page){
             .flags = is_metadata ? PAGE_FLAG_METADATA : 0,
             .refcount = 0,
-            .buddy_order = 0,
-            .buddy_next = PFN_INVALID,
+            .buddy = { .order = 0, .next = PFN_INVALID },
         };
     }
 }

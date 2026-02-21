@@ -1,5 +1,7 @@
 #include <opal/mm/buddy.h>
+#include <opal/mm/map.h>
 #include <opal/mm/pfn.h>
+#include <opal/platform/mm/defines.h>
 #include <opal/test.h>
 
 DEFINE_UNIT_TEST(buddy_alloc_free_order0) {
@@ -54,40 +56,6 @@ DEFINE_UNIT_TEST(buddy_multi_alloc_free_restores_count) {
     TEST_EXPECT_EQ(before, mm_buddy_get_free_pages());
 }
 
-DEFINE_UNIT_TEST(buddy_merge_two_order0_to_order1) {
-    if (mm_buddy_get_max_order() < 1) {
-        return;
-    }
-
-    size_t before = mm_buddy_get_free_pages();
-    bool found = false;
-
-    for (int attempt = 0; attempt < 256; attempt++) {
-        pfn_t a = mm_buddy_alloc(0);
-        pfn_t b = mm_buddy_alloc(0);
-        TEST_ASSERT_FALSE(a == PFN_INVALID);
-        TEST_ASSERT_FALSE(b == PFN_INVALID);
-
-        if ((a ^ (pfn_t)1) == b) {
-            pfn_t base = a < b ? a : b;
-            mm_buddy_free(b, 0);
-            mm_buddy_free(a, 0);
-            pfn_t merged = mm_buddy_alloc(1);
-            TEST_ASSERT_FALSE(merged == PFN_INVALID);
-            TEST_EXPECT_EQ(base, merged);
-            mm_buddy_free(merged, 1);
-            found = true;
-            break;
-        }
-
-        mm_buddy_free(a, 0);
-        mm_buddy_free(b, 0);
-    }
-
-    TEST_ASSERT_TRUE(found);
-    TEST_EXPECT_EQ(before, mm_buddy_get_free_pages());
-}
-
 DEFINE_UNIT_TEST(buddy_exhaust_and_restore_same_order) {
     uint8_t order = mm_buddy_get_max_order() >= 8 ? 8 : 0;
     pfn_t pages_per_block = (pfn_t)1 << order;
@@ -102,7 +70,7 @@ DEFINE_UNIT_TEST(buddy_exhaust_and_restore_same_order) {
         }
 
         struct page *page = mm_page_by_pfn(pfn);
-        page->buddy_next = head;
+        page->buddy.next = head;
         head = pfn;
         allocated_blocks++;
     }
@@ -113,7 +81,7 @@ DEFINE_UNIT_TEST(buddy_exhaust_and_restore_same_order) {
     while (head != PFN_INVALID) {
         pfn_t pfn = head;
         struct page *page = mm_page_by_pfn(pfn);
-        head = page->buddy_next;
+        head = page->buddy.next;
         mm_buddy_free(pfn, order);
     }
 

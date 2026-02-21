@@ -9,10 +9,7 @@
 #include <opal/mm/pfn.h>
 #include <opal/platform/mm/defines.h>
 
-// TODO: calculate max_orders from log2( 2^64 / PAGE_SIZE )
-enum {
-    BUDDY_MAX_ORDERS = sizeof(pfn_t) * 8,
-};
+#define BUDDY_MAX_ORDERS PFN_VALID_BIT_WIDTH
 
 static pfn_t g_free_head[BUDDY_MAX_ORDERS];
 static uint8_t g_max_order;
@@ -36,7 +33,7 @@ static bool page_is_usable(pfn_t pfn) {
 }
 
 static void set_block_free_state(pfn_t pfn, uint8_t order, bool is_free) {
-    pfn_t pages = order_pages(order);
+    const pfn_t pages = order_pages(order);
     for (pfn_t i = 0; i < pages; i++) {
         struct page *page = mm_page_by_pfn(pfn + i);
         if (is_free) {
@@ -52,21 +49,21 @@ static void list_push(uint8_t order, pfn_t pfn) {
     struct page *page = mm_page_by_pfn(pfn);
     set_block_free_state(pfn, order, true);
     page->flags |= PAGE_FLAG_BUDDY_FREE | PAGE_FLAG_BUDDY_HEAD;
-    page->buddy_order = order;
-    page->buddy_next = g_free_head[order];
+    page->buddy.order = order;
+    page->buddy.next = g_free_head[order];
     g_free_head[order] = pfn;
 }
 
 static pfn_t list_pop(uint8_t order) {
-    pfn_t head = g_free_head[order];
+    const pfn_t head = g_free_head[order];
     assert(head != PFN_INVALID);
 
     struct page *page = mm_page_by_pfn(head);
-    g_free_head[order] = page->buddy_next;
+    g_free_head[order] = page->buddy.next;
     set_block_free_state(head, order, false);
-    page->buddy_next = PFN_INVALID;
+    page->buddy.next = PFN_INVALID;
     page->flags &= ~PAGE_FLAG_BUDDY_HEAD;
-    page->buddy_order = 0;
+    page->buddy.order = 0;
     return head;
 }
 
@@ -74,19 +71,19 @@ static bool list_remove(uint8_t order, pfn_t pfn) {
     pfn_t *cur = &g_free_head[order];
 
     while (*cur != PFN_INVALID) {
-        pfn_t cur_pfn = *cur;
+        const pfn_t cur_pfn = *cur;
         struct page *cur_page = mm_page_by_pfn(cur_pfn);
 
         if (cur_pfn == pfn) {
-            *cur = cur_page->buddy_next;
+            *cur = cur_page->buddy.next;
             set_block_free_state(cur_pfn, order, false);
-            cur_page->buddy_next = PFN_INVALID;
+            cur_page->buddy.next = PFN_INVALID;
             cur_page->flags &= ~PAGE_FLAG_BUDDY_HEAD;
-            cur_page->buddy_order = 0;
+            cur_page->buddy.order = 0;
             return true;
         }
 
-        cur = &cur_page->buddy_next;
+        cur = &cur_page->buddy.next;
     }
 
     return false;
@@ -100,7 +97,7 @@ static bool is_free_head_of_order(pfn_t pfn, uint8_t order) {
     struct page *page = mm_page_by_pfn(pfn);
     return (page->flags & PAGE_FLAG_BUDDY_FREE) &&
         (page->flags & PAGE_FLAG_BUDDY_HEAD) &&
-        page->buddy_order == order;
+        page->buddy.order == order;
 }
 
 static void add_range(pfn_t start, pfn_t end) {
@@ -132,8 +129,8 @@ static void prepare_from_section_map(void) {
             continue;
         }
 
-        pfn_t start = entry->addr / PAGE_SIZE;
-        pfn_t end = start + (pfn_t)(entry->len / PAGE_SIZE);
+        const pfn_t start = entry->addr / PAGE_SIZE;
+        const pfn_t end = start + entry->len / PAGE_SIZE;
         add_range(start, end);
     }
 }
@@ -144,7 +141,7 @@ void mm_buddy_init(void) {
     }
     g_free_pages = 0;
 
-    pfn_t pfn_end = mm_get_pfn_end();
+    const pfn_t pfn_end = mm_get_pfn_end();
     g_max_order = 0;
     while (g_max_order + 1 < BUDDY_MAX_ORDERS && order_pages(g_max_order + 1) <= pfn_end) {
         g_max_order++;
@@ -166,10 +163,10 @@ pfn_t mm_buddy_alloc(uint8_t order) {
         return PFN_INVALID;
     }
 
-    pfn_t pfn = list_pop(cur);
+    const pfn_t pfn = list_pop(cur);
     while (cur > order) {
         cur--;
-        pfn_t buddy = pfn + order_pages(cur);
+        const pfn_t buddy = pfn + order_pages(cur);
         list_push(cur, buddy);
     }
 
@@ -179,14 +176,15 @@ pfn_t mm_buddy_alloc(uint8_t order) {
 }
 
 void mm_buddy_free(pfn_t pfn, uint8_t order) {
-    uint8_t req_order = order;
-    assert(order <= g_max_order);
-    assert(page_is_usable(pfn));
-    assert((pfn & (order_pages(order) - 1)) == 0);
-    assert((mm_page_by_pfn(pfn)->flags & PAGE_FLAG_BUDDY_FREE) == 0);
+    assert(order <= g_max_order, "invalid buddy order");
+    assert(page_is_usable(pfn), "pfn is not allocated before");
+    assert((pfn & (order_pages(order) - 1)) == 0, "invalid pfn with requested order");
+    assert((mm_page_by_pfn(pfn)->flags & PAGE_FLAG_BUDDY_FREE) == 0, "pfn is not allocated before");
+
+    const uint8_t req_order = order;
 
     while (order < g_max_order) {
-        pfn_t buddy = pfn ^ order_pages(order);
+        const pfn_t buddy = pfn ^ order_pages(order);
         if (buddy >= mm_get_pfn_end() || !is_free_head_of_order(buddy, order)) {
             break;
         }
