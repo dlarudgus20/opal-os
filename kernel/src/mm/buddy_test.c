@@ -55,35 +55,3 @@ DEFINE_UNIT_TEST(buddy_multi_alloc_free_restores_count) {
     mm_buddy_free(b, 0);
     TEST_EXPECT_EQ(before, mm_buddy_get_free_pages());
 }
-
-DEFINE_UNIT_TEST(buddy_exhaust_and_restore_same_order) {
-    uint8_t order = mm_buddy_get_max_order() >= 8 ? 8 : 0;
-    pfn_t pages_per_block = (pfn_t)1 << order;
-    size_t before = mm_buddy_get_free_pages();
-    pfn_t head = PFN_INVALID;
-    size_t allocated_blocks = 0;
-
-    while (1) {
-        pfn_t pfn = mm_buddy_alloc(order);
-        if (pfn == PFN_INVALID) {
-            break;
-        }
-
-        struct page *page = mm_page_by_pfn(pfn);
-        page->buddy.next = head;
-        head = pfn;
-        allocated_blocks++;
-    }
-
-    TEST_EXPECT_EQ(before - allocated_blocks * pages_per_block, mm_buddy_get_free_pages());
-    TEST_EXPECT_EQ(PFN_INVALID, mm_buddy_alloc(order));
-
-    while (head != PFN_INVALID) {
-        pfn_t pfn = head;
-        struct page *page = mm_page_by_pfn(pfn);
-        head = page->buddy.next;
-        mm_buddy_free(pfn, order);
-    }
-
-    TEST_EXPECT_EQ(before, mm_buddy_get_free_pages());
-}

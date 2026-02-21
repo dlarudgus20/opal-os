@@ -1,6 +1,8 @@
 #ifndef OPAL_MM_PAGE_H
 #define OPAL_MM_PAGE_H
 
+#include <collections/linkedlist.h>
+
 #include <opal/mm/types.h>
 
 enum {
@@ -12,7 +14,7 @@ enum {
 
 struct page_buddy {
     uint8_t order;
-    pfn_t next;
+    struct linkedlist_link link;
 };
 
 struct page {

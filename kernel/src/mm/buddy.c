@@ -3,6 +3,7 @@
 #include <stdint.h>
 
 #include <kc/assert.h>
+#include <kc/stdlib.h>
 
 #include <opal/mm/buddy.h>
 #include <opal/mm/map.h>
@@ -11,7 +12,7 @@
 
 #define BUDDY_MAX_ORDERS PFN_VALID_BIT_WIDTH
 
-static pfn_t g_free_head[BUDDY_MAX_ORDERS];
+static struct linkedlist g_free_list[BUDDY_MAX_ORDERS];
 static uint8_t g_max_order;
 static size_t g_free_pages;
 
@@ -21,7 +22,7 @@ static pfn_t order_pages(uint8_t order) {
 }
 
 static bool list_is_empty(uint8_t order) {
-    return g_free_head[order] == PFN_INVALID;
+    return linkedlist_is_empty(&g_free_list[order]);
 }
 
 static bool page_is_usable(pfn_t pfn) {
@@ -50,43 +51,20 @@ static void list_push(uint8_t order, pfn_t pfn) {
     set_block_free_state(pfn, order, true);
     page->flags |= PAGE_FLAG_BUDDY_FREE | PAGE_FLAG_BUDDY_HEAD;
     page->buddy.order = order;
-    page->buddy.next = g_free_head[order];
-    g_free_head[order] = pfn;
+    linkedlist_push_front(&g_free_list[order], &page->buddy.link);
 }
 
 static pfn_t list_pop(uint8_t order) {
-    const pfn_t head = g_free_head[order];
-    assert(head != PFN_INVALID);
+    struct linkedlist_link *head_link = linkedlist_pop_front(&g_free_list[order]);
+    assert(head_link != NULL);
 
-    struct page *page = mm_page_by_pfn(head);
-    g_free_head[order] = page->buddy.next;
+    struct page *page = container_of(head_link, struct page, buddy.link);
+    const pfn_t head = mm_pfn_by_page(page);
     set_block_free_state(head, order, false);
-    page->buddy.next = PFN_INVALID;
+    page->buddy.link = (struct linkedlist_link){ .prev = NULL, .next = NULL };
     page->flags &= ~PAGE_FLAG_BUDDY_HEAD;
     page->buddy.order = 0;
     return head;
-}
-
-static bool list_remove(uint8_t order, pfn_t pfn) {
-    pfn_t *cur = &g_free_head[order];
-
-    while (*cur != PFN_INVALID) {
-        const pfn_t cur_pfn = *cur;
-        struct page *cur_page = mm_page_by_pfn(cur_pfn);
-
-        if (cur_pfn == pfn) {
-            *cur = cur_page->buddy.next;
-            set_block_free_state(cur_pfn, order, false);
-            cur_page->buddy.next = PFN_INVALID;
-            cur_page->flags &= ~PAGE_FLAG_BUDDY_HEAD;
-            cur_page->buddy.order = 0;
-            return true;
-        }
-
-        cur = &cur_page->buddy.next;
-    }
-
-    return false;
 }
 
 static bool is_free_head_of_order(pfn_t pfn, uint8_t order) {
@@ -98,6 +76,17 @@ static bool is_free_head_of_order(pfn_t pfn, uint8_t order) {
     return (page->flags & PAGE_FLAG_BUDDY_FREE) &&
         (page->flags & PAGE_FLAG_BUDDY_HEAD) &&
         page->buddy.order == order;
+}
+
+static void list_remove(uint8_t order, pfn_t pfn) {
+    assert(is_free_head_of_order(pfn, order));
+
+    struct page *page = mm_page_by_pfn(pfn);
+    linkedlist_remove(&page->buddy.link);
+    set_block_free_state(pfn, order, false);
+    page->buddy.link = (struct linkedlist_link){ .prev = NULL, .next = NULL };
+    page->flags &= ~PAGE_FLAG_BUDDY_HEAD;
+    page->buddy.order = 0;
 }
 
 static void add_range(pfn_t start, pfn_t end) {
@@ -137,7 +126,7 @@ static void prepare_from_section_map(void) {
 
 void mm_buddy_init(void) {
     for (uint8_t i = 0; i < BUDDY_MAX_ORDERS; i++) {
-        g_free_head[i] = PFN_INVALID;
+        linkedlist_init(&g_free_list[i]);
     }
     g_free_pages = 0;
 
@@ -189,8 +178,7 @@ void mm_buddy_free(pfn_t pfn, uint8_t order) {
             break;
         }
 
-        bool removed = list_remove(order, buddy);
-        assert(removed);
+        list_remove(order, buddy);
 
         if (buddy < pfn) {
             pfn = buddy;

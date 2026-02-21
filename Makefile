@@ -9,7 +9,7 @@ KERNEL_BIN  := kernel/$(BUILD_DIR)/kernel.sys
 ISO_DIR     := $(BUILD_DIR)/iso
 ISO_FILE    := $(BUILD_DIR)/opal-os.iso
 
-QEMU_FLAGS  += -serial stdio -no-reboot -d int
+QEMU_FLAGS  += -m 128 -serial stdio -no-reboot -d int
 
 SUBDIRS     := test-pch kernel libkubsan libkc libpanicimpl libcoll libslab
 

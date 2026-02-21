@@ -99,29 +99,29 @@ static virt_addr_t map_range_len(virt_addr_t va, phys_addr_t pa, phys_size_t len
     assert(len % PAGE_SIZE == 0);
     assert(va % PAGE_SIZE == 0);
 
-    const phys_addr_t pa_2m = (pa + HUGE_PAGE_SIZE - 1) & ~(HUGE_PAGE_SIZE - 1);
-    const phys_size_t gap = pa_2m - pa;
+    virt_addr_t va_cur = va;
+    phys_addr_t pa_cur = pa;
 
-    phys_size_t len_2m = 0;
-    if (len > gap) {
-        len_2m = ((len - gap) & ~(HUGE_PAGE_SIZE - 1)) + gap;
+    while (len > 0) {
+        bool can_use_huge =
+            (len >= HUGE_PAGE_SIZE) &&
+            ((va_cur & (HUGE_PAGE_SIZE - 1)) == 0) &&
+            ((pa_cur & (HUGE_PAGE_SIZE - 1)) == 0);
+
+        if (can_use_huge) {
+            map_2m(va_cur, pa_cur, flags);
+            va_cur += HUGE_PAGE_SIZE;
+            pa_cur += HUGE_PAGE_SIZE;
+            len -= HUGE_PAGE_SIZE;
+        } else {
+            map_4k(va_cur, pa_cur, flags);
+            va_cur += PAGE_SIZE;
+            pa_cur += PAGE_SIZE;
+            len -= PAGE_SIZE;
+        }
     }
 
-    phys_size_t offset = 0;
-
-    for (; offset < pa_2m - pa && offset < len; offset += PAGE_SIZE) {
-        map_4k(va + offset, pa + offset, flags);
-    }
-
-    for (; offset < len_2m; offset += HUGE_PAGE_SIZE) {
-        map_2m(va + offset, pa + offset, flags);
-    }
-
-    for (; offset < len; offset += PAGE_SIZE) {
-        map_4k(va + offset, pa + offset, flags);
-    }
-
-    return va + offset;
+    return va_cur;
 }
 
 static virt_addr_t map_range(virt_addr_t va, phys_addr_t pa_start, phys_addr_t pa_end, page_entry_t flags) {
