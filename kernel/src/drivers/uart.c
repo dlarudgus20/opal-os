@@ -12,12 +12,6 @@ void uart_write_char(char c) {
     platform_uart_write_char(c);
 }
 
-void uart_write(const char *s) {
-    while (*s != '\0') {
-        uart_write_char(*s++);
-    }
-}
-
 char uart_read_char(void) {
     return platform_uart_read_char();
 }
@@ -33,13 +27,15 @@ void uart_read_line(char *buf, int buf_len, int mask_input) {
         char c = uart_read_char();
 
         if (c == '\r' || c == '\n') {
-            uart_write("\n");
+            uart_write_char('\n');
             break;
         }
 
         if ((c == 0x08 || c == 0x7F) && idx > 0) {
             idx--;
-            uart_write("\b \b");
+            uart_write_char('\b');
+            uart_write_char(' ');
+            uart_write_char('\b');
             continue;
         }
 

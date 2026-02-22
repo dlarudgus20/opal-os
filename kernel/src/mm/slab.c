@@ -238,9 +238,11 @@ void slab_free(struct slab *slab, void *ptr) {
     struct slab_obj_hdr *hdr = slot_from_payload(slab, ptr);
     struct slab_page *page = hdr_to_page(hdr);
 
-    size_t offset = (char *)hdr - (char *)page;
+    const size_t offset = (char *)hdr - (char *)page;
+    const size_t delta = offset - slab->slot_offset;
     assert(offset >= slab->slot_offset, "invalid pointer to free");
-    assert((offset - slab->slot_offset) % slab->slot_stride == 0, "invalid pointer to free");
+    assert(delta / slab->slot_stride < slab->page_capacity, "invalid pointer to free");
+    assert(delta % slab->slot_stride == 0, "invalid pointer to free");
 
     assert(page->owner == slab, "object belongs to another slab");
     assert(!hdr->is_free, "double free detected");

@@ -3,7 +3,6 @@
 
 void uart_init(void);
 void uart_write_char(char c);
-void uart_write(const char *s);
 char uart_read_char(void);
 void uart_read_line(char *buf, int buf_len, int mask_input);
 

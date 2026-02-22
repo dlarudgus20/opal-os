@@ -11,6 +11,11 @@ ISO_FILE    := $(BUILD_DIR)/opal-os.iso
 
 QEMU_FLAGS  += -m 128 -serial stdio -no-reboot -d int
 
+ifeq ($(UEFI), 1)
+UEFI_FIRMWARE ?= /usr/share/ovmf/OVMF.fd
+QEMU_FLAGS += -bios $(UEFI_FIRMWARE)
+endif
+
 SUBDIRS     := test-pch kernel libkubsan libkc libpanicimpl libcoll libslab
 
 .PHONY: all build iso run clean fullclean build-test test clean-test unit-test clean-unit-test

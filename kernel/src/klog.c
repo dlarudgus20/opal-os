@@ -9,6 +9,7 @@
 #include <kc/assert.h>
 
 #include <opal/klog.h>
+#include <opal/tty.h>
 
 #define KLOG_WRAP UINT16_MAX
 #define KLOG_BUFFER_SIZE 0x100000 // 1MB
@@ -57,6 +58,30 @@ static uint32_t count_records(uint32_t from, uint32_t to) {
 }
 
 void klog_init(void) {
+    // do nothing
+}
+
+static void set_log_color(uint16_t level) {
+    tty_color_t colors[KLOG_LEVEL_COUNT] = {
+        TTY_BRIGHT_WHITE, TTY_RED, TTY_YELLOW, TTY_CYAN, TTY_GREEN, TTY_GRAY
+    };
+    if (level >= KLOG_LEVEL_COUNT) {
+        level = KLOG_LEVEL_COUNT - 1;
+    }
+    if (level == 0) {
+        tty0_set_bgcolor(TTY_RED);
+    }
+    tty0_set_fgcolor(colors[level]);
+}
+
+static void print_log(int seq, uint16_t level, const char *msg, uint16_t msglen) {
+    set_log_color(level);
+    if (seq >= 0) {
+        tty0_printf("[%d] ", seq);
+    }
+    tty0_puts_len(msg, msglen);
+    tty0_reset_color();
+    tty0_puts("\n");
 }
 
 void klog_write(uint16_t level, const char *msg, uint16_t msglen) {
@@ -126,6 +151,10 @@ void klog_write(uint16_t level, const char *msg, uint16_t msglen) {
     if (klog_queue.write_pos == klog_queue.read_pos) {
         klog_queue.full = true;
     }
+
+#ifndef OPAL_TEST
+    print_log(-1, level, msg, msglen);
+#endif
 }
 
 bool klog_read(struct klog_record_header *header_out, char *msg_out, size_t msg_size) {
@@ -158,25 +187,18 @@ bool klog_read(struct klog_record_header *header_out, char *msg_out, size_t msg_
     return true;
 }
 
-int klog_format(uint16_t level, const char *fmt, const char *file, const char *func, unsigned line, ...) {
+void klog_print_tty0(struct klog_record_header *header, char *msg) {
+    print_log(header->seq, header->level, msg, header->msglen);
+}
+
+int klog_format(uint16_t level, const char *fmt, ...) {
     char buf[KLOG_MAX_MSGLEN + 1];
     va_list args;
-    va_start(args, line);
+    va_start(args, fmt);
 
-    int prefix = 0;
-    int body = 0;
+    int written = vsnprintf_s(buf, sizeof(buf), fmt, args);
 
-    prefix = snprintf_s(buf, sizeof(buf), "[%s:%s:%u] ", file, func, line);
-    if (prefix < 0) {
-        prefix = 0;
-    }
-
-    if ((size_t)prefix + 1 < sizeof(buf)) {
-        body = vsnprintf_s(buf + prefix, sizeof(buf) - prefix, fmt, args);
-    }
-
-    if (body >= 0) {
-        int written = prefix + body;
+    if (written >= 0) {
         if ((size_t)written + 1 >= sizeof(buf)) {
             written = sizeof(buf) - 1;
         }
@@ -184,5 +206,5 @@ int klog_format(uint16_t level, const char *fmt, const char *file, const char *f
     }
 
     va_end(args);
-    return body >= 0 ? prefix + body : body;
+    return written;
 }

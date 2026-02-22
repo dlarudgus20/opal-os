@@ -29,17 +29,26 @@ static void unit_test_end(void) {
     g_test_state.run_count++;
     if (g_test_state.current_failures == 0) {
         g_test_state.pass_count++;
-        tty0_printf("\x1b[1;92m[       OK ]\x1b[0m %s\n", g_test_state.current_name);
+        tty0_set_fgcolor(TTY_GREEN);
+        tty0_printf("[       OK ]");
+        tty0_reset_color();
+        tty0_printf(" %s\n", g_test_state.current_name);
     } else {
         g_test_state.fail_count++;
-        tty0_printf("\x1b[1;91m[  FAILED  ]\x1b[0m %s (%u failures)\n",
+        tty0_set_fgcolor(TTY_RED);
+        tty0_printf("[  FAILED  ]");
+        tty0_reset_color();
+        tty0_printf(" %s (%u failures)\n",
             g_test_state.current_name, g_test_state.current_failures);
     }
 }
 
 void unit_test_expect_true_failed(const char *expr, const char *file, unsigned line) {
     g_test_state.current_failures++;
-    tty0_printf("\x1b[1;91m  Failure\x1b[0m %s:%u: EXPECT_TRUE(%s)\n", file, line, expr);
+    tty0_set_fgcolor(TTY_RED);
+    tty0_printf("  Failure");
+    tty0_reset_color();
+    tty0_printf(" %s:%u: EXPECT_TRUE(%s)\n", file, line, expr);
 }
 
 void unit_test_expect_eq_u64_failed(
@@ -51,8 +60,11 @@ void unit_test_expect_eq_u64_failed(
     unsigned line
 ) {
     g_test_state.current_failures++;
+    tty0_set_fgcolor(TTY_RED);
+    tty0_printf("  Failure");
+    tty0_reset_color();
     tty0_printf(
-        "\x1b[1;91m  Failure\x1b[0m %s:%u: EXPECT_EQ(%s, %s), expected=0x%llx actual=0x%llx\n",
+        " %s:%u: EXPECT_EQ(%s, %s), expected=0x%llx actual=0x%llx\n",
         file,
         line,
         expected_expr,
@@ -71,8 +83,11 @@ void unit_test_expect_streq_failed(
     unsigned line
 ) {
     g_test_state.current_failures++;
+    tty0_set_fgcolor(TTY_RED);
+    tty0_printf("  Failure");
+    tty0_reset_color();
     tty0_printf(
-        "\x1b[1;91m  Failure\x1b[0m %s:%u: EXPECT_STREQ(%s, %s), expected=\"%s\" actual=\"%s\"\n",
+        " %s:%u: EXPECT_STREQ(%s, %s), expected=\"%s\" actual=\"%s\"\n",
         file,
         line,
         expected_expr,
@@ -97,7 +112,10 @@ static void test_run(bool heavy) {
         bool is_heavy = strncmp(p->item, "heavy__", 7) == 0;
         if (is_heavy == heavy)
         {
-            tty0_printf("\x1b[1;92m[ RUN      ]\x1b[0m %s\n", p->item);
+            tty0_set_fgcolor(TTY_GREEN);
+            tty0_printf("[ RUN      ]");
+            tty0_reset_color();
+            tty0_printf(" %s\n", p->item);
             unit_test_begin(p->item);
             p->fn();
             unit_test_end();
