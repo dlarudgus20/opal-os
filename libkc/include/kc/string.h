@@ -7,6 +7,8 @@ void *memcpy(void *restrict dest, const void *restrict src, size_t n);
 void *memmove(void *dest, const void *src, size_t n);
 void *memset(void *dest, int ch, size_t n);
 int memcmp(const void *lhs, const void *rhs, size_t n);
+void* memchr(const void* ptr, int ch, size_t count);
+void* memchr_not(const void* ptr, int ch, size_t count);
 
 size_t strlen(const char *s);
 size_t strnlen_s(const char *s, size_t strsz);
@@ -19,10 +21,19 @@ char *strcpy(char *restrict dest, const char *restrict src);
 char *strncpy(char *restrict dest, const char *restrict src, size_t n);
 
 #ifndef NO_BUILTIN_MACRO
-#define memcpy(dest, src, count) __builtin_memcpy(dest, src, count)
-#define memmove(dest, src, count) __builtin_memmove(dest, src, count)
-#define memset(dest, ch, count) __builtin_memset(dest, ch, count)
-#define memcmp(lhs, rhs, count) __builtin_memcmp(lhs, rhs, count)
+#define memcpy(dest, src, count)    __builtin_memcpy(dest, src, count)
+#define memmove(dest, src, count)   __builtin_memmove(dest, src, count)
+#define memset(dest, ch, count)     __builtin_memset(dest, ch, count)
+#define memcmp(lhs, rhs, count)     __builtin_memcmp(lhs, rhs, count)
+#define memchr(ptr, ch, count)      __builtin_memchr(ptr, ch, count)
+
+#define strlen(s)                   __builtin_strlen(s)
+#define strspn(s, accept)           __builtin_strspn(s, accept)
+#define strchr(s, ch)               __builtin_strchr(s, ch)
+#define strcmp(lhs, rhs)            __builtin_strcmp(lhs, rhs)
+#define strncmp(lhs, rhs, n)        __builtin_strncmp(lhs, rhs, n)
+#define strcpy(dest, src)           __builtin_strcpy(dest, src)
+#define strncpy(dest, src, n)       __builtin_strncpy(dest, src, n)
 #endif
 
 #endif

@@ -9,8 +9,12 @@ void mm_pfn_init(void);
 
 pfn_t mm_get_pfn_end(void);
 bool mm_pfn_is_valid(pfn_t pfn);
-struct page *mm_page_by_pfn(pfn_t pfn);
-pfn_t mm_pfn_by_page(struct page *page);
+
+struct page *mm_pfn_to_page(pfn_t pfn);
+pfn_t mm_page_to_pfn(struct page *page);
+
+void *mm_pfn_to_ptr(pfn_t pfn);
+pfn_t mm_ptr_to_pfn(void *ptr);
 
 void mm_pfn_print_all(void);
 

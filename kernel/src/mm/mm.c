@@ -6,6 +6,7 @@
 #include <opal/mm/buddy.h>
 #include <opal/mm/map.h>
 #include <opal/mm/pfn.h>
+#include <opal/mm/slab.h>
 #include <opal/platform/mm/pagetable.h>
 
 void mm_init(void) {

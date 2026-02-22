@@ -82,7 +82,7 @@ DEFINE_UNIT_TEST(heavy__buddy_hash_sweep_all_orders) {
             pfn_t pfn = align_up_pfn(start, block_pages);
 
             while (pfn + block_pages <= end) {
-                struct page *page = mm_page_by_pfn(pfn);
+                struct page *page = mm_pfn_to_page(pfn);
                 if ((page->flags & PAGE_FLAG_BUDDY_FREE) == 0) {
                     verify_block_pattern(pfn, block_pages);
                     memset(block_qwords_by_pfn(pfn), 0, block_pages * PAGE_SIZE);

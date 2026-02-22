@@ -19,6 +19,10 @@ static inline size_t align_floor_sz_p2(size_t x, size_t align) {
     return x & ~mask;
 }
 
+static inline bool ispower2(size_t value) {
+    return value != 0 && (value & (value - 1)) == 0;
+}
+
 void sort(void* ptr, size_t count, size_t size, int (*comp)(const void*, const void*));
 
 #define container_of(ptr, type, member) ((type*)((char*)(ptr) - offsetof(type, member)))

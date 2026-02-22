@@ -53,7 +53,8 @@ static int handle_command(const char *cmd) {
     if (strcmp(cmd, "help") == 0) {
         tty0_puts("commands:\n");
 #ifdef OPAL_UNIT_TEST
-        tty0_puts("  unit      - run heavy unit test\n");
+        tty0_puts("  unit      - run unit tests\n");
+        tty0_puts("  uheavy    - run heavy unit tests\n");
 #endif
         tty0_puts("  help      - show this message\n");
         tty0_puts("  uname     - show kernel name\n");
@@ -71,6 +72,11 @@ static int handle_command(const char *cmd) {
 
 #ifdef OPAL_UNIT_TEST
     if (strcmp(cmd, "unit") == 0) {
+        unit_test_run();
+        return 1;
+    }
+
+    if (strcmp(cmd, "uheavy") == 0) {
         unit_test_run_heavy();
         return 1;
     }

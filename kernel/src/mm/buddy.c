@@ -29,14 +29,14 @@ static bool page_is_usable(pfn_t pfn) {
     if (!mm_pfn_is_valid(pfn)) {
         return false;
     }
-    struct page *page = mm_page_by_pfn(pfn);
+    struct page *page = mm_pfn_to_page(pfn);
     return (page->flags & PAGE_FLAG_METADATA) == 0;
 }
 
 static void set_block_free_state(pfn_t pfn, uint8_t order, bool is_free) {
     const pfn_t pages = order_pages(order);
     for (pfn_t i = 0; i < pages; i++) {
-        struct page *page = mm_page_by_pfn(pfn + i);
+        struct page *page = mm_pfn_to_page(pfn + i);
         if (is_free) {
             page->flags |= PAGE_FLAG_BUDDY_FREE;
         } else {
@@ -47,7 +47,7 @@ static void set_block_free_state(pfn_t pfn, uint8_t order, bool is_free) {
 }
 
 static void list_push(uint8_t order, pfn_t pfn) {
-    struct page *page = mm_page_by_pfn(pfn);
+    struct page *page = mm_pfn_to_page(pfn);
     set_block_free_state(pfn, order, true);
     page->flags |= PAGE_FLAG_BUDDY_FREE | PAGE_FLAG_BUDDY_HEAD;
     page->buddy.order = order;
@@ -59,7 +59,7 @@ static pfn_t list_pop(uint8_t order) {
     assert(head_link != NULL);
 
     struct page *page = container_of(head_link, struct page, buddy.link);
-    const pfn_t head = mm_pfn_by_page(page);
+    const pfn_t head = mm_page_to_pfn(page);
     set_block_free_state(head, order, false);
     page->buddy.link = (struct linkedlist_link){ .prev = NULL, .next = NULL };
     page->flags &= ~PAGE_FLAG_BUDDY_HEAD;
@@ -72,7 +72,7 @@ static bool is_free_head_of_order(pfn_t pfn, uint8_t order) {
         return false;
     }
 
-    struct page *page = mm_page_by_pfn(pfn);
+    struct page *page = mm_pfn_to_page(pfn);
     return (page->flags & PAGE_FLAG_BUDDY_FREE) &&
         (page->flags & PAGE_FLAG_BUDDY_HEAD) &&
         page->buddy.order == order;
@@ -81,7 +81,7 @@ static bool is_free_head_of_order(pfn_t pfn, uint8_t order) {
 static void list_remove(uint8_t order, pfn_t pfn) {
     assert(is_free_head_of_order(pfn, order));
 
-    struct page *page = mm_page_by_pfn(pfn);
+    struct page *page = mm_pfn_to_page(pfn);
     linkedlist_remove(&page->buddy.link);
     set_block_free_state(pfn, order, false);
     page->buddy.link = (struct linkedlist_link){ .prev = NULL, .next = NULL };
@@ -168,7 +168,7 @@ void mm_buddy_free(pfn_t pfn, uint8_t order) {
     assert(order <= g_max_order, "invalid buddy order");
     assert(page_is_usable(pfn), "pfn is not allocated before");
     assert((pfn & (order_pages(order) - 1)) == 0, "invalid pfn with requested order");
-    assert((mm_page_by_pfn(pfn)->flags & PAGE_FLAG_BUDDY_FREE) == 0, "pfn is not allocated before");
+    assert((mm_pfn_to_page(pfn)->flags & PAGE_FLAG_BUDDY_FREE) == 0, "pfn is not allocated before");
 
     const uint8_t req_order = order;
 

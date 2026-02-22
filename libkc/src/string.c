@@ -61,6 +61,32 @@ int memcmp(const void *lhs, const void *rhs, size_t n) {
     return 0;
 }
 
+void *memchr(const void *ptr, int ch, size_t count) {
+    const unsigned char *p = (const unsigned char *)ptr;
+    const unsigned char c = (unsigned char)ch;
+
+    for (size_t i = 0; i < count; i++) {
+        if (p[i] == c) {
+            return (void *)(p + i);
+        }
+    }
+
+    return 0;
+}
+
+void *memchr_not(const void *ptr, int ch, size_t count) {
+    const unsigned char *p = (const unsigned char *)ptr;
+    const unsigned char c = (unsigned char)ch;
+
+    for (size_t i = 0; i < count; i++) {
+        if (p[i] != c) {
+            return (void *)(p + i);
+        }
+    }
+
+    return 0;
+}
+
 size_t strlen(const char *s) {
     size_t len = 0;
 
