@@ -19,7 +19,6 @@ make test CONFIG=debug PLATFORM=pc-x64
 make -C kernel test CONFIG=debug PLATFORM=pc-x64
 make -C libkc test CONFIG=debug PLATFORM=pc-x64
 make -C libcoll test CONFIG=debug PLATFORM=pc-x64
-make -C libslab test CONFIG=debug PLATFORM=pc-x64
 ```
 
 ## 4. sanitizer

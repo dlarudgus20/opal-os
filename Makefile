@@ -16,7 +16,7 @@ UEFI_FIRMWARE ?= /usr/share/ovmf/OVMF.fd
 QEMU_FLAGS += -bios $(UEFI_FIRMWARE)
 endif
 
-SUBDIRS     := test-pch kernel libkubsan libkc libpanicimpl libcoll libslab
+SUBDIRS     := test-pch kernel libkubsan libkc libpanicimpl libcoll
 
 .PHONY: all build iso run clean fullclean build-test test clean-test unit-test clean-unit-test
 

@@ -7,6 +7,7 @@
 
 #include <opal/mm/map.h>
 #include <opal/mm/pfn.h>
+#include <opal/mm/page.h>
 #include <opal/platform/asm.h>
 #include <opal/platform/mm/pagetable.h>
 

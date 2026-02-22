@@ -22,6 +22,10 @@ Markdown 문서를 편집할 때 아래 규칙을 준수해야 합니다.
 ## 적용 범위
 - 루트 및 모든 하위 서브프로젝트
 
+## 응답 언어
+- 사용자와의 모든 응답은 한국어로 작성합니다.
+- `/review` 명령 결과를 전달하거나 요약할 때도 반드시 한국어로 작성합니다.
+
 ## 프로젝트 맥락
 - 타깃: `pc-x64`
 - 성격: freestanding 커널 + hosted 테스트(gtest)
@@ -111,9 +115,6 @@ ASAN_OPTIONS=detect_leaks=0 make -C kernel test CONFIG=debug PLATFORM=pc-x64
 
 ### libpanicimpl
 - hosted 테스트에서 panic/assert 심볼 제공이 목적입니다.
-
-### libslab
-- 현재는 실험/데모 성격임을 전제로 변경합니다.
 
 ## 커밋/PR 전 체크리스트
 - [ ] 관련 빌드 최소 1개 성공

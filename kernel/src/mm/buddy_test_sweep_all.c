@@ -2,9 +2,11 @@
 
 #include <kc/string.h>
 
+#include <opal/mm/mm.h>
 #include <opal/mm/buddy.h>
 #include <opal/mm/map.h>
 #include <opal/mm/pfn.h>
+#include <opal/mm/page.h>
 #include <opal/platform/mm/defines.h>
 #include <opal/test.h>
 #include <opal/tty.h>
@@ -45,12 +47,13 @@ static void verify_block_pattern(pfn_t pfn, pfn_t block_pages) {
 }
 
 DEFINE_UNIT_TEST(heavy__buddy_hash_sweep_all_orders) {
-    size_t global_before = mm_buddy_get_free_pages();
-    uint8_t max_order = mm_buddy_get_max_order();
+    struct buddy *buddy = mm_get_buddy();
+    size_t global_before = buddy_get_free_pages(buddy);
+    uint8_t max_order = buddy_get_max_order(buddy);
 
     for (uint8_t order = 0; order <= max_order; order++) {
         pfn_t block_pages = (pfn_t)1 << order;
-        size_t before = mm_buddy_get_free_pages();
+        size_t before = buddy_get_free_pages(buddy);
         size_t allocated_blocks = 0;
         size_t freed_blocks = 0;
 
@@ -58,7 +61,7 @@ DEFINE_UNIT_TEST(heavy__buddy_hash_sweep_all_orders) {
         tty0_printf("alloc & write: ");
 
         while (1) {
-            pfn_t pfn = mm_buddy_alloc(order);
+            pfn_t pfn = buddy_alloc(buddy, order);
             if (pfn == PFN_INVALID) {
                 break;
             }
@@ -86,7 +89,7 @@ DEFINE_UNIT_TEST(heavy__buddy_hash_sweep_all_orders) {
                 if ((page->flags & PAGE_FLAG_BUDDY_FREE) == 0) {
                     verify_block_pattern(pfn, block_pages);
                     memset(block_qwords_by_pfn(pfn), 0, block_pages * PAGE_SIZE);
-                    mm_buddy_free(pfn, order);
+                    buddy_free(buddy, pfn, order);
                     freed_blocks++;
                     tty0_puts(".");
                 }
@@ -97,8 +100,8 @@ DEFINE_UNIT_TEST(heavy__buddy_hash_sweep_all_orders) {
         tty0_printf("\n = %zu block(s)\n", freed_blocks);
 
         TEST_EXPECT_EQ(allocated_blocks, freed_blocks);
-        TEST_EXPECT_EQ(before, mm_buddy_get_free_pages());
+        TEST_EXPECT_EQ(before, buddy_get_free_pages(buddy));
     }
 
-    TEST_EXPECT_EQ(global_before, mm_buddy_get_free_pages());
+    TEST_EXPECT_EQ(global_before, buddy_get_free_pages(buddy));
 }

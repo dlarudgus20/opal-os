@@ -20,16 +20,16 @@
 - free list 연결은 `page->buddy.link`를 사용합니다.
 
 ## 4. 초기화와 메모리 맵 연동
-- `mm_map_init()`이 section map을 구성한 뒤 `mm_pfn_init()`이 PFN 메타데이터를 준비합니다.
-- `mm_buddy_init()`은 section map의 usable 구간을 free 블록으로 등록합니다.
+- `mm_init()`에서 section map을 사용해 `struct buddy`를 생성합니다.
+- `buddy_create()`는 주어진 map의 usable 구간을 free 블록으로 등록합니다.
 - metadata 구간은 buddy에 포함되지 않습니다.
 
 ## 5. 주요 API
-- `mm_buddy_init()`: 버디 할당기 초기화
-- `mm_buddy_alloc(order)`: `2^order` 페이지 할당, 실패 시 `PFN_INVALID`
-- `mm_buddy_free(pfn, order)`: 블록 해제 및 병합
-- `mm_buddy_get_free_pages()`: 현재 free 페이지 수
-- `mm_buddy_get_max_order()`: 현재 최대 order
+- `buddy_create(buddy)`: 버디 할당기 생성
+- `buddy_alloc(buddy, order)`: `2^order` 페이지 할당, 실패 시 `PFN_INVALID`
+- `buddy_free(buddy, pfn, order)`: 블록 해제 및 병합
+- `buddy_get_free_pages(buddy)`: 현재 free 페이지 수
+- `buddy_get_max_order(buddy)`: 현재 최대 order
 
 ## 6. 테스트
 - 기본 동작 테스트: `kernel/src/mm/buddy_test.c`

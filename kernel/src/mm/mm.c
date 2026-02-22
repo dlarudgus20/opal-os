@@ -11,10 +11,12 @@
 #include <opal/platform/boot.h>
 #include <opal/platform/mm/pagetable.h>
 
+static struct buddy g_buddy;
+
 static void log_mm(void) {
     mm_log_map();
 
-    kinfo("buddy max order=%u / free pages=%zu", mm_buddy_get_max_order(), mm_buddy_get_free_pages());
+    kinfo("buddy max order=%u / free pages=%zu", buddy_get_max_order(&g_buddy), buddy_get_free_pages(&g_buddy));
 }
 
 void mm_init(void) {
@@ -26,9 +28,26 @@ void mm_init(void) {
     mm_pfn_init();
 
     mm_tmp_alloc_finalize();
-    mm_buddy_init();
+    buddy_create(&g_buddy, mm_get_section_map());
 
     log_mm();
+}
+
+void *mm_alloc_page(uint8_t order) {
+    const pfn_t pfn = buddy_alloc(&g_buddy, order);
+    if (pfn == PFN_INVALID) {
+        return NULL;
+    } else {
+        return mm_pfn_to_ptr(pfn);
+    }
+}
+
+void mm_free_page(void *ptr, uint8_t order) {
+    buddy_free(&g_buddy, mm_ptr_to_pfn(ptr), order);
+}
+
+struct buddy *mm_get_buddy(void) {
+    return &g_buddy;
 }
 
 static void log_map(const struct mmap *mmap, const char *(*entry_type_str)(mmap_entry_type_t)) {

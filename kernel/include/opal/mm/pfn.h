@@ -3,7 +3,9 @@
 
 #include <stdbool.h>
 
-#include <opal/mm/page.h>
+#include <opal/mm/types.h>
+
+struct page;
 
 void mm_pfn_init(void);
 
