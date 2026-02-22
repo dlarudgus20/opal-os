@@ -28,6 +28,8 @@ make iso
 ### 3) 실행
 ```bash
 make run
+# UEFI 펌웨어로 실행
+make run UEFI=1
 ```
 
 ## 테스트

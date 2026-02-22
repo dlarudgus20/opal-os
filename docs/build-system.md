@@ -13,11 +13,16 @@
 - `make clean-test`: 현재 구성 테스트 빌드(make build-test) 결과물 정리
 - `make fullclean`: 모든 빌드 결과물 정리
 
-## 2. 공통 설정 (`mkfiles/conf.mk`)
-### 입력 변수
+빌드 구성 변수:
 - `CONFIG=debug|release`
 - `PLATFORM=pc-x64`
 
+실행 관련 변수:
+- `QEMU_FLAGS`: `make run`, `make unit-test`에서 QEMU 실행 인자에 추가
+- `UEFI=1`: `-bios $(UEFI_FIRMWARE)`를 추가해 UEFI 펌웨어로 실행
+- `UEFI_FIRMWARE`: 기본값 `/usr/share/ovmf/OVMF.fd`
+
+## 2. 공통 설정 (`mkfiles/conf.mk`)
 ### C 전처리 매크로
 - 일반 빌드: `-DOPAL_CONFIG=... -DOPAL_PLATFORM=...`
 - hosted 테스트: `-DOPAL_TEST`
