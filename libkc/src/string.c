@@ -1,5 +1,8 @@
+#include <stdint.h>
+
 #define NO_BUILTIN_MACRO
 #include <kc/string.h>
+#include <kc/assert.h>
 
 void *memcpy(void *restrict dest, const void *restrict src, size_t n) {
     unsigned char *d = (unsigned char *) dest;
@@ -213,3 +216,52 @@ char *strncpy(char *restrict dest, const char *restrict src, size_t n) {
 
     return dest;
 }
+
+void strcpy_s(char *restrict dest, size_t destsz, const char *restrict src) {
+    assert(dest);
+    assert(src);
+    assert(destsz > 0);
+
+    const uintptr_t d = (uintptr_t)dest;
+    const uintptr_t s = (uintptr_t)src;
+
+    size_t i = 0;
+
+    while (src[i] != '\0') {
+        if (i + 1 >= destsz) {
+            panic("truncation occur");
+        }
+        if (d <= s + i && s + i < d + destsz) {
+            panic("overlap occur");
+        }
+
+        dest[i] = src[i];
+        i++;
+    }
+    dest[i] = '\0';
+}
+
+void strncpy_s(char *restrict dest, size_t destsz, const char *restrict src, size_t n) {
+    assert(dest);
+    assert(src);
+    assert(destsz > 0);
+
+    const uintptr_t d = (uintptr_t)dest;
+    const uintptr_t s = (uintptr_t)src;
+
+    size_t i = 0;
+
+    while (i < n && src[i] != '\0') {
+        if (i + 1 >= destsz) {
+            panic("truncation occur");
+        }
+        if (d <= s + i && s + i < d + destsz) {
+            panic("overlap occur");
+        }
+
+        dest[i] = src[i];
+        i++;
+    }
+    dest[i] = '\0';
+}
+

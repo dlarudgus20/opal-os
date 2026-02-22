@@ -19,6 +19,8 @@ int strcmp(const char *lhs, const char *rhs);
 int strncmp(const char *lhs, const char *rhs, size_t n);
 char *strcpy(char *restrict dest, const char *restrict src);
 char *strncpy(char *restrict dest, const char *restrict src, size_t n);
+void strcpy_s(char *restrict dest, size_t destsz, const char *restrict src);
+void strncpy_s(char *restrict dest, size_t destsz, const char *restrict src, size_t n);
 
 #ifndef NO_BUILTIN_MACRO
 #define memcpy(dest, src, count)    __builtin_memcpy(dest, src, count)

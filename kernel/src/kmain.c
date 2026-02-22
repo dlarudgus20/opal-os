@@ -11,6 +11,7 @@
 #include <opal/mm/mm.h>
 #include <opal/mm/pfn.h>
 #include <opal/drivers/uart.h>
+#include <opal/platform/boot.h>
 #include <opal/platform/mm/pagetable.h>
 
 #define UNAME_MSG "opal-os ("OPAL_PLATFORM" "OPAL_CONFIG")"
@@ -39,6 +40,7 @@ static int handle_command(const char *cmd) {
         tty0_puts("  mmap      - log memory map\n");
         tty0_puts("  ptable    - show pagetable\n");
         tty0_puts("  pfns      - show pfn list\n");
+        tty0_puts("  kargs     - show kernel boot argument\n");
         return 1;
     }
 
@@ -110,6 +112,12 @@ static int handle_command(const char *cmd) {
         return 1;
     }
 
+    if (strcmp(cmd, "kargs") == 0) {
+        tty0_puts(boot_get_cmdline());
+        tty0_puts("\n");
+        return 1;
+    }
+
     if (strcmp(cmd, "halt") == 0) {
         panic("system halt is not implemented");
     }
@@ -137,13 +145,18 @@ static void run_shell(void) {
 }
 
 void kmain(void) {
+    boot_info_init();
+
     uart_init();
     tty0_init();
     klog_init();
+
     mm_init();
 
     unit_test_run();
     print_banner();
+
+    kinfo("boot args=%s", boot_get_cmdline());
 
     while (1) {
         run_shell();
