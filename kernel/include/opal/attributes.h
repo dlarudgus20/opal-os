@@ -9,4 +9,10 @@
 #error "Compiler does not support may_alias attribute"
 #endif
 
+#if __has_attribute(packed)
+#define PACKED __attribute__((packed))
+#else
+#error "Compiler does not support packed attribute"
+#endif
+
 #endif

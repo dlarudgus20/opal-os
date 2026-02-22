@@ -12,6 +12,7 @@
 #include <opal/mm/pfn.h>
 #include <opal/drivers/uart.h>
 #include <opal/platform/boot.h>
+#include <opal/platform/descriptors.h>
 #include <opal/platform/mm/pagetable.h>
 
 #define UNAME_MSG "opal-os ("OPAL_PLATFORM" "OPAL_CONFIG")"
@@ -146,6 +147,7 @@ static void run_shell(void) {
 
 void kmain(void) {
     boot_info_init();
+    descriptors_init();
 
     uart_init();
     tty0_init();
