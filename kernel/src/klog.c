@@ -1,7 +1,6 @@
 #include <stddef.h>
 #include <stdarg.h>
 #include <stdalign.h>
-#include <stdbool.h>
 
 #include <kc/stdio.h>
 #include <kc/stdlib.h>
@@ -187,8 +186,12 @@ bool klog_read(struct klog_record_header *header_out, char *msg_out, size_t msg_
     return true;
 }
 
-void klog_print_tty0(struct klog_record_header *header, char *msg) {
-    print_log(header->seq, header->level, msg, header->msglen);
+void klog_print_all_tty0(bool seq) {
+    struct klog_record_header header;
+    char msg[KLOG_MAX_MSGLEN + 1];
+    while (klog_read(&header, msg, sizeof(msg))) {
+        print_log(seq ? (int)header.seq : -1, header.level, msg, header.msglen);
+    }
 }
 
 int klog_format(uint16_t level, const char *fmt, ...) {

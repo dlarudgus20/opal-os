@@ -124,3 +124,41 @@ TEST_F(LibkcTest, StrncpyPadsWithZerosAndCanTruncate) {
     EXPECT_EQ(dst2[2], 'r');
     EXPECT_EQ(dst2[3], 'n');
 }
+
+TEST_F(LibkcTest, StrcatAppendsAndReturnsDest) {
+    char dst[16] = "opal";
+    char *ret = kc.strcat(dst, "-os");
+
+    EXPECT_EQ(ret, dst);
+    EXPECT_STREQ(dst, "opal-os");
+}
+
+TEST_F(LibkcTest, StrncatRespectsCountAndTerminates) {
+    char dst[16] = "op";
+    char *ret = kc.strncat(dst, "alkernel", 3);
+
+    EXPECT_EQ(ret, dst);
+    EXPECT_STREQ(dst, "opalk");
+}
+
+TEST_F(LibkcTest, StrcatSizedAppendsWithinCapacity) {
+    char dst[8] = "opa";
+    kc.strcat_sized(dst, sizeof(dst), "l");
+    EXPECT_STREQ(dst, "opal");
+}
+
+TEST_F(LibkcTest, StrcatSizedTruncatesSafely) {
+    char dst[8] = "opal";
+    kc.strcat_sized(dst, sizeof(dst), "-kernel");
+    EXPECT_STREQ(dst, "opal-ke");
+    EXPECT_EQ(dst[7], '\0');
+}
+
+TEST_F(LibkcTest, StrcatSizedNoTerminatorInDestLeavesBufferUntouched) {
+    char dst[4] = {'a', 'b', 'c', 'd'};
+    kc.strcat_sized(dst, sizeof(dst), "x");
+    EXPECT_EQ(dst[0], 'a');
+    EXPECT_EQ(dst[1], 'b');
+    EXPECT_EQ(dst[2], 'c');
+    EXPECT_EQ(dst[3], 'd');
+}

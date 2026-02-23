@@ -230,11 +230,15 @@ struct mb_tag_framebuffer {
 };
 
 struct mb_tag_framebuffer_indexed {
+    struct mb_tag_framebuffer fb;
+
     mb_uint16_t framebuffer_palette_num_colors;
     struct mb_color framebuffer_palette[];
 };
 
 struct mb_tag_framebuffer_direct {
+    struct mb_tag_framebuffer fb;
+
     mb_uint8_t framebuffer_red_field_position;
     mb_uint8_t framebuffer_red_mask_size;
     mb_uint8_t framebuffer_green_field_position;

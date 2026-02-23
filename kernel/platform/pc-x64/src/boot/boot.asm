@@ -16,6 +16,9 @@ mb2_header_start:
     dd mb2_header_end - mb2_header_start
     dd -(MB2_MAGIC + (mb2_header_end - mb2_header_start))
 align 8, db 0
+    dw 5, 1                         ; framebuffer, optional
+    dd 20, 1024, 768, 32            ; width/height/bpp
+align 8, db 0
     dd 0, 8                         ; end tag
 mb2_header_end:
 

@@ -29,5 +29,5 @@ make unit-test CONFIG=debug PLATFORM=pc-x64
 - `build/unit-test/<platform>/<config>/...`
 
 ## 의존성
-- 일반 빌드: `libkc`, `libkubsan`
+- 일반 빌드: `libkc`, `libcoll`, `libkubsan`
 - hosted 테스트: `libpanicimpl`(shared)

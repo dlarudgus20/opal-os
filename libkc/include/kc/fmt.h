@@ -8,7 +8,9 @@
 
 #include "attributes.h"
 
-typedef bool (*fmt_write)(char ch);
+struct fmt;
+
+typedef bool (*fmt_write)(struct fmt *fmt, char ch);
 
 struct fmt {
     // size > 0 -> buffer mode

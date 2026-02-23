@@ -1,3 +1,4 @@
+#include <stdbool.h>
 #include <stdint.h>
 
 #include <kc/stdlib.h>
@@ -24,7 +25,14 @@ static struct mmap g_boot_mmap = {
 
 static char g_cmdline[MAX_BOOT_CMDLINE];
 
+static struct boot_fbinfo g_fbinfo;
+
 static void parse_mb2_cmdline(const struct mb_tag_string *strtag) {
+    if (g_cmdline[0] != '\0') {
+        // kerror("duplicated boot cmdline is ignored")
+        return;
+    }
+
     size_t maxsz = strtag->tag.size - offsetof(struct mb_tag_string, string);
     if (maxsz == 0) {
         g_cmdline[0] = '\0';
@@ -37,11 +45,16 @@ static void parse_mb2_cmdline(const struct mb_tag_string *strtag) {
 }
 
 static void parse_mb2_mmap(const struct mb_tag_mmap *mmap) {
+    if (g_boot_mmap.length > 0) {
+        // kerror("duplicated boot mmap is ignored")
+        return;
+    }
+
     const char *entry_ptr = (const char *)mmap + sizeof(*mmap);
     const char *entry_end = (const char *)mmap + mmap->tag.size;
 
     if (mmap->entry_size < sizeof(struct mb_mmap_entry)) {
-        // panic("mb2: mmap entry_size too small\n");
+        // kerror("boot mmap entry_size too small\n");
         return;
     }
 
@@ -51,7 +64,7 @@ static void parse_mb2_mmap(const struct mb_tag_mmap *mmap) {
         const struct mb_mmap_entry *entry = (const struct mb_mmap_entry *)entry_ptr;
 
         if (g_boot_mmap.length >= MAX_MMAP_ENTRIES) {
-            // log("mb2: too many mmap entries, some entries are ignored\n");
+            // kerror("too many boot mmap entries, some entries are ignored\n");
             break;
         }
 
@@ -65,19 +78,64 @@ static void parse_mb2_mmap(const struct mb_tag_mmap *mmap) {
     }
 }
 
+static bool is_supported_rgb(const struct mb_tag_framebuffer_direct *fb) {
+    if (fb->fb.framebuffer_bpp != 32) {
+        return false;
+    } else if (fb->framebuffer_red_field_position != 16) {
+        return false;
+    } else if (fb->framebuffer_red_mask_size != 8) {
+        return false;
+    } else if (fb->framebuffer_green_field_position != 8) {
+        return false;
+    } else if (fb->framebuffer_green_mask_size != 8) {
+        return false;
+    } else if (fb->framebuffer_blue_field_position != 0) {
+        return false;
+    } else if (fb->framebuffer_blue_mask_size != 8) {
+        return false;
+    }
+    return true;
+}
+
+static void parse_mb2_fb(const struct mb_tag_framebuffer *fb) {
+    if (g_fbinfo.addr != 0) {
+        // kerror("duplicated boot fbinfo is ignored")
+        return;
+    }
+
+    const struct mb_tag_framebuffer_direct *direct = NULL;
+
+    if (fb->framebuffer_type == MULTIBOOT_FRAMEBUFFER_TYPE_RGB) {
+        direct = (const struct mb_tag_framebuffer_direct *)fb;
+        if (!is_supported_rgb(direct)) {
+            // kwarn("unsupported framebuffer")
+            return;
+        }
+    } else {
+        // kwarn("unsupported framebuffer")
+        return;
+    }
+
+    g_fbinfo.addr = fb->framebuffer_addr;
+    g_fbinfo.pitch = fb->framebuffer_pitch;
+    g_fbinfo.width = fb->framebuffer_width;
+    g_fbinfo.height = fb->framebuffer_height;
+    g_fbinfo.bpp = fb->framebuffer_bpp;
+}
+
 static void parse_mb2_info(uint32_t mb2_info_pa) {
     const uint8_t *base = (const uint8_t *)(uintptr_t)mb2_info_pa;
 
     const uint32_t total_size = *(const uint32_t *)base;
     if (total_size < 8) {
-        // panic("mb2: invalid total_size\n");
+        // kerror("boot info: invalid total_size\n");
         return;
     }
 
     for (uint32_t off = 8; off + 8 <= total_size; ) {
         const struct mb_tag *tag = (const struct mb_tag *)(base + off);
         if (tag->size < sizeof(*tag)) {
-            // panic("mb2: invalid tag size\n");
+            // kerror("boot info: invalid tag size\n");
             return;
         }
 
@@ -87,7 +145,7 @@ static void parse_mb2_info(uint32_t mb2_info_pa) {
 
         const uint32_t next_off = align_ceil_u32_p2(off + tag->size, MULTIBOOT_TAG_ALIGN);
         if (next_off <= off || next_off > total_size) {
-            // panic("mb2: invalid tag bounds\n");
+            // kerror("mb2: invalid tag bounds\n");
             return;
         }
 
@@ -97,6 +155,9 @@ static void parse_mb2_info(uint32_t mb2_info_pa) {
                 break;
             case MULTIBOOT_TAG_TYPE_MMAP:
                 parse_mb2_mmap((const struct mb_tag_mmap *)tag);
+                break;
+            case MULTIBOOT_TAG_TYPE_FRAMEBUFFER:
+                parse_mb2_fb((const struct mb_tag_framebuffer *)tag);
                 break;
         }
 
@@ -114,4 +175,11 @@ const struct mmap *boot_get_mmap(void) {
 
 const char *boot_get_cmdline(void) {
     return g_cmdline;
+}
+
+const struct boot_fbinfo *boot_get_fbinfo(void) {
+    if (g_fbinfo.addr == 0) {
+        return NULL;
+    }
+    return &g_fbinfo;
 }

@@ -30,6 +30,12 @@ ALWAYS_INLINE void wait_for_interrupt(void) {
     __asm__ volatile ("hlt" : : : "memory");
 }
 
+ALWAYS_INLINE uint64_t read_cr2(void) {
+    uint64_t value;
+    __asm__ volatile ("mov %0, cr2" : "=r"(value) : : "memory");
+    return value;
+}
+
 ALWAYS_INLINE uint64_t read_cr3(void) {
     uint64_t value;
     __asm__ volatile ("mov %0, cr3" : "=r"(value) : : "memory");

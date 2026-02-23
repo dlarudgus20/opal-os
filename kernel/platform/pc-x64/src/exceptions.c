@@ -1,6 +1,7 @@
 #include <kc/assert.h>
 
 #include <opal/platform/interrupt.h>
+#include <opal/platform/asm.h>
 
 void isr_impl_divide_by_zero(struct isr_stackframe* frame) {
     panicf("#DE "PRI_ISR_STACKFRAME, ARG_ISR_STACKFRAME(frame));
@@ -55,7 +56,7 @@ void isr_impl_general_protection_fault(struct isr_stackframe_ec* frame) {
 }
 
 void isr_impl_page_fault(struct isr_stackframe_ec* frame) {
-    panicf("#PF:%#018lx "PRI_ISR_STACKFRAME, frame->error_code, ARG_ISR_STACKFRAME(frame));
+    panicf("#PF:%#018lx cr2=%#018lx "PRI_ISR_STACKFRAME, frame->error_code, read_cr2(), ARG_ISR_STACKFRAME(frame));
 }
 
 void isr_impl_x87_floating_point(struct isr_stackframe* frame) {

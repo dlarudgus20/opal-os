@@ -48,7 +48,7 @@ static void write_char(struct fmt *restrict fmt, char ch) {
             fmt->write_fn = NULL;
         }
     } else if (fmt->write_fn != NULL) {
-        if (!fmt->write_fn(ch)) {
+        if (!fmt->write_fn(fmt, ch)) {
             fmt->error = true;
             return;
         }

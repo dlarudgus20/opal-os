@@ -265,3 +265,42 @@ void strncpy_s(char *restrict dest, size_t destsz, const char *restrict src, siz
     dest[i] = '\0';
 }
 
+char *strcat(char *restrict dest, const char *restrict src) {
+    size_t len = 0;
+    for (; dest[len] != '\0'; len++) {}
+
+    size_t i = 0;
+    for (; src[i] != '\0'; i++) {
+        dest[len + i] = src[i];
+    }
+    dest[len + i] = '\0';
+
+    return dest;
+}
+
+char *strncat(char *restrict dest, const char *restrict src, size_t n) {
+    size_t len = 0;
+    for (; dest[len] != '\0'; len++) {}
+
+    size_t i = 0;
+    for (; i < n && src[i] != '\0'; i++) {
+        dest[len + i] = src[i];
+    }
+    dest[len + i] = '\0';
+
+    return dest;
+}
+
+void strcat_sized(char *restrict dest, size_t destsz, const char *restrict src) {
+    size_t len = 0;
+    for (; len < destsz && dest[len] != '\0'; len++) {}
+    if (len == destsz) {
+        return;
+    }
+
+    size_t i = 0;
+    for (; len + i + 1 < destsz && src[i] != '\0'; i++) {
+        dest[len + i] = src[i];
+    }
+    dest[len + i] = '\0';
+}

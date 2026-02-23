@@ -11,6 +11,7 @@
 #include <opal/mm/mm.h>
 #include <opal/mm/pfn.h>
 #include <opal/drivers/uart.h>
+#include <opal/drivers/fb.h>
 #include <opal/platform/boot.h>
 #include <opal/platform/descriptors.h>
 #include <opal/platform/mm/pagetable.h>
@@ -42,6 +43,7 @@ static int handle_command(const char *cmd) {
         tty0_puts("  ptable    - show pagetable\n");
         tty0_puts("  pfns      - show pfn list\n");
         tty0_puts("  kargs     - show kernel boot argument\n");
+        tty0_puts("  fbinfo    - show framebuffer info\n");
         return 1;
     }
 
@@ -90,11 +92,7 @@ static int handle_command(const char *cmd) {
     }
 
     if (strcmp(cmd, "kmsg") == 0) {
-        struct klog_record_header header;
-        char msg[KLOG_MAX_MSGLEN + 1];
-        while (klog_read(&header, msg, sizeof(msg))) {
-            klog_print_tty0(&header, msg);
-        }
+        klog_print_all_tty0(true);
         return 1;
     }
 
@@ -119,8 +117,15 @@ static int handle_command(const char *cmd) {
         return 1;
     }
 
-    if (strcmp(cmd, "halt") == 0) {
-        panic("system halt is not implemented");
+    if (strcmp(cmd, "fbinfo") == 0) {
+        const struct boot_fbinfo *fbinfo = boot_get_fbinfo();
+        if (fbinfo) {
+            tty0_printf("addr=%#010"PRIphys", %ux%u, pitch=%u, bpp=%u\n",
+                fbinfo->addr, fbinfo->width, fbinfo->height, fbinfo->pitch, fbinfo->bpp);
+        } else {
+            tty0_printf("there is no framebuffer.\n");
+        }
+        return 1;
     }
 
     if (cmd[0] != '\0') {
@@ -137,7 +142,7 @@ static void run_shell(void) {
 
     while (1) {
         tty0_puts("root@opal:~$ ");
-        uart_read_line(line, sizeof(line), 0);
+        uart_read_line(line, sizeof(line));
 
         if (!handle_command(line)) {
             return;
@@ -149,11 +154,12 @@ void kmain(void) {
     boot_info_init();
     descriptors_init();
 
-    uart_init();
     tty0_init();
+    uart_init();
     klog_init();
 
     mm_init();
+    fb_init();
 
     unit_test_run();
     print_banner();

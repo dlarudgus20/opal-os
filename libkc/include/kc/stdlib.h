@@ -25,6 +25,9 @@ static inline bool ispower2(size_t value) {
 
 void sort(void* ptr, size_t count, size_t size, int (*comp)(const void*, const void*));
 
+#define MAX(a, b) ((a) > (b) ? (a) : (b))
+#define MIN(a, b) ((a) < (b) ? (a) : (b))
+
 #define container_of(ptr, type, member) ((type*)((char*)(ptr) - offsetof(type, member)))
 
 #endif
