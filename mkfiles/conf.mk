@@ -27,6 +27,12 @@ $(error "Test is unsupported for $(TARGET_TYPE) targets.")
 endif
 endif
 
+PYTHON             := python3
+
+CFLAGS             += -std=c23 -ggdb3 -ffreestanding -masm=intel --embed-dir=res
+NASM_FLAGS         += -ires
+OBJDUMP_FLAGS      += -DS
+
 WARNING_FLAGS      := -pedantic -Wall -Wextra -Werror \
 	-Wno-error=unused-variable -Wno-error=unused-function
 
@@ -63,9 +69,7 @@ TOOLSET_NM         ?= $(TOOLSET_PREFIX)-gcc-nm
 TOOLSET_GDB        ?= gdb
 TOOLSET_NASM       ?= nasm
 
-CFLAGS             += -std=c23 -ggdb3 -ffreestanding -mno-red-zone -masm=intel \
-	-mcmodel=kernel -mno-mmx -mno-sse -mno-sse2 $(DEFINE_FLAGS) $(WARNING_FLAGS)
-
+CFLAGS             += -mno-red-zone -mcmodel=kernel -mno-mmx -mno-sse -mno-sse2 $(DEFINE_FLAGS) $(WARNING_FLAGS)
 LDFLAGS            += -nostdlib -Wl,--gc-sections -Wl,--fatal-warning
 
 else
@@ -82,7 +86,7 @@ TOOLSET_NM         ?= gcc-nm
 TOOLSET_GDB        ?= gdb
 TOOLSET_NASM       ?= nasm
 
-CFLAGS             += -std=c23 -ggdb3 -ffreestanding -masm=intel -fPIC $(DEFINE_FLAGS) $(WARNING_FLAGS) $(CFLAGS_ON_TEST)
+CFLAGS             += -fPIC $(DEFINE_FLAGS) $(WARNING_FLAGS) $(CFLAGS_ON_TEST)
 LDFLAGS            += -Wl,--fatal-warning $(LDFLAGS_ON_TEST)
 
 TEST_CXX           ?= g++

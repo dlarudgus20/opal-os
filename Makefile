@@ -18,7 +18,7 @@ endif
 
 SUBDIRS     := test-pch kernel libkubsan libkc libpanicimpl libcoll
 
-.PHONY: all build iso run clean fullclean build-test test clean-test unit-test clean-unit-test
+.PHONY: all build iso run clean fullclean gen clean-gen build-test test clean-test unit-test clean-unit-test
 
 all: build
 
@@ -45,6 +45,16 @@ fullclean:
 		$(MAKE) fullclean -C $$dir || exit 1; \
 	done
 	-rm -rf build
+
+gen:
+	for dir in $(SUBDIRS); do \
+		$(MAKE) gen -C $$dir || exit 1; \
+	done
+
+clean-gen:
+	for dir in $(SUBDIRS); do \
+		$(MAKE) clean-gen -C $$dir || exit 1; \
+	done
 
 build-test:
 	for dir in $(SUBDIRS); do \

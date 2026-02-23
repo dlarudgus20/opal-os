@@ -11,6 +11,7 @@
 ## 요구 도구
 - `make`, `nasm`
 - `x86_64-elf-*` 툴체인 (`gcc`, `objcopy`, `objdump`, `gcc-ar`, `gcc-nm`)
+- `python3` (`tools/` 스크립트 실행용)
 - `qemu-system-x86_64`, `grub-mkrescue`
 - hosted 테스트용 `gcc/g++`, `gtest`
 

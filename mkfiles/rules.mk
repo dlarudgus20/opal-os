@@ -8,7 +8,7 @@ C_DEPENDS          := $(patsubst %.o, %.d, $(C_OBJECTS))
 ASM_OBJECTS        := $(patsubst %.asm, $(BUILD_DIR)/%.asm.o, $(ASM_SOURCES))
 ASM_DEPENDS        := $(patsubst %.o, %.d, $(ASM_OBJECTS))
 
-OBJECTS            := $(ASM_OBJECTS) $(C_OBJECTS)
+OBJECTS            += $(ASM_OBJECTS) $(C_OBJECTS)
 
 ifeq ($(IS_TEST_BUILD), 1)
 TEST_SOURCES       := $(wildcard $(TEST_DIR)/*.cpp)
@@ -82,26 +82,26 @@ ifeq ($(IS_TEST_BUILD), 1)
 -include $(TEST_DEPENDS)
 endif
 
-PHONY_TARGETS += all clean fullclean build-test test clean-test
+PHONY_TARGETS += all clean fullclean gen clean-gen build-test test clean-test
 .PHONY: $(PHONY_TARGETS) .FORCE
 .FORCE:
 
 $(BUILD_DIR)/%.c.o: %.c
 	@mkdir -p $(dir $@)
 	$(TOOLSET_CC) $(CFLAGS) $(INCLUDE_FLAGS) -MMD -MP -MF $(patsubst %.o, %.d, $@) -c $< -o $@
-	$(TOOLSET_OBJDUMP) $(OBJDUMP_FLAGS) -D $@ > $(patsubst %.o, %.dump, $@)
+	$(TOOLSET_OBJDUMP) $(OBJDUMP_FLAGS) $@ > $(patsubst %.o, %.dump, $@)
 
 $(BUILD_DIR)/%.asm.o: %.asm
 	@mkdir -p $(dir $@)
-	$(TOOLSET_NASM) -f elf64 -MD $(patsubst %.o, %.d, $@) $< -o $@ -l $(patsubst %.o, %.lst, $@)
-	$(TOOLSET_OBJDUMP) $(OBJDUMP_FLAGS) -D $@ > $(patsubst %.o, %.dump, $@)
+	$(TOOLSET_NASM) $(NASM_FLAGS) -f elf64 -MD $(patsubst %.o, %.d, $@) $< -o $@ -l $(patsubst %.o, %.lst, $@)
+	$(TOOLSET_OBJDUMP) $(OBJDUMP_FLAGS) $@ > $(patsubst %.o, %.dump, $@)
 
 ifneq ($(findstring $(TARGET_TYPE), executable shared-lib), )
 $(TARGET): $(OBJECTS) $(LD_SCRIPT) $(LIBRARIES)
 	$(TOOLSET_CC) $(CFLAGS) $(INCLUDE_FLAGS) $(LDFLAGS) $(LD_SCRIPT_FLAG) -o $@ $(OBJECTS) $(LIBRARIES) \
 		-Wl,-Map,$@.map
 	$(TOOLSET_NM) $(NM_FLAGS) $@ > $@.nm
-	$(TOOLSET_OBJDUMP) $(OBJDUMP_FLAGS) -D $@ > $@.disasm
+	$(TOOLSET_OBJDUMP) $(OBJDUMP_FLAGS) $@ > $@.disasm
 	$(TOOLSET_NM) -C --numeric-sort $@ \
 		| perl -p -e 's/([0-9a-fA-F]*) ([0-9a-fA-F]* .|.) ([^\s]*)(^$$|.*)/\1 \3/g' \
 		> $@.sym
@@ -115,7 +115,7 @@ ifeq ($(IS_TEST_BUILD), 1)
 $(BUILD_DIR)/%.cpp.o: %.cpp $(TEST_PCH)
 	@mkdir -p $(dir $@)
 	$(TEST_CXX) $(TEST_CXXFLAGS) $(INCLUDE_FLAGS) $(TEST_INCLUDE_FLAGS) -MMD -MP -MF $(patsubst %.o, %.d, $@) -c $< -o $@
-	$(TOOLSET_OBJDUMP) $(OBJDUMP_FLAGS) -D $@ > $(patsubst %.o, %.dump, $@)
+	$(TOOLSET_OBJDUMP) $(OBJDUMP_FLAGS) $@ > $(patsubst %.o, %.dump, $@)
 
 ifneq ($(TEST_PCH_SRC), )
 $(TEST_PCH): $(TEST_PCH_SRC)
@@ -132,7 +132,7 @@ endif
 		$(TEST_OBJECTS) $(TEST_TARGET_LIBS) $(REFS_SHARED_FILES) -lgtest -lgtest_main \
 		-Wl,-Map,$(BUILD_DIR)/test.map
 	$(TOOLSET_NM) $(NM_FLAGS) $@ > $(BUILD_DIR)/test.nm
-	$(TOOLSET_OBJDUMP) $(OBJDUMP_FLAGS) -D $@ > $(BUILD_DIR)/test.disasm
+	$(TOOLSET_OBJDUMP) $(OBJDUMP_FLAGS) $@ > $(BUILD_DIR)/test.disasm
 endif
 
 $(REFS_STATIC_FILES) $(REFS_SHARED_FILES): .FORCE
@@ -142,9 +142,16 @@ $(REFS_STATIC_FILES) $(REFS_SHARED_FILES): .FORCE
 
 clean:
 	-rm -rf $(BUILD_DIR)
+	-rm -rf res/gen
 
 fullclean:
 	-rm -rf build
+	-rm -rf res/gen
+
+gen: $(RESOURCES)
+
+clean-gen:
+	-rm -rf res/gen
 
 ifeq ($(HAS_TEST), 1)
 ifeq ($(IS_TEST), 1)

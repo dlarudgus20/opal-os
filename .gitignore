@@ -1,5 +1,6 @@
 # Build outputs
 build/
+**/res/gen/
 
 # Temporary/editor files
 *.swp
@@ -9,6 +10,9 @@ build/
 
 # log files
 qemu.log
+
+# Python
+__pycache__/
 
 # VSCode
 .vscode/*

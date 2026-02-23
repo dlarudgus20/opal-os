@@ -37,3 +37,36 @@ objdump -T <target>.so | rg " memcpy$| memmove$| memset$| strlen$"
 
 대응:
 - `QEMU_FLAGS="-display none" make run`처럼 GUI 비활성화
+
+## 4) 시스템 PSF 폰트 없음 (`--psf-system` 실패)
+증상:
+- `python3 tools/psfextract.py --psf-system ...` 실행 시 시스템 폰트를 찾지 못해 실패
+- 커널 빌드에서 `res/gen/font.psf` 생성 단계가 실패
+
+원인:
+- `/usr/share/consolefonts`가 없거나 비어 있음
+- 요청한 `--width/--height/--count` 조건을 만족하는 폰트가 없음
+
+대응:
+```bash
+# 1) 시스템 폰트 경로 확인
+ls /usr/share/consolefonts
+
+# 2) 특정 입력 폰트를 직접 지정
+make -C kernel build KERNEL_PSF=/path/to/font.psf.gz
+
+# 3) 또는 시스템 폰트 패키지 설치 후 재시도 (배포판별 패키지명 상이)
+```
+
+## 5) `KERNEL_PSF`를 바꿨는데 폰트가 그대로임
+증상:
+- `KERNEL_PSF=/new/font.psf.gz`로 다시 빌드했는데 기존 폰트가 계속 포함됨
+
+원인:
+- 증분 빌드에서 생성 리소스(`res/gen/font.psf`)가 재생성되지 않음
+
+대응:
+```bash
+make -C kernel clean-gen
+make -C kernel build KERNEL_PSF=/path/to/font.psf.gz
+```

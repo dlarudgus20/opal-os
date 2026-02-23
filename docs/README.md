@@ -5,3 +5,4 @@
 - [`kernel-unit-test.md`](kernel-unit-test.md): 커널 유닛 테스트 프레임워크 상세
 - [`troubleshooting.md`](troubleshooting.md): 자주 발생하는 빌드/테스트 이슈
 - [`opal/README.md`](opal/README.md): 커널 내부 동작 문서
+- [`tools/README.md`](tools/README.md): 도구 스크립트 문서

@@ -8,8 +8,10 @@
 #include <opal/platform/boot.h>
 #include <opal/platform/mm/defines.h>
 
-// ascii_font.c
-extern unsigned char g_ascii_font[];
+extern unsigned char g_font_data[];
+
+// skip psf header
+#define g_ascii_font (g_font_data + 32)
 
 struct fbinfo {
     volatile uint32_t *fb;
@@ -80,7 +82,13 @@ void fb_draw_rect(int x, int y, int width, int height, int thickness, uint32_t c
 }
 
 void fb_draw_char(int x, int y, char c, uint32_t fg, uint32_t bg) {
-    unsigned char* font = g_ascii_font + (unsigned char)c * 16;
+    unsigned char index = (unsigned char)c;
+    if (index >= 128) {
+        index = 0;
+    }
+
+    unsigned char *font = g_ascii_font + index * 16;
+
     for (int yi = 0; yi < 16; yi++) {
         for (int xi = 0; xi < 8; xi++) {
             if (font[yi] & (0x80 >> xi)) {

@@ -92,7 +92,38 @@ build: $(TARGET)
 ```bash
 make CONFIG=debug PLATFORM=pc-x64
 make CONFIG=release PLATFORM=pc-x64
+make gen
+make clean-gen
 make test CONFIG=debug PLATFORM=pc-x64
 make -C kernel test CONFIG=debug PLATFORM=pc-x64
 make unit-test CONFIG=debug PLATFORM=pc-x64
 ```
+
+## 7. 리소스 빌드 패턴
+프로젝트별로 `res.mk`를 두고, 소스 빌드 전에 생성 리소스를 의존성으로 거는 패턴을 권장합니다.
+
+권장 구조:
+- 생성 대상 목록 변수 정의 (`RESOURCES := ...`)
+- 리소스 생성 규칙 작성
+- 리소스를 사용하는 소스 타깃에 의존성 추가
+
+예시:
+```makefile
+RESOURCES := res/gen/example.bin
+
+src/res.c: $(RESOURCES)
+
+res/gen/example.bin: res.mk
+	@mkdir -p $(dir $@)
+	$(PYTHON) ../tools/some-generator.py $@
+```
+
+핵심 포인트:
+- 생성 리소스는 `src/res.c`(또는 해당 리소스를 `#embed`하는 소스)의 선행 의존성으로 둡니다.
+- 외부 입력 파일이나 설정 변수를 쓰는 경우 의존성에도 명시합니다.
+  - 예: `res/gen/example.bin: $(INPUT_FILE) res.mk`
+- 생성기는 `tools/` 스크립트로 분리해 재사용 가능하게 유지합니다.
+
+관련 문서:
+- [`psfextract.md`](tools/psfextract.md)
+- [`kernel/README.md`](../kernel/README.md) (커널 리소스 상세)

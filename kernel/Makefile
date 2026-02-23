@@ -2,15 +2,16 @@ TARGET_NAME := kernel
 TARGET_TYPE := executable
 STATIC_REFS := libkc libcoll
 
+TEST_SHARED_REFS := libpanicimpl
+LDFLAGS_ON_TEST := -Wl,--exclude-libs=libkc
+
 all: build
 
 # configurations
 
-TEST_SHARED_REFS := libpanicimpl
-LDFLAGS_ON_TEST := -Wl,--exclude-libs=libkc
-
 include ../mkfiles/conf.mk
 -include platform/$(PLATFORM)/config.mk
+include res.mk
 
 ifneq ($(IS_TEST), 1)
 STATIC_REFS += libkubsan
