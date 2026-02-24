@@ -3,8 +3,8 @@
 #include <kc/attributes.h>
 #include <kc/stdlib.h>
 
-#include <opal/drivers/fb.h>
-#include <opal/drivers/fb_tty.h>
+#include <opal/drivers/fb/fb.h>
+#include <opal/drivers/fb/fb_tty.h>
 #include <opal/platform/boot.h>
 #include <opal/platform/mm/defines.h>
 
@@ -21,6 +21,7 @@ struct fbinfo {
 };
 
 static struct fbinfo g_fb;
+static struct fb_tty g_fb_tty;
 
 void fb_init(void) {
     const struct boot_fbinfo *fbinfo = boot_get_fbinfo();
@@ -40,7 +41,8 @@ void fb_init(void) {
     g_fb.width = (int)fbinfo->width;
     g_fb.height = (int)fbinfo->height;
 
-    fb_tty_init(0, 0, g_fb.width, g_fb.height);
+    fb_tty_init(&g_fb_tty, 0, 0, g_fb.width, g_fb.height);
+    tty0_register(&g_fb_tty.tty);
 }
 
 int fb_get_width(void) {

@@ -11,7 +11,7 @@
 #include <opal/mm/mm.h>
 #include <opal/mm/pfn.h>
 #include <opal/drivers/uart.h>
-#include <opal/drivers/fb.h>
+#include <opal/drivers/fb/fb.h>
 #include <opal/platform/boot.h>
 #include <opal/platform/descriptors.h>
 #include <opal/platform/mm/pagetable.h>

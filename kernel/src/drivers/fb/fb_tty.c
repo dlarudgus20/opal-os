@@ -1,11 +1,6 @@
-#include <limits.h>
-#include <stdbool.h>
-
 #include <kc/assert.h>
 
-#include <opal/tty.h>
-#include <opal/drivers/fb.h>
-#include <opal/drivers/fb_tty.h>
+#include <opal/drivers/fb/fb_tty.h>
 
 #define CW 8
 #define CH 16
@@ -17,22 +12,7 @@
 #define DEFAULT_FG 15
 #define DEFAULT_BG 0
 
-struct fb_tty {
-    struct tty tty;
-
-    int xoff;
-    int yoff;
-    int width;
-    int height;
-
-    int xcur;
-    int ycur;
-
-    uint32_t fg;
-    uint32_t bg;
-};
-
-static uint32_t g_colors[16] = {
+static fb_color_t g_colors[16] = {
     0x0c0c0c, 0xc50f1f, 0x13a10e, 0xc19c00, 0x0037da, 0x881798, 0x3a96dd, 0xcccccc,
     0x767676, 0xe74856, 0x16c60c, 0xf9f1a5, 0x3b78ff, 0xb4009e, 0x61d6d6, 0xf2f2f2,
 };
@@ -154,25 +134,23 @@ static struct tty_ops g_tty_ops = {
     .set_color = set_color,
 };
 
-static struct fb_tty g_tty;
-
-void fb_tty_init(int x, int y, int width, int height) {
+void fb_tty_init(struct fb_tty *tty, int x, int y, int width, int height) {
+    assert(tty);
     assert(MARGIN * 2 + CW <= width);
     assert(MARGIN * 2 + CH <= height);
 
     int ch_w = (width - MARGIN * 2) / CW;
     int ch_h = (height - MARGIN * 2) / CH;
 
-    tty_init(&g_tty.tty, &g_tty_ops);
-    tty0_register(&g_tty.tty);
+    tty_init(&tty->tty, &g_tty_ops);
 
-    g_tty.xoff = x;
-    g_tty.yoff = y;
-    g_tty.width = ch_w;
-    g_tty.height = ch_h;
-    g_tty.xcur = 0;
-    g_tty.ycur = 0;
+    tty->xoff = x;
+    tty->yoff = y;
+    tty->width = ch_w;
+    tty->height = ch_h;
+    tty->xcur = 0;
+    tty->ycur = 0;
 
-    set_color(&g_tty.tty, -1, -1);
-    clear_screen(&g_tty);
+    set_color(&tty->tty, -1, -1);
+    clear_screen(tty);
 }
