@@ -1,4 +1,9 @@
 SOURCE_DIRS        := src platform/$(PLATFORM)/src
+
+ifneq ($(UNIT_TEST), )
+SOURCE_DIRS        += unit-tests platform/$(PLATFORM)/unit-tests
+endif
+
 STRIPPED_SRCDIRS   := $(strip $(foreach dir, $(SOURCE_DIRS), $(if $(wildcard $(dir)), $(dir), )))
 C_SOURCES          := $(sort $(if $(STRIPPED_SRCDIRS), $(shell find $(STRIPPED_SRCDIRS) -type f -name '*.c'), ))
 ASM_SOURCES        := $(sort $(if $(STRIPPED_SRCDIRS), $(shell find $(STRIPPED_SRCDIRS) -type f -name '*.asm'), ))
