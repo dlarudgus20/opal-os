@@ -1,3 +1,7 @@
+// this test assume that nobody allocates any pages from buddy
+// enable this test when allocator is suspicious
+// to enable this test, carve out every allocations (e.g. mmio vmap)
+
 #include <stdint.h>
 
 #include <kc/string.h>
