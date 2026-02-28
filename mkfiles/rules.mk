@@ -16,7 +16,8 @@ ASM_DEPENDS        := $(patsubst %.o, %.d, $(ASM_OBJECTS))
 OBJECTS            += $(ASM_OBJECTS) $(C_OBJECTS)
 
 ifeq ($(IS_TEST_BUILD), 1)
-TEST_SOURCES       := $(wildcard $(TEST_DIR)/*.cpp)
+STRIPPED_TESTDIR   := $(strip $(foreach dir, $(TEST_DIR), $(if $(wildcard $(dir)), $(dir), )))
+TEST_SOURCES       := $(sort $(if $(STRIPPED_TESTDIR), $(shell find $(STRIPPED_TESTDIR) -type f -name '*.cpp'), ))
 TEST_OBJECTS       := $(patsubst %.cpp, $(BUILD_DIR)/%.cpp.o, $(TEST_SOURCES))
 TEST_DEPENDS       := $(patsubst %.o, %.d, $(TEST_OBJECTS))
 TEST_EXECUTABLE    := $(BUILD_DIR)/test
@@ -137,7 +138,6 @@ endif
 		$(TEST_OBJECTS) $(TEST_TARGET_LIBS) $(REFS_SHARED_FILES) -lgtest -lgtest_main \
 		-Wl,-Map,$(BUILD_DIR)/test.map
 	$(TOOLSET_NM) $(NM_FLAGS) $@ > $(BUILD_DIR)/test.nm
-	$(TOOLSET_OBJDUMP) $(OBJDUMP_FLAGS) $@ > $(BUILD_DIR)/test.disasm
 endif
 
 $(REFS_STATIC_FILES) $(REFS_SHARED_FILES): .FORCE
