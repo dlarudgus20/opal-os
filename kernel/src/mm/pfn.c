@@ -153,6 +153,14 @@ bool mm_pfn_is_valid(pfn_t pfn) {
     return false;
 }
 
+phys_addr_t mm_pfn_to_phys(pfn_t pfn) {
+    return pfn * PAGE_SIZE;
+}
+
+pfn_t mm_phys_to_pfn(phys_addr_t pa) {
+    return pa / PAGE_SIZE;
+}
+
 struct page *mm_pfn_to_page(pfn_t pfn) {
     assert(pfn < g_pfn_end);
     return (struct page *)PAGES_START_VIRT + pfn;

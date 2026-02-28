@@ -6,6 +6,8 @@
 #include <kc/stdlib.h>
 #include <kc/string.h>
 
+#include <opal/mm/mm.h>
+#include <opal/mm/pfn.h>
 #include <opal/mm/map.h>
 #include <opal/platform/boot.h>
 #include <opal/platform/asm.h>
@@ -39,8 +41,16 @@ static virt_addr_t phys_to_virt_table(phys_addr_t pa) {
 }
 
 static phys_addr_t allocate_page(void) {
-    size_t allocated;
-    return mm_tmp_alloc_pages(1, &allocated);
+    if (mm_tmp_alloc_get()) {
+        size_t allocated;
+        return mm_tmp_alloc_pages(1, &allocated);
+    } else {
+        pfn_t pfn = mm_alloc_page(0);
+        if (pfn == PFN_INVALID) {
+            panic("cannot allocate more page table");
+        }
+        return mm_pfn_to_phys(pfn);
+    }
 }
 
 static pagetable_t *get_or_alloc_table(pagetable_t *parent, size_t index) {
@@ -129,48 +139,24 @@ static virt_addr_t map_range(virt_addr_t va, phys_addr_t pa_start, phys_addr_t p
     return map_range_len(va, pa_start, pa_end - pa_start, flags);
 }
 
-static void map_framebuffer_direct(void) {
-    const struct boot_fbinfo *fb = boot_get_fbinfo();
-    if (!fb) {
-        return;
-    }
-
-    phys_size_t raw_size = (phys_size_t)fb->pitch * (phys_size_t)fb->height;
-    if (raw_size == 0) {
-        return;
-    }
-
-    phys_addr_t start = align_floor_sz_p2(fb->addr, PAGE_SIZE);
-    phys_addr_t end = align_ceil_sz_p2(fb->addr + raw_size, PAGE_SIZE);
-
-    if (end <= start) {
-        return;
-    }
-
-    if (end <= BOOTSTRAP_MAP_END_PHYS) {
-        return;
-    }
-    if (start < BOOTSTRAP_MAP_END_PHYS) {
-        start = BOOTSTRAP_MAP_END_PHYS;
-    }
-
-    virt_addr_t va_start = DIRECT_MAP_START_VIRT + start;
-    if (va_start >= DIRECT_MAP_END_VIRT) {
-        return;
-    }
-
-    if (end > DIRECT_MAP_END_VIRT - DIRECT_MAP_START_VIRT) {
-        end = DIRECT_MAP_END_VIRT - DIRECT_MAP_START_VIRT;
-    }
-    if (end <= start) {
-        return;
-    }
-
-    map_range_len(va_start, start, end - start, PTE_FLAG_PRESENT | PTE_FLAG_WRITABLE);
-}
-
 virt_addr_t mm_pagetable_map(virt_addr_t va, phys_addr_t pa, phys_size_t len, page_entry_t flags) {
     return map_range_len(va, pa, len, flags);
+}
+
+void mm_pagetable_unmap(virt_addr_t va, phys_size_t len) {
+    assert(va % PAGE_SIZE == 0);
+    assert(len % PAGE_SIZE == 0);
+
+    if (len == 0) {
+        return;
+    }
+
+    // TODO: implement page table walk and clear entries.
+    // TODO: flush TLB for unmapped range.
+    (void)va;
+    (void)len;
+
+    panic("mm_pagetable_unmap(): unimplemneted");
 }
 
 void mm_pagetable_init(void) {
@@ -224,10 +210,6 @@ void mm_pagetable_init(void) {
 
         map_range_len(va_start, addr, len, PTE_FLAG_PRESENT | PTE_FLAG_WRITABLE);
     }
-
-    // temporary mapping
-    // TODO: proper iommap
-    map_framebuffer_direct();
 }
 
 #include <opal/tty.h>

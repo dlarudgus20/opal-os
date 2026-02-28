@@ -7,13 +7,18 @@
 #define PTR_BIT_WIDTH 64
 #define PFN_VALID_BIT_WIDTH (PTR_BIT_WIDTH - PAGE_SHIFT)
 
+// docs/opal/memory-map.md
+
 #define KERNEL_START_PHYS       0x00200000u
 #define KERNEL_START_VIRT       0xffffffff80000000u
 #define KSTACK_START_VIRT       0xffffffff8f000000u
 
-#define DIRECT_MAP_START_VIRT   0xffff900000000000u
-#define DIRECT_MAP_END_VIRT     0xffffd00000000000u
-#define PAGES_START_VIRT        0xffffe00000000000u
+#define DIRECT_MAP_START_VIRT   0xffff880000000000u
+#define DIRECT_MAP_END_VIRT     0xffffc80000000000u
+#define PAGES_START_VIRT        0xffffc90000000000u
+#define PAGES_END_VIRT          0xffffca0000000000u
+#define VMAP_START_VIRT       0xffffcb0000000000u
+#define VMAP_END_VIRT         0xffffeb0000000000u
 
 #ifdef OPAL_TEST
 #define __kernel_start_lba  ((char*)1)

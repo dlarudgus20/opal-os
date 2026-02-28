@@ -40,10 +40,10 @@ phys_addr_t mm_tmp_alloc_pages(size_t max_pages, size_t *allocated_pages);
 const struct mmap *mm_get_memory_map(void);
 const struct mmap *mm_get_section_map(void);
 
+const char *mm_sec_entry_type_str(mmap_entry_type_t type);
+
 #ifdef OPAL_TEST
 void refine_mmap(struct mmap *mmap_out, uint32_t max_entries, const struct mmap *boot_map);
 #endif
-
-const char *mm_sec_entry_type_str(mmap_entry_type_t type);
 
 #endif

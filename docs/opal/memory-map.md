@@ -4,20 +4,26 @@
 ```text
 memory map (bootstrap)
 
-virtual range                                physical range              note
---------------------------------------------|---------------------------|----------------------------
-[0x00000000 00000000 ~ 0x00000000 00600000)  [0x00000000 ~ 0x00600000)   identity map
-[0xffffffff 80000000 ~ 0xffffffff 80800000)  [0x00200000 ~ 0x00a00000)   kernel image + bootstrap window
-[0xffffffff 8f000000 ~ 0xffffffff 8f200000)  [stack bottom ~ +0x200000)  kernel stack
+virtual range                                physical range              size    note
+--------------------------------------------|---------------------------|-------|----------------------------
+[0x00000000 00000000 ~ 0x00000000 00600000)  [0x00000000 ~ 0x00600000)     6 MB  identity map
+[0xffffffff 80000000 ~ 0xffffffff 80800000)  [0x00200000 ~ 0x00a00000)     8 MB  kernel image + bootstrap window
+[0xffffffff 8f000000 ~ 0xffffffff 8f200000)  [stack bottom ~ +0x200000)    2 MB  kernel stack
 
 memory map (after mm_init())
 
-virtual range                                physical range              note
---------------------------------------------|---------------------------|----------------------------
-[0xffff9000 00000000 ~ 0xffffd000 00000000)        <full memory>         direct map (64TB)
-[0xffffe000 00000000 ~ 0xfffff000 00000000)          <dynamic>           struct page
-[0xffffffff 80000000 ~ 0xffffffff 8e000000)  [0x00200000 ~ +kernel len)  kernel image
-[0xffffffff 8f000000 ~ 0xffffffff 8f200000)  [stack bottom ~ +0x200000)  kernel stack
+virtual range                                physical range              size    note
+--------------------------------------------|---------------------------|-------|----------------------------
+[0xffff8000 00000000 ~ 0xffff8800 00000000)                                8 TB  <hole>
+[0xffff8800 00000000 ~ 0xffffc800 00000000)        <full memory>          64 TB  direct map
+[0xffffc800 00000000 ~ 0xffffc900 00000000)                                1 TB  <hole>
+[0xffffc900 00000000 ~ 0xffffca00 00000000)          <dynamic>             1 TB  struct page
+[0xffffca00 00000000 ~ 0xffffcb00 00000000)                                1 TB  <hole>
+[0xffffcb00 00000000 ~ 0xffffeb00 00000000)          <dynamic>            32 TB  mmio region
+[0xffffeb00 00000000 ~ 0xffffffff 80000000)                              ~21 TB  <hole>
+-------------------------------------------------------------------------------------------------------------
+[0xffffffff 80000000 ~ 0xffffffff 8e000000)  [0x00200000 ~ +kernel len)  224 MB  kernel image
+[0xffffffff 8f000000 ~ 0xffffffff 8f200000)  [stack bottom ~ +0x200000)    2 MB  kernel stack
 ```
 
 ## 2. 메모리 맵 종류

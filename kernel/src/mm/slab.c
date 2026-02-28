@@ -5,6 +5,7 @@
 #include <kc/string.h>
 
 #include <opal/mm/mm.h>
+#include <opal/mm/pfn.h>
 #include <opal/mm/buddy.h>
 #include <opal/mm/slab.h>
 #include <opal/platform/mm/defines.h>
@@ -109,10 +110,12 @@ static struct slab_page *pop_partial_page(struct slab *slab) {
 }
 
 static struct slab_page *create_slab_page(struct slab *slab) {
-    struct slab_page *page = mm_alloc_page(0);
-    if (!page) {
+    pfn_t pfn = mm_alloc_page(0);
+    if (pfn == PFN_INVALID) {
         return NULL;
     }
+
+    struct slab_page *page = mm_pfn_to_ptr(pfn);
 
     memset(page, 0, sizeof(*page));
     page->owner = slab;
@@ -134,7 +137,7 @@ static struct slab_page *create_slab_page(struct slab *slab) {
 static void destroy_slab_page(struct slab *slab, struct slab_page *page) {
     assert(page->inuse == 0, "cannot destroy in-use slab page");
     slab->total_objects -= slab->page_capacity;
-    mm_free_page(page, 0);
+    mm_free_page(mm_ptr_to_pfn(page), 0);
 }
 
 static struct slab_page *pick_alloc_page(struct slab *slab) {

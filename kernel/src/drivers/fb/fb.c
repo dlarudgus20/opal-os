@@ -3,6 +3,7 @@
 #include <kc/attributes.h>
 #include <kc/stdlib.h>
 
+#include <opal/mm/vmap.h>
 #include <opal/drivers/fb/fb.h>
 #include <opal/drivers/fb/fb_tty.h>
 #include <opal/platform/boot.h>
@@ -36,7 +37,14 @@ void fb_init(void) {
         return;
     }
 
-    g_fb.fb = (volatile uint32_t *)(DIRECT_MAP_START_VIRT + fbinfo->addr);
+    void *fb_ptr;
+    struct span fb = mm_vmap_alloc(&fb_ptr, fbinfo->addr, (phys_size_t)fbinfo->pitch * fbinfo->height);
+    if (!fb.ptr) {
+        // kwarn("cannot allocate page table for framebuffer");
+        return;
+    }
+
+    g_fb.fb = fb_ptr;
     g_fb.pitch = fbinfo->pitch / sizeof(uint32_t);
     g_fb.width = (int)fbinfo->width;
     g_fb.height = (int)fbinfo->height;

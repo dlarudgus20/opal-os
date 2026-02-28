@@ -22,10 +22,12 @@ static struct mmap g_mm_sec = {
 };
 
 static struct mmap_entry g_tmp_alloc_entries[MAX_MMAP_ENTRIES];
-static struct mm_tmp_alloc g_tmp_alloc = { {
-    .entries = g_tmp_alloc_entries,
-    .length = 0,
-} };
+static struct mm_tmp_alloc g_tmp_alloc = {
+    .mm ={
+        .entries = g_tmp_alloc_entries,
+        .length = 0,
+    },
+};
 
 static bool align_if_usable(struct mmap_entry* entry) {
     if (entry->type != MMAP_ENTRY_USABLE) {
@@ -293,11 +295,12 @@ void mm_tmp_alloc_finalize(void) {
 }
 
 const struct mm_tmp_alloc *mm_tmp_alloc_get(void) {
-    return &g_tmp_alloc;
+    return g_tmp_alloc.mm.entries ? &g_tmp_alloc : NULL;
 }
 
 phys_addr_t mm_tmp_alloc_pages(size_t max_pages, size_t *allocated_pages) {
     assert(allocated_pages);
+    assert(g_tmp_alloc.mm.entries, "tmp_alloc is already finalized");
 
     for (uint32_t i = 0; i + 1 < g_tmp_alloc.mm.length; i++) {
         struct mmap_entry *const entry = &g_tmp_alloc.mm.entries[i];

@@ -22,6 +22,7 @@ typedef uint64_t page_entry_t;
 
 void mm_pagetable_init(void);
 virt_addr_t mm_pagetable_map(virt_addr_t va, phys_addr_t pa, phys_size_t len, page_entry_t flags);
+void mm_pagetable_unmap(virt_addr_t va, phys_size_t len);
 
 void mm_pagetable_print(void);
 

@@ -7,7 +7,7 @@
 #include <opal/mm/buddy.h>
 #include <opal/mm/map.h>
 #include <opal/mm/pfn.h>
-#include <opal/mm/slab.h>
+#include <opal/mm/vmap.h>
 #include <opal/platform/boot.h>
 #include <opal/platform/mm/pagetable.h>
 
@@ -30,20 +30,17 @@ void mm_init(void) {
     mm_tmp_alloc_finalize();
     buddy_create(&g_buddy, mm_get_section_map());
 
+    mm_vmap_init();
+
     log_mm();
 }
 
-void *mm_alloc_page(uint8_t order) {
-    const pfn_t pfn = buddy_alloc(&g_buddy, order);
-    if (pfn == PFN_INVALID) {
-        return NULL;
-    } else {
-        return mm_pfn_to_ptr(pfn);
-    }
+pfn_t mm_alloc_page(uint8_t order) {
+    return buddy_alloc(&g_buddy, order);
 }
 
-void mm_free_page(void *ptr, uint8_t order) {
-    buddy_free(&g_buddy, mm_ptr_to_pfn(ptr), order);
+void mm_free_page(pfn_t pfn, uint8_t order) {
+    buddy_free(&g_buddy, pfn, order);
 }
 
 struct buddy *mm_get_buddy(void) {

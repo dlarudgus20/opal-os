@@ -3,10 +3,12 @@
 
 #include <stdint.h>
 
+#include <opal/mm/types.h>
+
 void mm_init(void);
 
-void *mm_alloc_page(uint8_t order);
-void mm_free_page(void *ptr, uint8_t order);
+pfn_t mm_alloc_page(uint8_t order);
+void mm_free_page(pfn_t pfn, uint8_t order);
 struct buddy *mm_get_buddy(void);
 
 void mm_log_map(void);
