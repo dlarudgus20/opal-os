@@ -5,6 +5,7 @@
 
 #include <opal/test.h>
 #include <opal/tty.h>
+#include <opal/platform/asm.h>
 
 #ifdef OPAL_UNIT_TEST
 
@@ -103,6 +104,7 @@ static void test_run(bool heavy) {
     g_test_state.current_failures = 0;
     g_test_state.current_name = 0;
     tty0_printf("\n==== unit test run ====\n");
+    bool intr = interrupt_is_enabled();
     for (const struct unit_test_info **pp = unit_test_start__; pp < unit_test_end__; pp++) {
         if (!*pp) {
             continue;
@@ -117,6 +119,9 @@ static void test_run(bool heavy) {
             tty0_printf(" %s\n", p->item);
             unit_test_begin(p->item);
             p->fn();
+            if (intr) {
+                interrupts_enable();
+            }
             unit_test_end();
         }
     }

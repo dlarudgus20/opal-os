@@ -5,6 +5,7 @@
 
 #include <opal/irq.h>
 #include <opal/klog.h>
+#include <opal/locks/irqlock.h>
 #include <opal/platform/asm.h>
 
 #define IRQ_QUEUE_SIZE 4096
@@ -32,33 +33,46 @@ void irq_init(void) {
 
 void irqmsg_register(irqmsg_type_t msg, irqmsg_handler_t handler) {
     assert(msg < IRQMSG_COUNT);
+    irqlock_t irqlock = irqlock_acquire();
     g_irqmsg_handlers[msg] = handler;
+    irqlock_release(&irqlock);
 }
 
 bool irqmsg_push(struct irqmsg msg) {
+    irqlock_t irqlock = irqlock_acquire();
+
     if (ringbuffer_is_full(&g_msg_queue)) {
         g_msg_drops++;
         g_msg_drop_event = true;
+        irqlock_release(&irqlock);
         return false;
     }
 
     ringbuffer_push(&g_msg_queue, struct irqmsg, msg);
+    irqlock_release(&irqlock);
     return true;
 }
 
 static bool irqmsg_pop(struct irqmsg* msg_out) {
+    irqlock_t irqlock = irqlock_acquire();
+    bool ret = true;
+
     if (g_msg_drop_event) {
         g_msg_drop_event = false;
         *msg_out = (struct irqmsg){ .type = IRQMSG_DROP, .data = 0 };
-        return true;
+        goto exit;
     }
 
     if (ringbuffer_is_empty(&g_msg_queue)) {
-        return false;
+        ret = false;
+        goto exit;
     }
 
     *msg_out = ringbuffer_pop(&g_msg_queue, struct irqmsg);
-    return true;
+
+exit:
+    irqlock_release(&irqlock);
+    return ret;
 }
 
 void irqmsg_drain(void) {

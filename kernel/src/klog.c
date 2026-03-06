@@ -9,6 +9,7 @@
 
 #include <opal/klog.h>
 #include <opal/tty.h>
+#include <opal/locks/irqlock.h>
 
 #define KLOG_WRAP UINT16_MAX
 #define KLOG_BUFFER_SIZE 0x100000 // 1MB
@@ -84,6 +85,8 @@ static void print_log(int seq, uint16_t level, const char *msg, uint16_t msglen)
 }
 
 void klog_write(uint16_t level, const char *msg, uint16_t msglen) {
+    irqlock_t irqlock = irqlock_acquire();
+
     if (level >= KLOG_LEVEL_COUNT) {
         level = KLOG_LEVEL_COUNT - 1;
     }
@@ -154,13 +157,18 @@ void klog_write(uint16_t level, const char *msg, uint16_t msglen) {
 #ifndef OPAL_TEST
     print_log(-1, level, msg, msglen);
 #endif
+
+    irqlock_release(&irqlock);
 }
 
 bool klog_read(struct klog_record_header *header_out, char *msg_out, size_t msg_size) {
     assert(header_out, "klog_read requires a non-NULL header_out");
     assert(msg_out && msg_size > 0, "klog_read requires a non-empty msg_out buffer");
 
+    irqlock_t irqlock = irqlock_acquire();
+
     if (klog_queue.read_pos == klog_queue.write_pos && !klog_queue.full) {
+        irqlock_release(&irqlock);
         return false;
     }
 
@@ -184,6 +192,7 @@ bool klog_read(struct klog_record_header *header_out, char *msg_out, size_t msg_
 
     klog_queue.full = false;
 
+    irqlock_release(&irqlock);
     return true;
 }
 

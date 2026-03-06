@@ -8,6 +8,7 @@
 #include <opal/mm/map.h>
 #include <opal/mm/pfn.h>
 #include <opal/mm/vmap.h>
+#include <opal/locks/irqlock.h>
 #include <opal/platform/boot.h>
 #include <opal/platform/mm/pagetable.h>
 
@@ -36,11 +37,16 @@ void mm_init(void) {
 }
 
 pfn_t mm_alloc_page(uint8_t order) {
-    return buddy_alloc(&g_buddy, order);
+    irqlock_t irqlock = irqlock_acquire();
+    pfn_t pfn = buddy_alloc(&g_buddy, order);
+    irqlock_release(&irqlock);
+    return pfn;
 }
 
 void mm_free_page(pfn_t pfn, uint8_t order) {
+    irqlock_t irqlock = irqlock_acquire();
     buddy_free(&g_buddy, pfn, order);
+    irqlock_release(&irqlock);
 }
 
 struct buddy *mm_get_buddy(void) {

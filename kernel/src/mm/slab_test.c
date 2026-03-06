@@ -3,8 +3,9 @@
 
 #include <kc/string.h>
 
-#include <opal/mm/slab.h>
 #include <opal/test.h>
+#include <opal/mm/slab.h>
+#include <opal/platform/asm.h>
 
 static void expect_all_zero(const uint8_t *buf, size_t len) {
     for (size_t i = 0; i < len; i++) {
@@ -13,9 +14,11 @@ static void expect_all_zero(const uint8_t *buf, size_t len) {
 }
 
 DEFINE_UNIT_TEST(slab_cache_init_and_basic_alloc_free) {
-    struct slab cache = {0};
+    interrupts_disable();
 
+    struct slab cache = {0};
     slab_create(&cache, 32, 8);
+
     TEST_EXPECT_EQ(32, slab_get_object_size(&cache));
     TEST_EXPECT_EQ(0, slab_get_total(&cache));
     TEST_EXPECT_EQ(0, slab_get_inuse(&cache));
@@ -32,6 +35,8 @@ DEFINE_UNIT_TEST(slab_cache_init_and_basic_alloc_free) {
 }
 
 DEFINE_UNIT_TEST(slab_cache_keeps_alignment) {
+    interrupts_disable();
+
     struct slab cache = {0};
     slab_create(&cache, 24, 16);
 
@@ -44,6 +49,8 @@ DEFINE_UNIT_TEST(slab_cache_keeps_alignment) {
 }
 
 DEFINE_UNIT_TEST(slab_cache_multiple_alloc_free_restore_counts) {
+    interrupts_disable();
+
     struct slab cache = {0};
     void *ptrs[128];
     size_t count = 0;
@@ -70,6 +77,8 @@ DEFINE_UNIT_TEST(slab_cache_multiple_alloc_free_restore_counts) {
 }
 
 DEFINE_UNIT_TEST(slab_cache_alloc_returns_zeroed_payload) {
+    interrupts_disable();
+
     struct slab cache = {0};
     slab_create(&cache, 48, 8);
 
@@ -82,6 +91,8 @@ DEFINE_UNIT_TEST(slab_cache_alloc_returns_zeroed_payload) {
 }
 
 DEFINE_UNIT_TEST(slab_cache_realloc_rezeroes_payload) {
+    interrupts_disable();
+
     struct slab cache = {0};
     slab_create(&cache, 40, 8);
 
@@ -99,6 +110,8 @@ DEFINE_UNIT_TEST(slab_cache_realloc_rezeroes_payload) {
 }
 
 DEFINE_UNIT_TEST(slab_cache_two_instances_are_independent) {
+    interrupts_disable();
+
     struct slab a = {0};
     struct slab b = {0};
     slab_create(&a, 32, 8);
@@ -125,6 +138,8 @@ DEFINE_UNIT_TEST(slab_cache_two_instances_are_independent) {
 }
 
 DEFINE_UNIT_TEST(slab_cache_total_grows_after_first_page_is_full) {
+    interrupts_disable();
+
     struct slab cache = {0};
     void *ptrs[512];
     size_t count = 0;
@@ -159,6 +174,8 @@ DEFINE_UNIT_TEST(slab_cache_total_grows_after_first_page_is_full) {
 }
 
 DEFINE_UNIT_TEST(slab_cache_alloc_dealloc_pattern_with_gaps) {
+    interrupts_disable();
+
     struct slab cache = {0};
     void *ptrs[30];
     void *new_ptrs[10];
@@ -199,6 +216,8 @@ DEFINE_UNIT_TEST(slab_cache_alloc_dealloc_pattern_with_gaps) {
 }
 
 DEFINE_UNIT_TEST(slab_cache_fragmentation_and_reuse) {
+    interrupts_disable();
+
     struct slab cache = {0};
     void *ptrs[100];
     void *reused[50];
@@ -236,6 +255,8 @@ DEFINE_UNIT_TEST(slab_cache_fragmentation_and_reuse) {
 }
 
 DEFINE_UNIT_TEST(slab_cache_interleaved_allocation_and_deallocation) {
+    interrupts_disable();
+
     struct slab cache = {0};
     void *ptrs[100];
     size_t count = 0;
@@ -265,6 +286,8 @@ DEFINE_UNIT_TEST(slab_cache_interleaved_allocation_and_deallocation) {
 }
 
 DEFINE_UNIT_TEST(slab_cache_stress_allocation_and_deallocation) {
+    interrupts_disable();
+
     struct slab cache = {0};
     void *ptrs[1000];
     size_t count = 0;

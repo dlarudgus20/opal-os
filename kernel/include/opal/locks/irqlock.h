@@ -7,7 +7,24 @@ struct irqlock {
 
 typedef struct irqlock irqlock_t;
 
-irqlock_t irqlock_acquire(void);
+#ifndef OPAL_TEST
+
+[[nodiscard]] irqlock_t irqlock_acquire(void);
 void irqlock_release(irqlock_t *lock);
+
+#else
+
+#include <kc/assert.h>
+
+[[nodiscard]] static inline irqlock_t irqlock_acquire(void) {
+    return (struct irqlock){ .flag = true };
+}
+
+static inline void irqlock_release(irqlock_t *lock) {
+    assert(lock->flag);
+    lock->flag = false;
+}
+
+#endif
 
 #endif

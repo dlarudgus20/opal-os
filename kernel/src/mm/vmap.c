@@ -2,6 +2,7 @@
 #include <kc/stdlib.h>
 
 #include <opal/mm/vmap.h>
+#include <opal/locks/irqlock.h>
 #include <opal/platform/mm/pagetable.h>
 
 #define MAX_VMAP_ENTRIES 128
@@ -61,6 +62,8 @@ struct span mm_vmap_alloc(void **va_out, phys_addr_t pa, phys_size_t size) {
         return (struct span){ .ptr = 0, .size = 0 };
     }
 
+    irqlock_t irqlock = irqlock_acquire();
+
     for (uint32_t i = 0; i < g_vmap_len; i++) {
         struct vmap_entry *entry = &g_vmap_entries[i];
         if (entry->len < aligned_size) {
@@ -77,6 +80,8 @@ struct span mm_vmap_alloc(void **va_out, phys_addr_t pa, phys_size_t size) {
 
         mm_pagetable_map(va_base, aligned_start, aligned_size, PTE_FLAG_PRESENT | PTE_FLAG_WRITABLE);
 
+        irqlock_release(&irqlock);
+
         *va_out = (void *)(va_base + (pa - aligned_start));
         return (struct span){
             .ptr = (void *)va_base,
@@ -84,6 +89,7 @@ struct span mm_vmap_alloc(void **va_out, phys_addr_t pa, phys_size_t size) {
         };
     }
 
+    irqlock_release(&irqlock);
     return (struct span){ .ptr = 0, .size = 0 };
 }
 
@@ -100,6 +106,8 @@ void mm_vmap_free(struct span span) {
     assert(len % PAGE_SIZE == 0);
     assert(VMAP_START_VIRT <= addr && addr < VMAP_END_VIRT);
     assert(len <= VMAP_END_VIRT - addr);
+
+    irqlock_t irqlock = irqlock_acquire();
 
     mm_pagetable_unmap(addr, len);
 
@@ -127,21 +135,24 @@ void mm_vmap_free(struct span span) {
         struct vmap_entry *next = &g_vmap_entries[idx];
         prev->len += len + next->len;
         remove_entry(idx);
-        return;
+        goto exit;
     }
 
     if (merge_prev) {
         struct vmap_entry *prev = &g_vmap_entries[idx - 1];
         prev->len += len;
-        return;
+        goto exit;
     }
 
     if (merge_next) {
         struct vmap_entry *next = &g_vmap_entries[idx];
         next->addr = addr;
         next->len += len;
-        return;
+        goto exit;
     }
 
     insert_entry(idx, addr, len);
+
+exit:
+    irqlock_release(&irqlock);
 }

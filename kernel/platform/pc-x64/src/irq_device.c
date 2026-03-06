@@ -1,6 +1,7 @@
 #include <kc/assert.h>
 #include <kc/string.h>
 
+#include <opal/locks/irqlock.h>
 #include <opal/platform/irq_device.h>
 #include <opal/platform/drivers/pic.h>
 
@@ -15,20 +16,28 @@ void irq_device_init(void) {
 
 void irq_register(irq_t irq, irq_handler_t handler) {
     assert(irq < IRQ_COUNT);
+    irqlock_t irqlock = irqlock_acquire();
     g_irq_handlers[irq] = handler;
+    irqlock_release(&irqlock);
 }
 
 void irq_enable(irq_t irq) {
     assert(irq < IRQ_COUNT);
+    irqlock_t irqlock = irqlock_acquire();
+
     if (irq >= 8) {
         pic_enable_irq(PIC_IRQ_SLAVE);
     }
     pic_enable_irq(irq);
+
+    irqlock_release(&irqlock);
 }
 
 void irq_disable(irq_t irq) {
     assert(irq < IRQ_COUNT);
+    irqlock_t irqlock = irqlock_acquire();
     pic_disable_irq(irq);
+    irqlock_release(&irqlock);
 }
 
 void irq_enable_intr(void) {

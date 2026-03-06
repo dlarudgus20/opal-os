@@ -5,6 +5,7 @@
 #include <kc/string.h>
 
 #include <opal/tty.h>
+#include <opal/locks/irqlock.h>
 
 static size_t write_0(struct tty *, const char *buf, size_t len);
 static void set_color_0(struct tty *, int fg, int bg);
@@ -39,19 +40,23 @@ void tty_flush(struct tty *tty) {
     }
 
     struct tty_buffered *buffered = (struct tty_buffered *)tty;
+    irqlock_t irqlock = irqlock_acquire();
 
     if (buffered->buflen == 0) {
-        return;
+        goto exit;
     }
 
     size_t written = buffered->ops->write(tty, buffered->buffer, buffered->buflen);
     if (written >= buffered->buflen) {
         buffered->buflen = 0;
-        return;
+        goto exit;
     }
 
     buffered->buflen -= (uint16_t)written;
     memmove(buffered->buffer, buffered->buffer + written, buffered->buflen);
+
+exit:
+    irqlock_release(&irqlock);
 }
 
 static void tty_write(struct tty *tty, char ch) {
@@ -61,6 +66,7 @@ static void tty_write(struct tty *tty, char ch) {
     }
 
     struct tty_buffered *buffered = (struct tty_buffered *)tty;
+    irqlock_t irqlock = irqlock_acquire();
 
     if (buffered->buflen >= TTY_BUFFER_SIZE) {
         tty_flush(tty);
@@ -68,10 +74,13 @@ static void tty_write(struct tty *tty, char ch) {
 
     if (buffered->buflen >= TTY_BUFFER_SIZE) {
         // drop
-        return;
+        goto exit;
     }
 
     buffered->buffer[buffered->buflen++] = ch;
+
+exit:
+    irqlock_release(&irqlock);
 }
 
 void tty_puts(struct tty *tty, const char *str) {
@@ -150,37 +159,46 @@ struct tty *tty0_get(void) {
 }
 
 static size_t write_0(struct tty *, const char *buf, size_t len) {
+    irqlock_t irqlock = irqlock_acquire();
     for (size_t i = 0; i < len; i++) {
         linkedlist_foreach(ptr, &g_tty_0.subtty_list) {
             struct tty *x = container_of(ptr, struct tty, link);
             tty_write(x, buf[i]);
         }
     }
+    irqlock_release(&irqlock);
     return len;
 }
 
 static void set_color_0(struct tty *, int fg, int bg) {
+    irqlock_t irqlock = irqlock_acquire();
     linkedlist_foreach(ptr, &g_tty_0.subtty_list) {
         struct tty *x = container_of(ptr, struct tty, link);
-
         tty_flush(x);
         x->ops->set_color(x, fg, bg);
     }
+    irqlock_release(&irqlock);
 }
 
 static void tty0_flush(void) {
+    irqlock_t irqlock = irqlock_acquire();
     linkedlist_foreach(ptr, &g_tty_0.subtty_list) {
         struct tty *x = container_of(ptr, struct tty, link);
         tty_flush(x);
     }
+    irqlock_release(&irqlock);
 }
 
 void tty0_register(struct tty* tty) {
+    irqlock_t irqlock = irqlock_acquire();
     linkedlist_push_back(&g_tty_0.subtty_list, &tty->link);
+    irqlock_release(&irqlock);
 }
 
 void tty0_unregister(struct tty* tty) {
+    irqlock_t irqlock = irqlock_acquire();
     linkedlist_remove(&tty->link);
+    irqlock_release(&irqlock);
 }
 
 void tty0_set_fgcolor(tty_color_t color) {
