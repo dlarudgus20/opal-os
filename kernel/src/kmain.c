@@ -10,11 +10,14 @@
 #include <opal/klog.h>
 #include <opal/mm/mm.h>
 #include <opal/mm/pfn.h>
+#include <opal/irq.h>
 #include <opal/drivers/uart.h>
 #include <opal/drivers/fb/fb.h>
 #include <opal/platform/boot.h>
 #include <opal/platform/descriptors.h>
+#include <opal/platform/asm.h>
 #include <opal/platform/mm/pagetable.h>
+#include <opal/platform/drivers/ps2.h>
 
 #define UNAME_MSG "opal-os ("OPAL_PLATFORM" "OPAL_CONFIG")"
 
@@ -161,15 +164,24 @@ void kmain(void) {
     mm_init();
     fb_init();
 
+    irq_init();
+    ps2_init();
+
+    irq_enable_intr();
+
+#ifdef OPAL_UNIT_TEST
     unit_test_run();
+#endif
     print_banner();
 
     kinfo("boot args=%s", boot_get_cmdline());
 
     while (1) {
-        run_shell();
-        tty0_puts("\n");
+        interrupts_enable_and_wait();
+        irqmsg_drain();
     }
+
+    (void)run_shell;
 }
 
 DEFINE_UNIT_TEST(simple_test) {

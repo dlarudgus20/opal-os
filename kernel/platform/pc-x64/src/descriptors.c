@@ -6,6 +6,7 @@
 #include <opal/platform/descriptors.h>
 #include <opal/platform/interrupt.h>
 #include <opal/platform/asm.h>
+#include <opal/platform/drivers/pic.h>
 
 #define GDT_FLAG_ACCESSED   0x01
 #define GDT_FLAG_RW         0x02
@@ -116,5 +117,24 @@ void descriptors_init(void) {
     init_idt(g_idt + 17, 0x08, isr_alignment_check, 0, 0);
     init_idt(g_idt + 18, 0x08, isr_machine_check, 0, 0);
     init_idt(g_idt + 19, 0x08, isr_simd_floating_point, 0, 0);
+
+    static_assert(PIC_INT_VECTOR == 32);
+    init_idt(g_idt + 32, 0x08, isr_irq0, 0, 0);
+    init_idt(g_idt + 33, 0x08, isr_irq1, 0, 0);
+    init_idt(g_idt + 34, 0x08, isr_irq2, 0, 0);
+    init_idt(g_idt + 35, 0x08, isr_irq3, 0, 0);
+    init_idt(g_idt + 36, 0x08, isr_irq4, 0, 0);
+    init_idt(g_idt + 37, 0x08, isr_irq5, 0, 0);
+    init_idt(g_idt + 38, 0x08, isr_irq6, 0, 0);
+    init_idt(g_idt + 39, 0x08, isr_irq7, 0, 0);
+    init_idt(g_idt + 40, 0x08, isr_irq8, 0, 0);
+    init_idt(g_idt + 41, 0x08, isr_irq9, 0, 0);
+    init_idt(g_idt + 42, 0x08, isr_irq10, 0, 0);
+    init_idt(g_idt + 43, 0x08, isr_irq11, 0, 0);
+    init_idt(g_idt + 44, 0x08, isr_irq12, 0, 0);
+    init_idt(g_idt + 45, 0x08, isr_irq13, 0, 0);
+    init_idt(g_idt + 46, 0x08, isr_irq14, 0, 0);
+    init_idt(g_idt + 47, 0x08, isr_irq15, 0, 0);
+
     load_idt(g_idt, sizeof(g_idt));
 }

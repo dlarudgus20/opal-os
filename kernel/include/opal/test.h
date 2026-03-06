@@ -126,9 +126,6 @@ void unit_test_expect_streq_failed(
 #else
 
 #define DEFINE_UNIT_TEST(name) UNUSED_ATTR PROTOTYPE_UNIT_TEST(name)
-static inline void unit_test_run(void) {}
-static inline void unit_test_run_heavy(void) {}
-
 #define TEST_PANIC()                        panic("This executable is not configured as unit test.")
 #define TEST_EXPECT_TRUE(expr)              do { TEST_PANIC(); (void)(expr); } while (0)
 #define TEST_EXPECT_FALSE(expr)             do { TEST_PANIC(); (void)(expr); } while (0)

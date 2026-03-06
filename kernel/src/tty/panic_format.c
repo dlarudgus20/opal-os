@@ -48,7 +48,7 @@ noreturn void panic_format(const char *fmt, const char *file, const char *func, 
 
     static int stage = PANICK_NONE;
 
-    disable_interrupts();
+    interrupts_disable();
 
     va_list args;
     va_start(args, line);

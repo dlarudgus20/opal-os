@@ -12,33 +12,44 @@
 #define ALWAYS_INLINE static inline
 #endif
 
-ALWAYS_INLINE void outb(uint16_t port, uint8_t value) {
+ALWAYS_INLINE void out8(uint16_t port, uint8_t value) {
     __asm__ volatile ("out %1, %0" : : "a"(value), "Nd"(port));
 }
 
-ALWAYS_INLINE uint8_t inb(uint16_t port) {
+ALWAYS_INLINE uint8_t in8(uint16_t port) {
     uint8_t value;
     __asm__ volatile ("in %0, %1" : "=a"(value) : "Nd"(port));
     return value;
 }
 
-ALWAYS_INLINE void disable_interrupts(void) {
+// cli / sti instruction is used for critical sections in many cases
+// thus "memory" clobber is needed
+
+ALWAYS_INLINE void interrupts_disable(void) {
     __asm__ volatile ("cli" : : : "memory");
 }
 
+ALWAYS_INLINE void interrupts_enable(void) {
+    __asm__ volatile ("sti" : : : "memory");
+}
+
 ALWAYS_INLINE void wait_for_interrupt(void) {
-    __asm__ volatile ("hlt" : : : "memory");
+    __asm__ volatile ("hlt");
+}
+
+ALWAYS_INLINE void interrupts_enable_and_wait(void) {
+    __asm__ volatile ("sti; hlt" : : : "memory");
 }
 
 ALWAYS_INLINE uint64_t read_cr2(void) {
     uint64_t value;
-    __asm__ volatile ("mov %0, cr2" : "=r"(value) : : "memory");
+    __asm__ volatile ("mov %0, cr2" : "=r"(value));
     return value;
 }
 
 ALWAYS_INLINE uint64_t read_cr3(void) {
     uint64_t value;
-    __asm__ volatile ("mov %0, cr3" : "=r"(value) : : "memory");
+    __asm__ volatile ("mov %0, cr3" : "=r"(value));
     return value;
 }
 

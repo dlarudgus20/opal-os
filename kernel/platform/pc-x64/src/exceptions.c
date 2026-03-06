@@ -1,5 +1,6 @@
 #include <kc/assert.h>
 
+#include <opal/irq.h>
 #include <opal/platform/interrupt.h>
 #include <opal/platform/asm.h>
 
