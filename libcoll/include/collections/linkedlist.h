@@ -1,7 +1,5 @@
 #pragma once
 
-#include <stdbool.h>
-
 struct linkedlist_link {
     struct linkedlist_link* prev;
     struct linkedlist_link* next;

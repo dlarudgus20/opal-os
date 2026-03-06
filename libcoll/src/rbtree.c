@@ -1,6 +1,6 @@
 #include <stddef.h>
 #include <stdint.h>
-#include <stdbool.h>
+
 #include <kc/assert.h>
 
 #include "collections/rbtree.h"

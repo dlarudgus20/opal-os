@@ -1,8 +1,6 @@
 #ifndef OPAL_MM_PFN_H
 #define OPAL_MM_PFN_H
 
-#include <stdbool.h>
-
 #include <opal/mm/types.h>
 
 struct page;

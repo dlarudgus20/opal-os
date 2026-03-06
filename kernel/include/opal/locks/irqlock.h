@@ -1,8 +1,6 @@
 #ifndef OPAL_LOCKS_IRQLOCK_H
 #define OPAL_LOCKS_IRQLOCK_H
 
-#include <stdbool.h>
-
 struct irqlock {
     bool flag;
 };

@@ -2,7 +2,6 @@
 #define OPAL_IRQ_H
 
 #include <stdint.h>
-#include <stdbool.h>
 
 #include <opal/platform/irq_device.h>
 

@@ -5,6 +5,8 @@
 
 #include <stdint.h>
 
+#include <opal/attributes.h>
+
 #define ISR_STACKFRAME_PUSH \
     uint64_t gs; \
     uint64_t fs; \
@@ -56,7 +58,7 @@ struct isr_stackframe_ec {
     frame->rsi, frame->rdi, frame->rdx, frame->rcx, frame->rbx, frame->rax, \
     frame->rbp, frame->rip, frame->cs, frame->rflags, frame->rsp, frame->ss
 
-struct __attribute__((packed)) tss {
+struct PACKED tss {
     uint32_t reserved1;
     uint64_t rsp[3];
     uint64_t reserved2;

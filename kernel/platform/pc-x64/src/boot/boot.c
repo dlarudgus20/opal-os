@@ -1,4 +1,3 @@
-#include <stdbool.h>
 #include <stdint.h>
 
 #include <kc/stdlib.h>

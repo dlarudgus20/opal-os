@@ -1,7 +1,6 @@
 #ifndef KC_ASSERT_H
 #define KC_ASSERT_H
 
-#include <stdnoreturn.h>
 #include "attributes.h"
 
 #define panic(msg) (panic_format("%s", __FILE__, __func__, __LINE__, (#msg)[0] ? "panic : " msg : "panic"))
@@ -15,6 +14,6 @@
 #define panicf(msg, ...) (panic_format("panic : " msg, __FILE__, __func__, __LINE__, __VA_ARGS__))
 #define assertf(exp, msg, ...) ((void)((exp) || (panic_format(msg " : %s", __FILE__, __func__, __LINE__, __VA_ARGS__, #exp), 1)))
 
-noreturn void panic_format(const char *fmt, const char *file, const char *func, unsigned line, ...) PRINTF_ATTR(1, 5);
+[[noreturn]] void panic_format(const char *fmt, const char *file, const char *func, unsigned line, ...) PRINTF_ATTR(1, 5);
 
 #endif

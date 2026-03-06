@@ -26,9 +26,9 @@ struct unit_test_info {
 };
 
 #if !__has_attribute(section)
-#error "kernel unit test requires __attribute__((section))"
+#error "kernel unit test requires [[gnu::section]]"
 #elif !__has_attribute(used)
-#error "kernel unit test requires __attribute__((used))"
+#error "kernel unit test requires [[gnu::used]]"
 #endif
 
 #define DEFINE_UNIT_TEST(name) \
@@ -38,7 +38,7 @@ struct unit_test_info {
         .item = #name , \
     }; \
     static const struct unit_test_info *unit_test_ptr__##name \
-    UNUSED_ATTR __attribute__((used, section(".unittest"))) = &unit_test_item__##name ; \
+    UNUSED_ATTR [[gnu::used, gnu::section(".unittest")]] = &unit_test_item__##name ; \
     PROTOTYPE_UNIT_TEST(name)
 
 void unit_test_run(void);

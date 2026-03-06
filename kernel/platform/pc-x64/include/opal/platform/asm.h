@@ -4,10 +4,10 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include <kc/attributes.h>
+#include <opal/attributes.h>
 
 #if __has_attribute(always_inline)
-#define ALWAYS_INLINE static inline __attribute__((always_inline))
+#define ALWAYS_INLINE [[gnu::always_inline]] static inline
 #else
 #define ALWAYS_INLINE static inline
 #endif
@@ -86,18 +86,18 @@ ALWAYS_INLINE void tlb_flush_for(uintptr_t va) {
 }
 
 ALWAYS_INLINE void load_gdt(void* gdt, size_t size) {
-    struct {
+    struct PACKED {
         uint16_t size;
         void* base;
-    } __attribute__((packed)) gdtr = { (uint16_t)(size - 1), gdt };
+    } gdtr = { (uint16_t)(size - 1), gdt };
     __asm__ volatile ( "lgdt [%0]" : : "m"(gdtr) );
 }
 
 ALWAYS_INLINE void load_idt(void* idt, size_t size) {
-    struct {
+    struct PACKED {
         uint16_t size;
         void* base;
-    } __attribute__((packed)) idtr = { (uint16_t)(size - 1), idt };
+    } idtr = { (uint16_t)(size - 1), idt };
     __asm__ volatile ( "lidt [%0]" : : "m"(idtr) );
 }
 

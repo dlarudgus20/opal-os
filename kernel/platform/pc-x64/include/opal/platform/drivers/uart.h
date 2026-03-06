@@ -2,7 +2,6 @@
 #define OPAL_PLATFORM_PC_X64_DRIVERS_UART_H
 
 #include <stddef.h>
-#include <stdbool.h>
 
 #define INVALID_UART NULL
 

@@ -4,7 +4,6 @@
 #include <limits.h>
 #include <stddef.h>
 #include <stdint.h>
-#include <stdbool.h>
 
 #include <kc/attributes.h>
 

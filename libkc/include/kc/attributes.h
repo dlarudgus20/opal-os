@@ -6,13 +6,13 @@
 #endif
 
 #if __has_attribute(format)
-#define PRINTF_ATTR(a, b) __attribute__((format(printf, a, b)))
+#define PRINTF_ATTR(a, b) [[gnu::format(printf, a, b)]]
 #else
 #define PRINTF_ATTR(a, b)
 #endif
 
 #if __has_attribute(unused)
-#define UNUSED_ATTR __attribute__((unused))
+#define UNUSED_ATTR [[maybe_unused]]
 #else
 #define UNUSED_ATTR
 #endif

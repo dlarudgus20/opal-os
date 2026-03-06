@@ -1,8 +1,6 @@
 #ifndef OPAL_PLATFORM_MM_PAGE_H
 #define OPAL_PLATFORM_MM_PAGE_H
 
-#include <stdbool.h>
-
 #include <opal/mm/types.h>
 #include <opal/platform/mm/defines.h>
 

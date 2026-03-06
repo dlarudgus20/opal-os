@@ -1,5 +1,4 @@
 #include <stdarg.h>
-#include <stdbool.h>
 
 #include <kc/string.h>
 #include <kc/fmt.h>

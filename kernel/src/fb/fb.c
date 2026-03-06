@@ -1,5 +1,3 @@
-#include <stdbool.h>
-
 #include <kc/attributes.h>
 #include <kc/stdlib.h>
 
@@ -174,7 +172,7 @@ struct rect rect_intersect(const struct rect* r1, const struct rect* r2) {
 }
 
 #if defined(DEBUG) && __has_attribute(optimize) && __has_attribute(no_sanitize)
-__attribute__((optimize("-O3"), no_sanitize("undefined")))
+[[gnu::optimize("-O3"), gnu::no_sanitize("undefined")]]
 #endif
 void fb_bitblt(int x, int y, int cx, int cy, int x0, int y0) {
     if (!is_exist() || cx <= 0 || cy <= 0) {

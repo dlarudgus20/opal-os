@@ -1,7 +1,6 @@
 #ifndef OPAL_MM_SLAB_H
 #define OPAL_MM_SLAB_H
 
-#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 

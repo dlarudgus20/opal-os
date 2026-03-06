@@ -1,5 +1,4 @@
 #include <stddef.h>
-#include <stdbool.h>
 
 #include <opal/tty.h>
 #include <opal/tty/uart_tty.h>

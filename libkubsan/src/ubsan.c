@@ -1,8 +1,11 @@
 #include <stdint.h>
 #include <stddef.h>
-#include <stdnoreturn.h>
 
 #include <kc/assert.h>
+
+#if !__has_attribute(no_sanitize)
+#error "Compiler does not support no_sanitize attribute"
+#endif
 
 struct ubsan_source_location {
     const char *file_name;
@@ -72,8 +75,8 @@ struct ubsan_vla_bound_data {
     struct ubsan_type_descriptor *type;
 };
 
-__attribute__((no_sanitize_undefined))
-static noreturn void ubsan_report(const char *kind, const struct ubsan_source_location *loc) {
+[[gnu::no_sanitize("undefined")]]
+[[noreturn]] static void ubsan_report(const char *kind, const struct ubsan_source_location *loc) {
     const char *file_name = "<unknown>";
     uint32_t line = 0;
     uint32_t column = 0;
@@ -90,7 +93,7 @@ static noreturn void ubsan_report(const char *kind, const struct ubsan_source_lo
 }
 
 #define UBSAN_HANDLER_LOC(name, kind, data_type) \
-    __attribute__((no_sanitize_undefined)) \
+    [[gnu::no_sanitize("undefined")]] \
     void name(data_type *data, ...) { \
         ubsan_report(kind, data != NULL ? &data->loc : NULL); \
     }
@@ -112,28 +115,28 @@ UBSAN_HANDLER_LOC(__ubsan_handle_alignment_assumption, "alignment-assumption", s
 UBSAN_HANDLER_LOC(__ubsan_handle_load_invalid_value, "load-invalid-value", struct ubsan_load_invalid_value_data)
 UBSAN_HANDLER_LOC(__ubsan_handle_vla_bound_not_positive, "vla-bound-not-positive", struct ubsan_vla_bound_data)
 
-__attribute__((no_sanitize_undefined))
+[[gnu::no_sanitize("undefined")]]
 void __ubsan_handle_nonnull_arg(struct ubsan_nonnull_arg_data *data) {
     ubsan_report("nonnull-arg", data != NULL ? &data->loc : NULL);
 }
 
-__attribute__((no_sanitize_undefined))
+[[gnu::no_sanitize("undefined")]]
 void __ubsan_handle_nonnull_return(struct ubsan_nonnull_return_data *data) {
     ubsan_report("nonnull-return", data != NULL ? &data->loc : NULL);
 }
 
-__attribute__((no_sanitize_undefined))
+[[gnu::no_sanitize("undefined")]]
 void __ubsan_handle_nonnull_return_v1(struct ubsan_nonnull_return_data *data, struct ubsan_source_location *loc) {
     (void)data;
     ubsan_report("nonnull-return-v1", loc);
 }
 
-__attribute__((no_sanitize_undefined))
+[[gnu::no_sanitize("undefined")]]
 void __ubsan_handle_builtin_unreachable(struct ubsan_source_location *loc) {
     ubsan_report("builtin-unreachable", loc);
 }
 
-__attribute__((no_sanitize_undefined))
+[[gnu::no_sanitize("undefined")]]
 void __ubsan_handle_missing_return(struct ubsan_source_location *loc) {
     ubsan_report("missing-return", loc);
 }
@@ -154,22 +157,22 @@ UBSAN_HANDLER_LOC(__ubsan_handle_load_invalid_value_abort, "load-invalid-value",
 UBSAN_HANDLER_LOC(__ubsan_handle_vla_bound_not_positive_abort, "vla-bound-not-positive", struct ubsan_vla_bound_data)
 
 /* Optional handlers emitted by newer compilers. */
-__attribute__((no_sanitize_undefined))
+[[gnu::no_sanitize("undefined")]]
 void __ubsan_handle_float_cast_overflow(struct ubsan_source_location *loc, ...) {
     ubsan_report("float-cast-overflow", loc);
 }
 
-__attribute__((no_sanitize_undefined))
+[[gnu::no_sanitize("undefined")]]
 void __ubsan_handle_float_cast_overflow_abort(struct ubsan_source_location *loc, ...) {
     ubsan_report("float-cast-overflow", loc);
 }
 
-__attribute__((no_sanitize_undefined))
+[[gnu::no_sanitize("undefined")]]
 void __ubsan_handle_implicit_conversion(struct ubsan_source_location *loc, ...) {
     ubsan_report("implicit-conversion", loc);
 }
 
-__attribute__((no_sanitize_undefined))
+[[gnu::no_sanitize("undefined")]]
 void __ubsan_handle_implicit_conversion_abort(struct ubsan_source_location *loc, ...) {
     ubsan_report("implicit-conversion", loc);
 }

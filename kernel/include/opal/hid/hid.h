@@ -1,7 +1,6 @@
 #ifndef OPAL_HID_HID_H
 #define OPAL_HID_HID_H
 
-#include <stdbool.h>
 #include <stdint.h>
 
 #include <opal/hid/keycode.h>

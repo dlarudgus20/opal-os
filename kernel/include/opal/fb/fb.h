@@ -1,7 +1,6 @@
 #ifndef OPAL_FB_FB_H
 #define OPAL_FB_FB_H
 
-#include <stdbool.h>
 #include <stdint.h>
 
 typedef uint32_t fb_color_t;
