@@ -15,8 +15,8 @@ enum uart_port {
 struct uart;
 typedef struct uart* uart_handle_t;
 
-void uart_early_init_all(void);
-void uart_init_all(void);
+void uart_early_init(void);
+void uart_init(void);
 
 uart_handle_t uart_get_default(void);
 uart_handle_t uart_get(enum uart_port port);

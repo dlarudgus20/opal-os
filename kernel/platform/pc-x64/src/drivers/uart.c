@@ -243,7 +243,7 @@ static void uart_isr_com2(void) {
     uart_isr(&g_uarts[UART_PORT_COM2]);
 }
 
-void uart_early_init_all(void) {
+void uart_early_init(void) {
     for (int i = 0; i < UART_PORT_COUNT; i++) {
         struct uart *u = &g_uarts[i];
         (void)hw_early_init(u);
@@ -263,7 +263,7 @@ void uart_early_init_all(void) {
     }
 }
 
-void uart_init_all(void) {
+void uart_init(void) {
     for (int i = 0; i < UART_PORT_COUNT; i++) {
         struct uart *u = &g_uarts[i];
         if (!u->present) {

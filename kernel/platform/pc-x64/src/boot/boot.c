@@ -4,9 +4,10 @@
 #include <kc/stdlib.h>
 #include <kc/string.h>
 
-#include <opal/platform/boot.h>
-#include <opal/mm/map.h>
+#include <opal/klog.h>
 #include <opal/kmain.h>
+#include <opal/mm/map.h>
+#include <opal/platform/boot.h>
 
 #include <opal/platform/boot/multiboot2.h>
 
@@ -29,7 +30,7 @@ static struct boot_fbinfo g_fbinfo;
 
 static void parse_mb2_cmdline(const struct mb_tag_string *strtag) {
     if (g_cmdline[0] != '\0') {
-        // kerror("duplicated boot cmdline is ignored")
+        kerror("multiboot: duplicated boot cmdline is ignored");
         return;
     }
 
@@ -46,7 +47,7 @@ static void parse_mb2_cmdline(const struct mb_tag_string *strtag) {
 
 static void parse_mb2_mmap(const struct mb_tag_mmap *mmap) {
     if (g_boot_mmap.length > 0) {
-        // kerror("duplicated boot mmap is ignored")
+        kerror("multiboot: duplicated boot mmap is ignored");
         return;
     }
 
@@ -54,7 +55,7 @@ static void parse_mb2_mmap(const struct mb_tag_mmap *mmap) {
     const char *entry_end = (const char *)mmap + mmap->tag.size;
 
     if (mmap->entry_size < sizeof(struct mb_mmap_entry)) {
-        // kerror("boot mmap entry_size too small\n");
+        kerror("multiboot: boot mmap entry_size too small");
         return;
     }
 
@@ -64,7 +65,7 @@ static void parse_mb2_mmap(const struct mb_tag_mmap *mmap) {
         const struct mb_mmap_entry *entry = (const struct mb_mmap_entry *)entry_ptr;
 
         if (g_boot_mmap.length >= MAX_MMAP_ENTRIES) {
-            // kerror("too many boot mmap entries, some entries are ignored\n");
+            kerror("multiboot: too many boot mmap entries, some entries are ignored");
             break;
         }
 
@@ -99,7 +100,7 @@ static bool is_supported_rgb(const struct mb_tag_framebuffer_direct *fb) {
 
 static void parse_mb2_fb(const struct mb_tag_framebuffer *fb) {
     if (g_fbinfo.addr != 0) {
-        // kerror("duplicated boot fbinfo is ignored")
+        kerror("multiboot: duplicated boot fbinfo is ignored");
         return;
     }
 
@@ -108,11 +109,11 @@ static void parse_mb2_fb(const struct mb_tag_framebuffer *fb) {
     if (fb->framebuffer_type == MULTIBOOT_FRAMEBUFFER_TYPE_RGB) {
         direct = (const struct mb_tag_framebuffer_direct *)fb;
         if (!is_supported_rgb(direct)) {
-            // kwarn("unsupported framebuffer")
+            kwarn("multiboot: unsupported framebuffer");
             return;
         }
     } else {
-        // kwarn("unsupported framebuffer")
+        kwarn("multiboot: unsupported framebuffer");
         return;
     }
 
@@ -128,14 +129,14 @@ static void parse_mb2_info(uint32_t mb2_info_pa) {
 
     const uint32_t total_size = *(const uint32_t *)base;
     if (total_size < 8) {
-        // kerror("boot info: invalid total_size\n");
+        kerror("multiboot: invalid total_size");
         return;
     }
 
     for (uint32_t off = 8; off + 8 <= total_size; ) {
         const struct mb_tag *tag = (const struct mb_tag *)(base + off);
         if (tag->size < sizeof(*tag)) {
-            // kerror("boot info: invalid tag size\n");
+            kerror("multiboot: invalid tag size");
             return;
         }
 
@@ -145,7 +146,7 @@ static void parse_mb2_info(uint32_t mb2_info_pa) {
 
         const uint32_t next_off = align_ceil_u32_p2(off + tag->size, MULTIBOOT_TAG_ALIGN);
         if (next_off <= off || next_off > total_size) {
-            // kerror("mb2: invalid tag bounds\n");
+            kerror("multiboot: invalid tag bounds");
             return;
         }
 

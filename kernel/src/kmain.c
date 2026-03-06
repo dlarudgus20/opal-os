@@ -157,12 +157,12 @@ static void run_shell(void) {
 }
 
 void kmain(void) {
+    tty0_init();
+    uart_early_init();
+    klog_init();
+
     boot_info_init();
     descriptors_init();
-
-    tty0_init();
-    uart_early_init_all();
-    klog_init();
 
     mm_init();
     fb_init();
@@ -170,7 +170,7 @@ void kmain(void) {
 
     irq_init();
     ps2_init();
-    uart_init_all();
+    uart_init();
 
     irq_enable_intr();
     interrupts_enable();
