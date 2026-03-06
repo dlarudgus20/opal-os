@@ -40,6 +40,7 @@
 #define PS2_CFG_TRANSLATE       0x40
 
 #define PS2_WAIT_SPIN   100000
+#define PS2_INTR_SPIN   32
 
 static bool g_enabled;
 static bool g_kbd_enabled;
@@ -164,7 +165,7 @@ static void isrmsg_mouse(struct irqmsg msg) {
 }
 
 static void ps2_drain_output(void) {
-    for (int i = 0; i < 32; i++) {
+    for (int i = 0; i < PS2_INTR_SPIN; i++) {
         uint8_t status = in8(PS2_PORT_STATUS);
         if ((status & PS2_STATUS_OUTPUT_FULL) == 0) {
             return;

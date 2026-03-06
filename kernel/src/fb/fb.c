@@ -4,8 +4,8 @@
 #include <kc/stdlib.h>
 
 #include <opal/mm/vmap.h>
-#include <opal/drivers/fb/fb.h>
-#include <opal/drivers/fb/fb_tty.h>
+#include <opal/fb/fb.h>
+#include <opal/tty/fb_tty.h>
 #include <opal/platform/boot.h>
 #include <opal/platform/mm/defines.h>
 

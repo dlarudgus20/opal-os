@@ -9,7 +9,7 @@ KERNEL_BIN  := kernel/$(BUILD_DIR)/kernel.sys
 ISO_DIR     := $(BUILD_DIR)/iso
 ISO_FILE    := $(BUILD_DIR)/opal-os.iso
 
-QEMU_FLAGS  += -m 128 -serial stdio -no-reboot -d int
+QEMU_FLAGS  += -m 128 -serial stdio -no-reboot
 
 ifeq ($(UEFI), 1)
 UEFI_FIRMWARE ?= /usr/share/ovmf/OVMF.fd

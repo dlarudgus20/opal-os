@@ -4,7 +4,7 @@
 
 #include <opal/hid/hid.h>
 #include <opal/klog.h>
-#include <opal/drivers/fb/fb.h>
+#include <opal/fb/fb.h>
 
 static bool g_key_pressed[HID_KEYCODE_COUNT];
 static struct hid_pointer_state g_pointer;

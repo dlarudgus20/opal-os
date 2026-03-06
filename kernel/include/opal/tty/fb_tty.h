@@ -1,8 +1,8 @@
-#ifndef OPAL_DRIVERS_FB_FB_TTY_H
-#define OPAL_DRIVERS_FB_FB_TTY_H
+#ifndef OPAL_TTY_FB_TTY_H
+#define OPAL_TTY_FB_TTY_H
 
 #include <opal/tty.h>
-#include <opal/drivers/fb/fb.h>
+#include <opal/fb/fb.h>
 
 struct fb_tty {
     struct tty tty;

@@ -8,11 +8,11 @@
 #define PIC_IRQ_TIMER       0
 #define PIC_IRQ_KEYBOARD    1
 #define PIC_IRQ_SLAVE       2
-#define PIC_IRQ_SERIAL1     3
-#define PIC_IRQ_SERIAL2     4
-#define PIC_IRQ_PARALLEL1   5
+#define PIC_IRQ_COM2        3
+#define PIC_IRQ_COM1        4
+#define PIC_IRQ_LPT2        5
 #define PIC_IRQ_FLOPPY      6
-#define PIC_IRQ_PARALLEL2   7
+#define PIC_IRQ_LPT1        7
 #define PIC_IRQ_RTC         8
 #define PIC_IRQ_MOUSE       12
 #define PIC_IRQ_COPROC      13

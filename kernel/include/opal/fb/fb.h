@@ -1,5 +1,5 @@
-#ifndef OPAL_DRIVERS_FB_FB_H
-#define OPAL_DRIVERS_FB_FB_H
+#ifndef OPAL_FB_FB_H
+#define OPAL_FB_FB_H
 
 #include <stdbool.h>
 #include <stdint.h>

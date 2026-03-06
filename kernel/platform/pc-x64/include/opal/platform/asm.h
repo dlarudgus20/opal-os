@@ -12,6 +12,16 @@
 #define ALWAYS_INLINE static inline
 #endif
 
+#define RFLAGS_CARRY    (1 << 0)
+#define RFLAGS_PARITY   (1 << 1)
+#define RFLAGS_AUXCARRY (1 << 4)
+#define RFLAGS_ZERO     (1 << 6)
+#define RFLAGS_SIGN     (1 << 7)
+#define RFLAGS_TRAP     (1 << 8)
+#define RFLAGS_INTR     (1 << 9)
+#define RFLAGS_DIR      (1 << 10)
+#define RFLAGS_OVERFLOW (1 << 11)
+
 ALWAYS_INLINE void out8(uint16_t port, uint8_t value) {
     __asm__ volatile ("out %1, %0" : : "a"(value), "Nd"(port));
 }
@@ -20,6 +30,20 @@ ALWAYS_INLINE uint8_t in8(uint16_t port) {
     uint8_t value;
     __asm__ volatile ("in %0, %1" : "=a"(value) : "Nd"(port));
     return value;
+}
+
+ALWAYS_INLINE uint64_t rflags_get(void) {
+    uint64_t flags;
+    __asm__ volatile ( "pushfq; pop %0" : "=r"(flags) );
+    return flags;
+}
+
+ALWAYS_INLINE void rflags_set(uint64_t flags) {
+    __asm__ volatile ( "push %0; popfq" : : "r"(flags) );
+}
+
+ALWAYS_INLINE bool interrupt_is_enabled(void) {
+    return (rflags_get() & RFLAGS_INTR) != 0;
 }
 
 // cli / sti instruction is used for critical sections in many cases

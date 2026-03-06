@@ -39,7 +39,7 @@ static void print_panic(struct tty* tty, const char *msg) {
     tty->ops->set_color(tty, TTY_BRIGHT_WHITE, TTY_RED);
     tty_puts(tty, msg);
     tty->ops->set_color(tty, -1, -1);
-    tty->ops->write(tty, '\n');
+    tty_puts(tty, "\n");
 }
 
 noreturn void panic_format(const char *fmt, const char *file, const char *func, unsigned line, ...) {
@@ -96,9 +96,10 @@ noreturn void panic_format(const char *fmt, const char *file, const char *func, 
     // print message to tty0
 
     stage = PANICK_PUTS;
-    struct linkedlist_link* ptr = linkedlist_head(&g_tty_0.subtty_list);
+    struct tty_0 *tty_0 = (struct tty_0 *)tty0_get();
+    struct linkedlist_link* ptr = linkedlist_head(&tty_0->subtty_list);
 
-    while (!linkedlist_is_nil(&g_tty_0.subtty_list, ptr)) {
+    while (!linkedlist_is_nil(&tty_0->subtty_list, ptr)) {
         struct linkedlist_link* next = ptr->next;
         linkedlist_remove(ptr);
 

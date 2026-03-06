@@ -1,6 +1,6 @@
 #include <kc/assert.h>
 
-#include <opal/drivers/fb/fb_tty.h>
+#include <opal/tty/fb_tty.h>
 
 #define CW 8
 #define CH 16
@@ -112,6 +112,13 @@ static void write_char(struct tty *tty_, char ch) {
     }
 }
 
+static size_t write_tty(struct tty *tty_, const char *buf, size_t len) {
+    for (size_t i = 0; i < len; i++) {
+        write_char(tty_, buf[i]);
+    }
+    return len;
+}
+
 static void set_color(struct tty *tty_, int fg, int bg) {
     struct fb_tty *tty = (struct fb_tty *)tty_;
 
@@ -130,7 +137,7 @@ static void set_color(struct tty *tty_, int fg, int bg) {
 }
 
 static struct tty_ops g_tty_ops = {
-    .write = write_char,
+    .write = write_tty,
     .set_color = set_color,
 };
 

@@ -12,12 +12,12 @@
 #include <opal/mm/mm.h>
 #include <opal/mm/pfn.h>
 #include <opal/irq.h>
-#include <opal/drivers/uart.h>
-#include <opal/drivers/fb/fb.h>
+#include <opal/fb/fb.h>
 #include <opal/platform/boot.h>
 #include <opal/platform/descriptors.h>
 #include <opal/platform/asm.h>
 #include <opal/platform/mm/pagetable.h>
+#include <opal/platform/drivers/uart.h>
 #include <opal/platform/drivers/ps2.h>
 
 #define UNAME_MSG "opal-os ("OPAL_PLATFORM" "OPAL_CONFIG")"
@@ -146,7 +146,9 @@ static void run_shell(void) {
 
     while (1) {
         tty0_puts("root@opal:~$ ");
-        uart_read_line(line, sizeof(line));
+        // uart_read_line() removed; shell path is currently unused.
+        line[0] = '\0';
+        return;
 
         if (!handle_command(line)) {
             return;
@@ -159,7 +161,7 @@ void kmain(void) {
     descriptors_init();
 
     tty0_init();
-    uart_init();
+    uart_early_init_all();
     klog_init();
 
     mm_init();
@@ -168,21 +170,23 @@ void kmain(void) {
 
     irq_init();
     ps2_init();
+    uart_init_all();
 
     irq_enable_intr();
+    interrupts_enable();
 
 #ifdef OPAL_UNIT_TEST
     unit_test_run();
 #endif
-    print_banner();
 
     kinfo("boot args=%s", boot_get_cmdline());
 
     while (1) {
-        interrupts_enable_and_wait();
         irqmsg_drain();
+        interrupts_enable_and_wait();
     }
 
+    (void)print_banner;
     (void)run_shell;
 }
 
