@@ -13,6 +13,7 @@
 #include <opal/mm/pfn.h>
 #include <opal/irq.h>
 #include <opal/fb/fb.h>
+#include <opal/task/task.h>
 #include <opal/platform/boot.h>
 #include <opal/platform/descriptors.h>
 #include <opal/platform/asm.h>
@@ -179,6 +180,7 @@ void kmain(void) {
     unit_test_run();
 #endif
 
+    sched_init();
     kinfo("boot args=%s", boot_get_cmdline());
 
     while (1) {
