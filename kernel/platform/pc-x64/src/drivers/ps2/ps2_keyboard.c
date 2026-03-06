@@ -156,7 +156,7 @@ static hid_keycode_t keycode_extended(uint8_t byte) {
         default: return HID_KEYCODE_UNKNOWN;
     }
 }
-#include <opal/klog.h>
+
 void ps2_keyboard_feed_raw(uint8_t data) {
     switch (g_state) {
         case STATE_START:

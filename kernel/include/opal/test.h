@@ -38,7 +38,7 @@ struct unit_test_info {
         .item = #name , \
     }; \
     static const struct unit_test_info *unit_test_ptr__##name \
-    UNUSED_ATTR [[gnu::used, gnu::section(".unittest")]] = &unit_test_item__##name ; \
+    [[maybe_unused, gnu::used, gnu::section(".unittest")]] = &unit_test_item__##name ; \
     PROTOTYPE_UNIT_TEST(name)
 
 void unit_test_run(void);
@@ -125,7 +125,7 @@ void unit_test_expect_streq_failed(
 
 #else
 
-#define DEFINE_UNIT_TEST(name) UNUSED_ATTR PROTOTYPE_UNIT_TEST(name)
+#define DEFINE_UNIT_TEST(name)              [[maybe_unused]] PROTOTYPE_UNIT_TEST(name)
 #define TEST_PANIC()                        panic("This executable is not configured as unit test.")
 #define TEST_EXPECT_TRUE(expr)              do { TEST_PANIC(); (void)(expr); } while (0)
 #define TEST_EXPECT_FALSE(expr)             do { TEST_PANIC(); (void)(expr); } while (0)

@@ -11,10 +11,4 @@
 #define PRINTF_ATTR(a, b)
 #endif
 
-#if __has_attribute(unused)
-#define UNUSED_ATTR [[maybe_unused]]
-#else
-#define UNUSED_ATTR
-#endif
-
 #endif
