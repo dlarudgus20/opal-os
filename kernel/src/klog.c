@@ -1,6 +1,5 @@
 #include <stddef.h>
 #include <stdarg.h>
-#include <stdalign.h>
 
 #include <kc/stdio.h>
 #include <kc/stdlib.h>

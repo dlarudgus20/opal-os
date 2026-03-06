@@ -1,5 +1,3 @@
-#include <stdalign.h>
-
 #include <kc/assert.h>
 #include <kc/stdlib.h>
 #include <kc/string.h>

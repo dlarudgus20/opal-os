@@ -1,5 +1,3 @@
-#include <stdalign.h>
-
 #include <kc/string.h>
 
 #include <opal/attributes.h>
@@ -89,6 +87,8 @@ void descriptors_init(void) {
     static alignas(16) char df_stack[0x2000];
     g_tss_df.ist[0] = (uint64_t)(df_stack + sizeof(df_stack));
 
+    static_assert(KERNEL_CODE_SEGMENT == 1 * 8);
+    static_assert(KERNEL_DATA_SEGMENT == 2 * 8);
     init_gdt(g_gdt + 1, 0, 0xffffffff, GDT_FLAG_PRESENT | GDT_FLAG_USER | GDT_FLAG_CODE, GDT_FLAG2);
     init_gdt(g_gdt + 2, 0, 0xffffffff, GDT_FLAG_PRESENT | GDT_FLAG_USER | GDT_FLAG_RW, GDT_FLAG2);
     init_tss(g_gdt + 3, &g_tss_df);
