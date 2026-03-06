@@ -27,11 +27,11 @@ struct slab {
 void slab_create(struct slab *cache, size_t object_size, size_t object_align);
 void slab_destroy(struct slab *cache);
 
-void *slab_alloc(struct slab *cache);
+[[nodiscard]] void *slab_alloc(struct slab *cache);
 void slab_free(struct slab *cache, void *ptr);
 
-size_t slab_get_object_size(const struct slab *cache);
-size_t slab_get_inuse(const struct slab *cache);
-size_t slab_get_total(const struct slab *cache);
+[[nodiscard]] size_t slab_get_object_size(const struct slab *cache);
+[[nodiscard]] size_t slab_get_inuse(const struct slab *cache);
+[[nodiscard]] size_t slab_get_total(const struct slab *cache);
 
 #endif

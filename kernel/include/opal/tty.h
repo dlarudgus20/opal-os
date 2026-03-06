@@ -72,7 +72,7 @@ void tty_puts_len(struct tty *tty, const char *str, size_t len);
 void tty_printf(struct tty *tty, const char *fmt, ...) PRINTF_ATTR(2, 3);
 
 void tty0_init(void);
-struct tty *tty0_get(void);
+[[nodiscard]] struct tty *tty0_get(void);
 void tty0_register(struct tty *tty);
 void tty0_unregister(struct tty *tty);
 

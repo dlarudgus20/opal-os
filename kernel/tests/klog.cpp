@@ -74,18 +74,18 @@ TEST(KlogTest, FormatWritesRecord) {
 TEST(KlogDeathTest, ReadRejectsNullHeaderOut) {
     std::array<char, 8> out = {};
     EXPECT_DEATH({
-        klog_read(nullptr, out.data(), out.size());
+        (void)klog_read(nullptr, out.data(), out.size());
     }, "klog_read requires a non-NULL header_out");
 }
 
 TEST(KlogDeathTest, ReadRejectsInvalidMsgBuffer) {
     struct klog_record_header header = {};
     EXPECT_DEATH({
-        klog_read(&header, nullptr, 8);
+        (void)klog_read(&header, nullptr, 8);
     },"klog_read requires a non-empty msg_out buffer");
 
     std::array<char, 1> out = {};
     EXPECT_DEATH({
-        klog_read(&header, out.data(), 0);
+        (void)klog_read(&header, out.data(), 0);
     }, "klog_read requires a non-empty msg_out buffer");
 }

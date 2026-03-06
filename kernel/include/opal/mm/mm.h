@@ -7,7 +7,7 @@
 
 void mm_init(void);
 
-pfn_t mm_alloc_page(uint8_t order);
+[[nodiscard]] pfn_t mm_alloc_page(uint8_t order);
 void mm_free_page(pfn_t pfn, uint8_t order);
 struct buddy *mm_get_buddy(void);
 

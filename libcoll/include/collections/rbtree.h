@@ -19,8 +19,8 @@ struct rbtree_find_result {
 };
 
 void rbtree_init(struct rbtree* tree);
-struct rbtree_find_result rbtree_find(struct rbtree* tree, int key);
-struct rbtree_node* rbtree_first(struct rbtree* tree);
-struct rbtree_node* rbtree_next(struct rbtree_node* node);
+[[nodiscard]] struct rbtree_find_result rbtree_find(struct rbtree* tree, int key);
+[[nodiscard]] struct rbtree_node* rbtree_first(struct rbtree* tree);
+[[nodiscard]] struct rbtree_node* rbtree_next(struct rbtree_node* node);
 void rbtree_insert(struct rbtree* tree, struct rbtree_node* node);
 void rbtree_remove(struct rbtree* tree, struct rbtree_node* node);

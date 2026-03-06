@@ -4,7 +4,7 @@
 #include <stdint.h>
 
 void ps2_init(void);
-bool ps2_is_enabled(void);
+[[nodiscard]] bool ps2_is_enabled(void);
 
 void ps2_keyboard_feed_raw(uint8_t data);
 void ps2_mouse_feed_raw(uint8_t data);

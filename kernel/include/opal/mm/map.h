@@ -34,11 +34,11 @@ void mm_map_init(void);
 
 void mm_tmp_alloc_create(void);
 void mm_tmp_alloc_finalize(void);
-const struct mm_tmp_alloc *mm_tmp_alloc_get(void);
-phys_addr_t mm_tmp_alloc_pages(size_t max_pages, size_t *allocated_pages);
+[[nodiscard]] const struct mm_tmp_alloc *mm_tmp_alloc_get(void);
+[[nodiscard]] phys_addr_t mm_tmp_alloc_pages(size_t max_pages, size_t *allocated_pages);
 
-const struct mmap *mm_get_memory_map(void);
-const struct mmap *mm_get_section_map(void);
+[[nodiscard]] const struct mmap *mm_get_memory_map(void);
+[[nodiscard]] const struct mmap *mm_get_section_map(void);
 
 const char *mm_sec_entry_type_str(mmap_entry_type_t type);
 

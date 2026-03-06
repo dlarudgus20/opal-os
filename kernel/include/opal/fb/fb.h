@@ -6,9 +6,9 @@
 typedef uint32_t fb_color_t;
 
 void fb_init(void);
-bool fb_is_available(void);
-int fb_get_width(void);
-int fb_get_height(void);
+[[nodiscard]] bool fb_is_available(void);
+[[nodiscard]] int fb_get_width(void);
+[[nodiscard]] int fb_get_height(void);
 
 void fb_draw_pixel(int x, int y, fb_color_t color);
 

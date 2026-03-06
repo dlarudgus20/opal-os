@@ -178,7 +178,8 @@ bool klog_read(struct klog_record_header *header_out, char *msg_out, size_t msg_
     }
 
     if (header_out->level == KLOG_WRAP) {
-        klog_read(header_out, msg_out + msglen_to_copy, msg_size - msglen_to_copy);
+        bool ok = klog_read(header_out, msg_out + msglen_to_copy, msg_size - msglen_to_copy);
+        assert(ok, "klog wrap marker must be followed by a log record");
     }
 
     klog_queue.full = false;

@@ -98,7 +98,7 @@ static void configure_baud_38400(const struct uart *u) {
     reg_write(u, UART_REG_LCR, UART_LCR);
 }
 
-static bool probe_port(const struct uart *u) {
+[[nodiscard]] static bool probe_port(const struct uart *u) {
     // test scratch register
     reg_write(u, UART_REG_SCR, 0x5a);
     if (reg_read(u, UART_REG_SCR) != 0x5a) {
@@ -117,7 +117,7 @@ static bool probe_port(const struct uart *u) {
     return reg_read(u, UART_REG_DATA) == 0x5a;
 }
 
-static bool hw_early_init(struct uart *u) {
+[[nodiscard]] static bool hw_early_init(struct uart *u) {
     u->present = probe_port(u);
     if (!u->present) {
         return false;
@@ -160,15 +160,15 @@ static void enable_tx_irq(struct uart *u, bool enabled) {
     reg_write(u, UART_REG_IER, ier);
 }
 
-static bool can_tx(const struct uart *u) {
+[[nodiscard]] static bool can_tx(const struct uart *u) {
     return u->present && (reg_read(u, UART_REG_LSR) & UART_LSR_TX_EMPTY) != 0;
 }
 
-static bool has_data(const struct uart *u) {
+[[nodiscard]] static bool has_data(const struct uart *u) {
     return u->present && (reg_read(u, UART_REG_LSR) & UART_LSR_DATA_READY) != 0;
 }
 
-static bool hw_try_read(struct uart *u, uint8_t *out) {
+[[nodiscard]] static bool hw_try_read(struct uart *u, uint8_t *out) {
     if (!has_data(u)) {
         return false;
     }
@@ -176,7 +176,7 @@ static bool hw_try_read(struct uart *u, uint8_t *out) {
     return true;
 }
 
-static bool hw_try_write(struct uart *u, uint8_t c) {
+[[nodiscard]] static bool hw_try_write(struct uart *u, uint8_t c) {
     if (!can_tx(u)) {
         return false;
     }
@@ -187,13 +187,13 @@ static bool hw_try_write(struct uart *u, uint8_t c) {
 static void tx_pump_locked(struct uart *u) {
     while (!ringbuffer_is_empty(&u->tx_queue) && can_tx(u)) {
         uint8_t c = ringbuffer_pop(&u->tx_queue, uint8_t);
-        (void)hw_try_write(u, c);
+        reg_write(u, UART_REG_DATA, c);
     }
 
     enable_tx_irq(u, !ringbuffer_is_empty(&u->tx_queue));
 }
 
-static bool tx_push_locked(struct uart *u, uint8_t c) {
+[[nodiscard]] static bool tx_push_locked(struct uart *u, uint8_t c) {
     if (!ringbuffer_is_full(&u->tx_queue)) {
         ringbuffer_push(&u->tx_queue, uint8_t, c);
         return true;
@@ -246,8 +246,8 @@ static void uart_isr_com2(void) {
 void uart_early_init(void) {
     for (int i = 0; i < UART_PORT_COUNT; i++) {
         struct uart *u = &g_uarts[i];
-        (void)hw_early_init(u);
         u->irq_mode = false;
+        (void)hw_early_init(u);
     }
 
     if (g_uarts[UART_PORT_COM1].present) {
@@ -316,7 +316,7 @@ size_t uart_rx_pending(uart_handle_t uart) {
     return count;
 }
 
-static size_t early_try_write(uart_handle_t uart, const char *buf, size_t len) {
+[[nodiscard]] static size_t early_try_write(uart_handle_t uart, const char *buf, size_t len) {
     for (size_t i = 0; i < len; i++) {
         while (!hw_try_write(uart, (uint8_t)buf[i])) {}
     }
@@ -351,7 +351,7 @@ size_t uart_try_write(uart_handle_t uart, const char *buf, size_t len) {
     return i;
 }
 
-static size_t early_try_read(uart_handle_t uart, char *buf, size_t len) {
+[[nodiscard]] static size_t early_try_read(uart_handle_t uart, char *buf, size_t len) {
     size_t i = 0;
     for (; i < len; i++) {
         uint8_t c = 0;
