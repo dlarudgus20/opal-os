@@ -8,6 +8,7 @@
 #include <opal/test.h>
 #include <opal/tty.h>
 #include <opal/klog.h>
+#include <opal/hid/hid.h>
 #include <opal/mm/mm.h>
 #include <opal/mm/pfn.h>
 #include <opal/irq.h>
@@ -163,6 +164,7 @@ void kmain(void) {
 
     mm_init();
     fb_init();
+    hid_init();
 
     irq_init();
     ps2_init();

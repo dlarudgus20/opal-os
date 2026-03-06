@@ -156,57 +156,11 @@ static void push_irqmsg_mouse(uint8_t data) {
 }
 
 static void isrmsg_kbd(struct irqmsg msg) {
-    static bool kbd_extended = false;
-
-    const uint8_t data = msg.data;
-
-    if (data == 0xe0) {
-        kbd_extended = true;
-        return;
-    }
-
-    struct ps2_kbd_event ev = {
-        .scancode = (uint8_t)(data & 0x7f),
-        .released = (data & 0x80) != 0,
-        .extended = kbd_extended,
-    };
-
-    kbd_extended = false;
-    kdebug("ps2: kbd sc=%#x rel=%u ext=%u", ev.scancode, ev.released, ev.extended);
+    ps2_keyboard_feed_raw(msg.data);
 }
 
 static void isrmsg_mouse(struct irqmsg msg) {
-    static uint8_t mouse_pkt[3] = { };
-    static uint8_t mouse_pkt_index = 0;
-
-    const uint8_t data = msg.data;
-
-    if (mouse_pkt_index == 0 && (data & 0x08) == 0) {
-        return;
-    }
-
-    mouse_pkt[mouse_pkt_index++] = data;
-
-    if (mouse_pkt_index < 3) {
-        return;
-    }
-
-    mouse_pkt_index = 0;
-
-    uint8_t b0 = mouse_pkt[0];
-    uint8_t b1 = mouse_pkt[1];
-    uint8_t b2 = mouse_pkt[2];
-
-    struct ps2_mouse_event ev = {
-        .dx = (int16_t)(int8_t)b1,
-        .dy = (int16_t)(int8_t)b2,
-        .buttons = (uint8_t)(b0 & 0x07),
-        .overflow_x = (b0 & 0x40) != 0,
-        .overflow_y = (b0 & 0x80) != 0,
-    };
-
-    kdebug("ps2: mouse dx=%d dy=%d btn=%u ox=%u oy=%u",
-        (int)ev.dx, (int)ev.dy, ev.buttons, ev.overflow_x, ev.overflow_y);
+    ps2_mouse_feed_raw(msg.data);
 }
 
 static void ps2_drain_output(void) {

@@ -53,6 +53,10 @@ void fb_init(void) {
     tty0_register(&g_fb_tty.tty);
 }
 
+bool fb_is_available(void) {
+    return g_fb.fb != NULL;
+}
+
 int fb_get_width(void) {
     return g_fb.width;
 }
@@ -89,6 +93,40 @@ void fb_draw_rect(int x, int y, int width, int height, int thickness, uint32_t c
     fb_fill_rect(x, y + height - thickness, width, thickness, color);
     fb_fill_rect(x, y + thickness, thickness, height - 2 * thickness, color);
     fb_fill_rect(x + width - thickness, y + thickness, thickness, height - 2 * thickness, color);
+}
+
+void fb_invert_rect(int x, int y, int width, int height) {
+    if (!is_exist() || width <= 0 || height <= 0) {
+        return;
+    }
+
+    int x0 = x;
+    int y0 = y;
+    int x1 = x + width;
+    int y1 = y + height;
+
+    if (x0 < 0) {
+        x0 = 0;
+    }
+    if (y0 < 0) {
+        y0 = 0;
+    }
+    if (x1 > g_fb.width) {
+        x1 = g_fb.width;
+    }
+    if (y1 > g_fb.height) {
+        y1 = g_fb.height;
+    }
+
+    if (x0 >= x1 || y0 >= y1) {
+        return;
+    }
+
+    for (int yi = y0; yi < y1; yi++) {
+        for (int xi = x0; xi < x1; xi++) {
+            g_fb.fb[xi + yi * g_fb.pitch] ^= 0x00ffffffu;
+        }
+    }
 }
 
 void fb_draw_char(int x, int y, char c, uint32_t fg, uint32_t bg) {
