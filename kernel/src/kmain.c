@@ -12,6 +12,7 @@
 #include <opal/mm/mm.h>
 #include <opal/mm/pfn.h>
 #include <opal/irq.h>
+#include <opal/timer.h>
 #include <opal/fb/fb.h>
 #include <opal/task/task.h>
 #include <opal/platform/boot.h>
@@ -170,6 +171,7 @@ void kmain(void) {
     hid_init();
 
     irq_init();
+    timer_init();
     ps2_init();
     uart_init();
 
