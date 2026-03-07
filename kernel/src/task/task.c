@@ -56,6 +56,79 @@ alignas(PAGE_SIZE) static char g_idle_stack[PAGE_SIZE];
 static void idle_task(uintptr_t);
 static void irqmsg_timeout(struct irqmsg);
 
+static uint64_t timeout_tick(uint32_t ms) {
+    return timer_get_tick() + (uint64_t)ms * TIMER_HZ / 1000;
+}
+
+static void set_running(struct task *task) {
+    task->state = TASK_RUNNING;
+}
+
+static void set_ready(struct task *task) {
+    task->state = TASK_READY;
+    linkedlist_push_back(&g_sched.ready_queue, &task->queue_link);
+}
+
+static void reset_ready(struct task *task) {
+    linkedlist_remove(&task->queue_link);
+}
+
+static void reset_wait_for(struct task *task) {
+    if (!task->wait_for) {
+        return;
+    }
+
+    linkedlist_remove(&task->queue_link);
+    task->wait_for = NULL;
+}
+
+static void reset_timeout(struct task *task) {
+    if (!task->has_timeout) {
+        return;
+    }
+
+    rbtree_remove(&g_sched.timeout_queue, &task->timeout_node);
+    task->has_timeout = false;
+}
+
+static void set_waiting(struct task *task, struct waitable *obj, uint32_t ms) {
+    task->state = TASK_WAITING;
+    task->wait_for = obj;
+    if (obj) {
+        linkedlist_push_back(&obj->wait_queue, &task->queue_link);
+    }
+
+    if (ms == TIMEOUT_INFINITY) {
+        task->has_timeout = false;
+        return;
+    }
+
+    task->has_timeout = true;
+    task->wait_timeout = timeout_tick(ms);
+    rbtree_insert_timeout(&g_sched.timeout_queue, task);
+    if (g_sched.soonest_timeout > task->wait_timeout) {
+        g_sched.soonest_timeout = task->wait_timeout;
+    }
+}
+
+static void set_dead(struct task *task) {
+    task->state = TASK_DEAD;
+}
+
+static void task_init(struct task *task) {
+    assert(g_sched.tid_next < INT_MAX);
+
+    memset(task, 0, sizeof(*task));
+    task->id = g_sched.tid_next++;
+    task->refcount = 1;
+    task->state = TASK_WAITING;
+    task->wait_for = NULL;
+    task->has_timeout = false;
+    task->wait_timeout = 0;
+    task->stack = NULL;
+    rbtree_insert_task(&g_sched.tid_tree, task);
+}
+
 void sched_init(void) {
     g_sched.tid_next = 0;
     rbtree_init(&g_sched.tid_tree);
@@ -65,20 +138,13 @@ void sched_init(void) {
     rbtree_init(&g_sched.timeout_queue);
     g_sched.soonest_timeout = UINT64_MAX;
 
-    memset(&g_kernel, 0, sizeof(g_kernel));
-    g_kernel.id = g_sched.tid_next++;
-    g_kernel.refcount = 1;
-    g_kernel.state = TASK_RUNNING;
-    g_kernel.stack = NULL;
+    task_init(&g_kernel);
+    set_running(&g_kernel);
     g_sched.current = &g_kernel;
 
-    memset(&g_idle, 0, sizeof(g_idle));
-    g_idle.id = g_sched.tid_next++;
-    g_idle.refcount = 1;
-    g_idle.state = TASK_READY;
-    g_idle.stack = NULL;
+    task_init(&g_idle);
     context_init(&g_idle.ctx, (uintptr_t)idle_task, g_idle_stack, sizeof(g_idle_stack), 0);
-    linkedlist_push_back(&g_sched.ready_queue, &g_idle.queue_link);
+    set_ready(&g_idle);
 
     irqmsg_register(IRQMSG_SCHED_TIMEOUT, irqmsg_timeout);
 }
@@ -113,13 +179,8 @@ static void irqmsg_timeout(struct irqmsg) {
         node = rbtree_next(node);
         rbtree_remove(&g_sched.timeout_queue, &task->timeout_node);
 
-        if (task->wait_for) {
-            linkedlist_remove(&task->queue_link);
-            task->wait_for = NULL;
-        }
-
-        task->state = TASK_READY;
-        linkedlist_push_back(&g_sched.ready_queue, &task->queue_link);
+        reset_wait_for(task);
+        set_ready(task);
     }
 
     irqlock_release(&irqlock);
@@ -142,10 +203,9 @@ void schedule(void) {
     struct task *current = g_sched.current;
     struct task *next = container_of(link, struct task, queue_link);
 
-    next->state = TASK_RUNNING;
+    set_running(next);
     if (current->state == TASK_RUNNING) {
-        current->state = TASK_READY;
-        linkedlist_push_back(&g_sched.ready_queue, &current->queue_link);
+        set_ready(current);
     }
 
     g_sched.current = next;
@@ -171,15 +231,8 @@ struct task *task_create(void (*entry)(uintptr_t), uintptr_t arg) {
         return NULL;
     }
 
-    assert(g_sched.tid_next < INT_MAX);
-    task->id = g_sched.tid_next++;
-    rbtree_insert_task(&g_sched.tid_tree, task);
-
-    task->refcount = 1;
-    task->state = TASK_READY;
-    linkedlist_push_back(&g_sched.ready_queue, &task->queue_link);
-
-    task->wait_for = NULL;
+    task_init(task);
+    set_ready(task);
 
     task->stack = mm_pfn_to_ptr(stack_page);
     context_init(&task->ctx, (uintptr_t)entry, task->stack, PAGE_SIZE, arg);
@@ -211,20 +264,15 @@ void task_terminate(struct task *task) {
         case TASK_RUNNING:
             panic("cannot terminate current task");
         case TASK_READY:
-            linkedlist_remove(&task->queue_link);
+            reset_ready(task);
             break;
         case TASK_WAITING:
-            if (task->has_timeout) {
-                rbtree_remove(&g_sched.timeout_queue, &task->timeout_node);
-            }
-            if (task->wait_for) {
-                linkedlist_remove(&task->queue_link);
-                task->wait_for = NULL;
-            }
+            reset_timeout(task);
+            reset_wait_for(task);
             break;
     }
 
-    task->state = TASK_DEAD;
+    set_dead(task);
     task_free_stack(task);
 
     irqlock_release(&irqlock);
@@ -233,7 +281,7 @@ void task_terminate(struct task *task) {
 [[noreturn]] void task_exit(void) {
     irqlock_t irqlock = irqlock_acquire();
 
-    g_sched.current->state = TASK_DEAD;
+    set_dead(g_sched.current);
     g_sched.current->refcount++;
     linkedlist_push_back(&g_sched.dead_list, &g_sched.current->queue_link);
     schedule();
@@ -276,10 +324,6 @@ tid_t task_release(struct task *task) {
     return id;
 }
 
-static uint64_t timeout_tick(uint32_t ms) {
-    return timer_get_tick() + (uint64_t)ms * TIMER_HZ / 1000;
-}
-
 bool task_wait_for(struct waitable *obj, uint32_t ms) {
     irqlock_t irqlock = irqlock_acquire();
 
@@ -292,23 +336,7 @@ bool task_wait_for(struct waitable *obj, uint32_t ms) {
     }
 
     struct task *current = g_sched.current;
-    current->state = TASK_WAITING;
-    current->wait_for = obj;
-    if (obj) {
-        linkedlist_push_back(&obj->wait_queue, &current->queue_link);
-    }
-
-    if (ms == TIMEOUT_INFINITY) {
-        current->has_timeout = false;
-    } else {
-        current->has_timeout = true;
-        current->wait_timeout = timeout_tick(ms);
-        rbtree_insert_timeout(&g_sched.timeout_queue, current);
-
-        if (g_sched.soonest_timeout > current->wait_timeout) {
-            g_sched.soonest_timeout = current->wait_timeout;
-        }
-    }
+    set_waiting(current, obj, ms);
 
     schedule();
 
@@ -333,14 +361,12 @@ void waitable_trigger(struct waitable *obj) {
 
         struct task *task = container_of(link, struct task, queue_link);
 
-        task->state = TASK_READY;
         task->wait_for = NULL;
         if (task->has_timeout) {
-            rbtree_remove(&g_sched.timeout_queue, &task->timeout_node);
-            task->has_timeout = false;
+            reset_timeout(task);
         }
 
-        linkedlist_push_back(&g_sched.ready_queue, &task->queue_link);
+        set_ready(task);
 
         if (obj->reset) {
             obj->triggered = false;

@@ -6,4 +6,7 @@
 - [`troubleshooting.md`](troubleshooting.md): 자주 발생하는 빌드/테스트 이슈
 - [`todo.md`](todo.md): 다음 작업 TODO
 - [`opal/README.md`](opal/README.md): 커널 내부 동작 문서
+- [`opal/task.md`](opal/task.md): 태스크/스케줄러
+- [`opal/interrupt-io.md`](opal/interrupt-io.md): 인터럽트/입력/시리얼 IO 경로
+- [`libcoll/README.md`](libcoll/README.md): libcoll 자료구조 문서
 - [`tools/README.md`](tools/README.md): 도구 스크립트 문서
