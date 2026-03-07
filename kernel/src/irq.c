@@ -5,6 +5,8 @@
 
 #include <opal/irq.h>
 #include <opal/klog.h>
+#include <opal/task/task.h>
+#include <opal/task/waitable.h>
 #include <opal/locks/irqlock.h>
 #include <opal/platform/asm.h>
 
@@ -18,6 +20,8 @@ static struct ringbuffer g_msg_queue;
 static uint32_t g_msg_drops = 0;
 static bool g_msg_drop_event = false;
 
+static struct waitable g_waitable;
+
 static void isrmsg_drop(struct irqmsg) {
     kwarn("irqmsg: queue full, dropped #%u", g_msg_drops);
 }
@@ -29,6 +33,8 @@ void irq_init(void) {
     ringbuffer_init(&g_msg_queue, g_msg_buffer, IRQ_QUEUE_SIZE);
 
     irqmsg_register(IRQMSG_DROP, isrmsg_drop);
+
+    waitable_init(&g_waitable, true);
 }
 
 void irqmsg_register(irqmsg_type_t msg, irqmsg_handler_t handler) {
@@ -44,11 +50,15 @@ bool irqmsg_push(struct irqmsg msg) {
     if (ringbuffer_is_full(&g_msg_queue)) {
         g_msg_drops++;
         g_msg_drop_event = true;
+        waitable_trigger(&g_waitable);
+
         irqlock_release(&irqlock);
         return false;
     }
 
     ringbuffer_push(&g_msg_queue, struct irqmsg, msg);
+    waitable_trigger(&g_waitable);
+
     irqlock_release(&irqlock);
     return true;
 }
@@ -75,21 +85,23 @@ exit:
     return ret;
 }
 
-void irqmsg_drain(void) {
+[[noreturn]] void irqmsg_drain_loop(void) {
     struct irqmsg msg;
 
+    interrupts_disable();
     while (1) {
-        interrupts_disable();
-        if (!irqmsg_pop(&msg)) {
-            break;
-        }
+        task_wait_for(&g_waitable, TIMEOUT_INFINITY);
 
-        interrupts_enable();
+        while (irqmsg_pop(&msg)) {
+            interrupts_enable();
 
-        assert(msg.type < IRQMSG_COUNT);
-        irqmsg_handler_t handler = g_irqmsg_handlers[msg.type];
-        if (handler) {
-            handler(msg);
+            assert(msg.type < IRQMSG_COUNT);
+            irqmsg_handler_t handler = g_irqmsg_handlers[msg.type];
+            if (handler) {
+                handler(msg);
+            }
+
+            interrupts_disable();
         }
     }
 }

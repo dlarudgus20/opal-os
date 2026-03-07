@@ -52,7 +52,11 @@ void irq_dispatch(irq_t irq) {
     irq_handler_t handler = g_irq_handlers[irq];
     if (handler) {
         handler();
+    } else {
+        irq_send_eoi(irq);
     }
+}
 
+void irq_send_eoi(irq_t irq) {
     pic_send_eoi(irq);
 }

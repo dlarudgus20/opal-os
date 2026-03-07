@@ -9,6 +9,7 @@ enum irqmsg_type {
     IRQMSG_DROP,
     IRQMSG_PS2_KBD,
     IRQMSG_PS2_MOUSE,
+    IRQMSG_SCHED_TIMEOUT,
     IRQMSG_COUNT,
 };
 
@@ -24,6 +25,6 @@ typedef void (*irqmsg_handler_t)(struct irqmsg msg);
 void irq_init(void);
 void irqmsg_register(irqmsg_type_t msg, irqmsg_handler_t handler);
 bool irqmsg_push(struct irqmsg msg);
-void irqmsg_drain(void);
+[[noreturn]] void irqmsg_drain_loop(void);
 
 #endif

@@ -13,5 +13,6 @@ void irq_disable(irq_t irq);
 void irq_enable_intr(void);
 
 void irq_dispatch(irq_t irq);
+void irq_send_eoi(irq_t irq);
 
 #endif

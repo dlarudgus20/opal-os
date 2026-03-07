@@ -1,14 +1,25 @@
 #include <opal/timer.h>
-#include <opal/klog.h>
+#include <opal/task/task.h>
+#include <opal/locks/irqlock.h>
+#include <opal/platform/drivers/pic.h>
 #include <opal/platform/drivers/pit.h>
 
-static void timer_isr(void) {
-    static unsigned counter = 0;
-    if (++counter % TIMER_HZ == 0) {
-        kdebug("timeout");
-    }
+static uint64_t g_tick = 0;
+
+static void isr_timer(void) {
+    g_tick++;
+    irq_send_eoi(PIC_IRQ_TIMER);
+
+    schedule();
 }
 
 void timer_init(void) {
-    pit_init(TIMER_HZ, timer_isr);
+    pit_init(TIMER_HZ, isr_timer);
+}
+
+uint64_t timer_get_tick(void) {
+    irqlock_t irqlock = irqlock_acquire();
+    uint64_t tick = g_tick;
+    irqlock_release(&irqlock);
+    return tick;
 }

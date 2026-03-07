@@ -3,7 +3,8 @@
 
 #include <stdint.h>
 
-#include <opal/mm/types.h>
+#include <opal/mm/pfn.h>
+#include <opal/platform/mm/defines.h>
 
 void mm_init(void);
 

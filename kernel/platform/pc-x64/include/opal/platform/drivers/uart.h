@@ -3,7 +3,7 @@
 
 #include <stddef.h>
 
-#define INVALID_UART NULL
+#define UART_INVALID NULL
 
 enum uart_port {
     UART_PORT_COM1 = 0,

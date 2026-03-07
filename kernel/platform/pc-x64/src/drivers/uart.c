@@ -81,7 +81,7 @@ static struct uart g_uarts[UART_PORT_COUNT] = {
     [UART_PORT_COM2] = { .base = UART_COM2_BASE, .irq_line = UART_IRQ_COM2 },
 };
 
-static uart_handle_t g_default_uart = INVALID_UART;
+static uart_handle_t g_default_uart = UART_INVALID;
 
 static uint8_t reg_read(const struct uart *u, uint8_t reg) {
     return in8(u->base + reg);
@@ -233,6 +233,8 @@ static void uart_isr(struct uart *uart) {
                 break;
         }
     }
+
+    irq_send_eoi(uart->irq_line);
 }
 
 static void uart_isr_com1(void) {
@@ -255,7 +257,7 @@ void uart_early_init(void) {
     } else if (g_uarts[UART_PORT_COM2].present) {
         g_default_uart = &g_uarts[UART_PORT_COM2];
     } else {
-        g_default_uart = INVALID_UART;
+        g_default_uart = UART_INVALID;
     }
 
     if (g_default_uart) {
@@ -290,11 +292,11 @@ uart_handle_t uart_get_default(void) {
 
 uart_handle_t uart_get(enum uart_port port) {
     if ((unsigned)port >= UART_PORT_COUNT) {
-        return INVALID_UART;
+        return UART_INVALID;
     }
 
     uart_handle_t uart = &g_uarts[port];
-    return uart->present ? uart : INVALID_UART;
+    return uart->present ? uart : UART_INVALID;
 }
 
 bool uart_is_available(uart_handle_t uart) {

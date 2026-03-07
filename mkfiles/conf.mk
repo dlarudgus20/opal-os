@@ -33,8 +33,7 @@ CFLAGS             += -std=c23 -ggdb3 -ffreestanding -masm=intel --embed-dir=res
 NASM_FLAGS         += -ires
 OBJDUMP_FLAGS      += -dS -M intel
 
-WARNING_FLAGS      := -pedantic -Wall -Wextra -Werror \
-	-Wno-error=unused-variable -Wno-error=unused-function
+WARNING_FLAGS      := -pedantic -Wall -Wextra -Werror
 
 TEST_WARNING_FLAGS := -Wno-unused-parameter
 

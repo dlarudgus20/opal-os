@@ -5,8 +5,6 @@
 
 #include "collections/rbtree.h"
 
-enum { RED, BLK };
-
 static struct rbtree_node* get_min_node(struct rbtree_node* node);
 static void rotate_left(struct rbtree* tree, struct rbtree_node* node);
 static void rotate_right(struct rbtree* tree, struct rbtree_node* node);
@@ -15,11 +13,11 @@ static void insertion_balancing(struct rbtree* tree, struct rbtree_node* node);
 static void removal_balancing(struct rbtree* tree, struct rbtree_node* sibling);
 
 static bool is_blk_or_nil(struct rbtree_node* node) {
-    return node == NULL || node->color == BLK;
+    return node == NULL || node->color == RBTREE_BLACK;
 }
 
 static bool is_red(struct rbtree_node* node) {
-    return node != NULL && node->color == RED;
+    return node != NULL && node->color == RBTREE_RED;
 }
 
 static struct rbtree_node* get_sibling(struct rbtree_node* node) {
@@ -32,31 +30,6 @@ static struct rbtree_node* get_sibling(struct rbtree_node* node) {
 
 void rbtree_init(struct rbtree* tree) {
     tree->root = NULL;
-}
-
-struct rbtree_find_result rbtree_find(struct rbtree* tree, int key) {
-    struct rbtree_find_result result = { .lower = NULL, .upper = NULL, .to_insert = NULL };
-    struct rbtree_node* next = tree->root;
-    struct rbtree_node* node = NULL;
-    while (1) {
-        if (next == NULL) {
-            result.to_insert = node;
-            return result;
-        } else {
-            node = next;
-        }
-
-        if (node->key < key) {
-            result.lower = node;
-            next = node->right;
-        } else if (node->key > key) {
-            result.upper = node;
-            next = node->left;
-        } else {
-            result.lower = result.upper = node;
-            return result;
-        }
-    }
 }
 
 struct rbtree_node* rbtree_first(struct rbtree* tree) {
@@ -80,27 +53,11 @@ struct rbtree_node* rbtree_next(struct rbtree_node* node) {
     }
 }
 
-void rbtree_insert(struct rbtree* tree, struct rbtree_node* node) {
-    if (tree->root == NULL) {
-        node->parent = NULL;
-        node->left = node->right = NULL;
-        node->color = BLK;
-        tree->root = node;
-    } else {
-        struct rbtree_find_result r = rbtree_find(tree, node->key);
-        if (r.to_insert == NULL) {
-            return;
-        } else {
-            node->parent = r.to_insert;
-            node->left = node->right = NULL;
-            if (node->key < r.to_insert->key) {
-                r.to_insert->left = node;
-            } else {
-                r.to_insert->right = node;
-            }
-            insertion_balancing(tree, node);
-        }
-    }
+void rbtree_link_insert(struct rbtree* tree, struct rbtree_node* parent, struct rbtree_node** link, struct rbtree_node* node) {
+    node->parent = parent;
+    node->left = node->right = NULL;
+    *link = node;
+    insertion_balancing(tree, node);
 }
 
 static void insertion_balancing(struct rbtree* tree, struct rbtree_node* node) {
@@ -112,23 +69,23 @@ static void insertion_balancing(struct rbtree* tree, struct rbtree_node* node) {
 
     // case 1: root
     if (parent == NULL) {
-        node->color = BLK;
+        node->color = RBTREE_BLACK;
         return;
     }
 
     // case 2: parent is black
-    node->color = RED;
-    if (parent->color == BLK) {
+    node->color = RBTREE_RED;
+    if (parent->color == RBTREE_BLACK) {
         return;
     }
 
     // case 3: both parent and uncle are red
     grand = parent->parent;
     uncle = get_sibling(parent);
-    if (uncle != NULL && uncle->color == RED) {
-        parent->color = BLK;
-        uncle->color = BLK;
-        grand->color = RED;
+    if (uncle != NULL && uncle->color == RBTREE_RED) {
+        parent->color = RBTREE_BLACK;
+        uncle->color = RBTREE_BLACK;
+        grand->color = RBTREE_RED;
         insertion_balancing(tree, grand);
         return;
     }
@@ -149,8 +106,8 @@ static void insertion_balancing(struct rbtree* tree, struct rbtree_node* node) {
     }
 
     // case 5: rotation for grand
-    parent->color = BLK;
-    grand->color = RED;
+    parent->color = RBTREE_BLACK;
+    grand->color = RBTREE_RED;
     if (parent->left == node) {
         rotate_right(tree, grand);
     } else {
@@ -207,12 +164,12 @@ void rbtree_remove(struct rbtree* tree, struct rbtree_node* node) {
         // case 0: node has one child
         if (child != NULL) {
             child->parent = parent;
-            child->color = BLK;
+            child->color = RBTREE_BLACK;
             return;
         }
 
         // case 0: node is red
-        if (node->color == RED) {
+        if (node->color == RBTREE_RED) {
             return;
         }
 
@@ -234,9 +191,9 @@ static void removal_balancing(struct rbtree* tree, struct rbtree_node* sibling) 
 
     // case 2: sibling is red
     // then sibiling's children also cannot be null
-    if (sibling->color == RED) {
-        sibling->color = BLK;
-        parent->color = RED;
+    if (sibling->color == RBTREE_RED) {
+        sibling->color = RBTREE_BLACK;
+        parent->color = RBTREE_RED;
         if (sibling == parent->right) {
             sibling = sibling->left;
             rotate_left(tree, parent);
@@ -247,22 +204,22 @@ static void removal_balancing(struct rbtree* tree, struct rbtree_node* sibling) 
     }
 
     // case 3: parent, sibling and its children are black
-    if (parent->color == BLK
-        && (sibling->left == NULL || sibling->left->color == BLK)
-        && (sibling->right == NULL || sibling->right->color == BLK)
+    if (parent->color == RBTREE_BLACK
+        && (sibling->left == NULL || sibling->left->color == RBTREE_BLACK)
+        && (sibling->right == NULL || sibling->right->color == RBTREE_BLACK)
     ) {
-        sibling->color = RED;
+        sibling->color = RBTREE_RED;
         removal_balancing(tree, get_sibling(parent));
         return;
     }
 
     // case 4: parent is red but sibling and its children are black
-    if (parent->color == RED
-        && (sibling->left == NULL || sibling->left->color == BLK)
-        && (sibling->right == NULL || sibling->right->color == BLK)
+    if (parent->color == RBTREE_RED
+        && (sibling->left == NULL || sibling->left->color == RBTREE_BLACK)
+        && (sibling->right == NULL || sibling->right->color == RBTREE_BLACK)
     ) {
-        sibling->color = RED;
-        parent->color = BLK;
+        sibling->color = RBTREE_RED;
+        parent->color = RBTREE_BLACK;
         return;
     }
 
@@ -270,16 +227,16 @@ static void removal_balancing(struct rbtree* tree, struct rbtree_node* sibling) 
     if (sibling == parent->right
         && is_red(sibling->left) && is_blk_or_nil(sibling->right)
     ) {
-        sibling->color = RED;
-        sibling->left->color = BLK;
+        sibling->color = RBTREE_RED;
+        sibling->left->color = RBTREE_BLACK;
 
         rotate_right(tree, sibling);
         sibling = sibling->parent;
     } else if (sibling == parent->left
         && is_red(sibling->right) && is_blk_or_nil(sibling->left)
     ) {
-        sibling->color = RED;
-        sibling->right->color = BLK;
+        sibling->color = RBTREE_RED;
+        sibling->right->color = RBTREE_BLACK;
 
         rotate_left(tree, sibling);
         sibling = sibling->parent;
@@ -287,13 +244,13 @@ static void removal_balancing(struct rbtree* tree, struct rbtree_node* sibling) 
 
     // case 6: parent rotation
     sibling->color = parent->color;
-    parent->color = BLK;
+    parent->color = RBTREE_BLACK;
 
     if (sibling == parent->right) {
-        sibling->right->color = BLK;
+        sibling->right->color = RBTREE_BLACK;
         rotate_left(tree, parent);
     } else {
-        sibling->left->color = BLK;
+        sibling->left->color = RBTREE_BLACK;
         rotate_right(tree, parent);
     }
 }

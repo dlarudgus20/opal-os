@@ -186,10 +186,12 @@ static void ps2_drain_output(void) {
 
 static void isr_kbd(void) {
     ps2_drain_output();
+    irq_send_eoi(PIC_IRQ_KEYBOARD);
 }
 
 static void isr_mouse(void) {
     ps2_drain_output();
+    irq_send_eoi(PIC_IRQ_MOUSE);
 }
 
 struct device_type {
