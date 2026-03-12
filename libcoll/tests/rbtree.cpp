@@ -72,6 +72,7 @@ TEST(rbtree_test, empty_tree) {
     rbtree tree;
     rbtree_init(&tree);
     ASSERT_EQ(tree.root, nullptr);
+    ASSERT_EQ(tree.first, nullptr);
 }
 
 TEST(rbtree_test, insert_single) {
@@ -82,7 +83,125 @@ TEST(rbtree_test, insert_single) {
     rbtree_insert_my(&tree, &node);
 
     ASSERT_EQ(tree.root, &node.node);
+    ASSERT_EQ(tree.first, &node.node);
     ASSERT_EQ(node.node.color, RBTREE_BLACK);
+}
+
+TEST(rbtree_test, first_cache_tracks_min_insert_and_remove) {
+    rbtree tree;
+    mynode node1 = make_node(20);
+    mynode node2 = make_node(10);
+    mynode node3 = make_node(30);
+
+    rbtree_init(&tree);
+    rbtree_insert_my(&tree, &node1);
+    ASSERT_EQ(tree.first, &node1.node);
+
+    rbtree_insert_my(&tree, &node2);
+    ASSERT_EQ(tree.first, &node2.node);
+
+    rbtree_insert_my(&tree, &node3);
+    ASSERT_EQ(tree.first, &node2.node);
+
+    rbtree_remove(&tree, &node2.node);
+    ASSERT_EQ(tree.first, &node1.node);
+
+    rbtree_remove(&tree, &node1.node);
+    ASSERT_EQ(tree.first, &node3.node);
+
+    rbtree_remove(&tree, &node3.node);
+    ASSERT_EQ(tree.first, nullptr);
+}
+
+TEST(rbtree_test, first_cache_not_changed_by_non_min_left_insert) {
+    rbtree tree;
+    mynode node1 = make_node(20);
+    mynode node2 = make_node(10);
+    mynode node3 = make_node(30);
+    mynode node4 = make_node(25);
+
+    rbtree_init(&tree);
+    rbtree_insert_my(&tree, &node1);
+    rbtree_insert_my(&tree, &node2);
+    rbtree_insert_my(&tree, &node3);
+    ASSERT_EQ(tree.first, &node2.node);
+
+    rbtree_insert_my(&tree, &node4);
+    ASSERT_EQ(tree.first, &node2.node);
+    ASSERT_EQ(first_data(&tree)->key, 10);
+}
+
+TEST(rbtree_test, first_cache_tracks_new_min_after_rotation) {
+    rbtree tree;
+    mynode node1 = make_node(30);
+    mynode node2 = make_node(20);
+    mynode node3 = make_node(10);
+
+    rbtree_init(&tree);
+    rbtree_insert_my(&tree, &node1);
+    ASSERT_EQ(tree.first, &node1.node);
+
+    rbtree_insert_my(&tree, &node2);
+    ASSERT_EQ(tree.first, &node2.node);
+
+    rbtree_insert_my(&tree, &node3);
+    ASSERT_EQ(tree.first, &node3.node);
+    ASSERT_EQ(first_data(&tree)->key, 10);
+}
+
+TEST(rbtree_test, first_cache_stays_min_across_internal_removals) {
+    rbtree tree;
+    mynode node1 = make_node(20);
+    mynode node2 = make_node(10);
+    mynode node3 = make_node(30);
+    mynode node4 = make_node(25);
+    mynode node5 = make_node(35);
+
+    rbtree_init(&tree);
+    rbtree_insert_my(&tree, &node1);
+    rbtree_insert_my(&tree, &node2);
+    rbtree_insert_my(&tree, &node3);
+    rbtree_insert_my(&tree, &node4);
+    rbtree_insert_my(&tree, &node5);
+
+    ASSERT_EQ(tree.first, &node2.node);
+
+    rbtree_remove(&tree, &node4.node);
+    ASSERT_EQ(tree.first, &node2.node);
+
+    rbtree_remove(&tree, &node3.node);
+    ASSERT_EQ(tree.first, &node2.node);
+
+    rbtree_remove(&tree, &node5.node);
+    ASSERT_EQ(tree.first, &node2.node);
+}
+
+TEST(rbtree_test, first_cache_advances_in_sorted_order_on_min_removals) {
+    rbtree tree;
+    mynode node1 = make_node(40);
+    mynode node2 = make_node(10);
+    mynode node3 = make_node(30);
+    mynode node4 = make_node(20);
+
+    rbtree_init(&tree);
+    rbtree_insert_my(&tree, &node1);
+    rbtree_insert_my(&tree, &node2);
+    rbtree_insert_my(&tree, &node3);
+    rbtree_insert_my(&tree, &node4);
+
+    ASSERT_EQ(first_data(&tree)->key, 10);
+
+    rbtree_remove(&tree, &node2.node);
+    ASSERT_EQ(first_data(&tree)->key, 20);
+
+    rbtree_remove(&tree, &node4.node);
+    ASSERT_EQ(first_data(&tree)->key, 30);
+
+    rbtree_remove(&tree, &node3.node);
+    ASSERT_EQ(first_data(&tree)->key, 40);
+
+    rbtree_remove(&tree, &node1.node);
+    ASSERT_EQ(first_data(&tree), nullptr);
 }
 
 TEST(rbtree_test, insert_multiple_no_rotation) {

@@ -16,6 +16,7 @@ struct rbtree_node {
 
 struct rbtree {
     struct rbtree_node* root;
+    struct rbtree_node* first;
 };
 
 struct rbtree_find_result {

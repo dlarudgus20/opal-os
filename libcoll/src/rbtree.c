@@ -30,10 +30,11 @@ static struct rbtree_node* get_sibling(struct rbtree_node* node) {
 
 void rbtree_init(struct rbtree* tree) {
     tree->root = NULL;
+    tree->first = NULL;
 }
 
 struct rbtree_node* rbtree_first(struct rbtree* tree) {
-    return tree->root == NULL ? NULL : get_min_node(tree->root);
+    return tree->first;
 }
 
 struct rbtree_node* rbtree_next(struct rbtree_node* node) {
@@ -53,7 +54,15 @@ struct rbtree_node* rbtree_next(struct rbtree_node* node) {
     }
 }
 
-void rbtree_link_insert(struct rbtree* tree, struct rbtree_node* parent, struct rbtree_node** link, struct rbtree_node* node) {
+void rbtree_link_insert(
+    struct rbtree* tree,
+    struct rbtree_node* parent,
+    struct rbtree_node** link,
+    struct rbtree_node* node
+) {
+    if (tree->first == NULL || link == &tree->first->left) {
+        tree->first = node;
+    }
     node->parent = parent;
     node->left = node->right = NULL;
     *link = node;
@@ -116,6 +125,10 @@ static void insertion_balancing(struct rbtree* tree, struct rbtree_node* node) {
 }
 
 void rbtree_remove(struct rbtree* tree, struct rbtree_node* node) {
+    if (tree->first == node) {
+        tree->first = rbtree_next(node);
+    }
+
     if (node->left != NULL && node->right != NULL) {
         // case 0: node has two non-null children
         struct rbtree_node* successor = get_min_node(node->right);
