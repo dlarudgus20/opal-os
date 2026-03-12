@@ -5,6 +5,8 @@
 
 #include <opal/timer.h>
 
+#define TIMEOUT_INFINITY UINT64_MAX
+
 struct wait_list {
     struct linkedlist queue;
 };

@@ -13,12 +13,6 @@ enum hid_button {
     HID_BUTTON_MASK = HID_BUTTON_LEFT | HID_BUTTON_RIGHT | HID_BUTTON_MIDDLE,
 };
 
-struct hid_pointer_state {
-    int x;
-    int y;
-    uint8_t buttons;
-};
-
 void hid_init(void);
 void hid_report_key(hid_keycode_t keycode, bool pressed);
 void hid_report_pointer(int16_t dx, int16_t dy, uint8_t buttons);

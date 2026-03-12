@@ -9,6 +9,7 @@ enum irqmsg_type {
     IRQMSG_DROP,
     IRQMSG_PS2_KBD,
     IRQMSG_PS2_MOUSE,
+    IRQMSG_UART_RX,
     IRQMSG_SCHED_TIMEOUT,
     IRQMSG_COUNT,
 };

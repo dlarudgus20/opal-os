@@ -144,9 +144,7 @@ static void run_shell(uintptr_t) {
 
         while (1) {
             tty0_puts("root@opal:~$ ");
-            // uart_read_line() removed; shell path is currently unused.
-            line[0] = '\0';
-            return;
+            tty0_getline(line, sizeof(line));
 
             if (!handle_command(line)) {
                 return;

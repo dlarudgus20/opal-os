@@ -1,5 +1,6 @@
 #include <stddef.h>
 
+#include <opal/irq.h>
 #include <opal/tty.h>
 #include <opal/tty/uart_tty.h>
 #include <opal/platform/drivers/uart.h>
@@ -71,6 +72,27 @@ static struct tty_ops g_tty_ops = {
     .set_color = set_color_tty,
 };
 
+static void irqmsg_uart_rx(struct irqmsg msg) {
+    uart_handle_t uart = uart_get((enum uart_port)msg.data);
+    if (uart != g_uart) {
+        return;
+    }
+
+    char buf[TTY_BUFFER_SIZE];
+    size_t len = uart_try_read(uart, buf, sizeof(buf));
+    if (len > 0) {
+        uart_try_write(uart, buf, len);
+    }
+
+    for (size_t i = 0; i < len; i++) {
+        if (buf[i] == '\r') {
+            buf[i] = '\n';
+        }
+    }
+
+    tty0_put_input(buf, len);
+}
+
 void uart_tty_init(void) {
     g_uart = uart_get_default();
     tty_buffered_init(&g_tty, &g_tty_ops);
@@ -78,5 +100,11 @@ void uart_tty_init(void) {
     if (g_uart && !g_registered) {
         tty0_register(&g_tty.tty);
         g_registered = true;
+    }
+}
+
+void uart_tty_enable_irqmsg(void) {
+    if (g_registered) {
+        irqmsg_register(IRQMSG_UART_RX, irqmsg_uart_rx);
     }
 }

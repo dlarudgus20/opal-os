@@ -1,5 +1,6 @@
 #include <stdarg.h>
 
+#include <kc/assert.h>
 #include <kc/fmt.h>
 #include <kc/stdlib.h>
 #include <kc/string.h>
@@ -152,6 +153,11 @@ void tty_printf(struct tty *tty, const char *fmt, ...) {
 void tty0_init(void) {
     linkedlist_init(&g_tty_0.subtty_list);
     tty_init(&g_tty_0.tty, &g_tty0_ops);
+
+    g_tty_0.inlen = 0;
+    g_tty_0.in_head = 0;
+    g_tty_0.in_tail = 0;
+    event_init(&g_tty_0.input_ev, false);
 }
 
 struct tty *tty0_get(void) {
@@ -211,4 +217,82 @@ void tty0_set_bgcolor(tty_color_t color) {
 
 void tty0_reset_color(void) {
     set_color_0(&g_tty_0.tty, -1, -1);
+}
+
+size_t tty0_put_input(const char *input, size_t len) {
+    irqlock_t irqlock = irqlock_acquire();
+    bool was_empty = g_tty_0.inlen == 0;
+    size_t written = 0;
+
+    for (size_t i = 0; i < len; i++) {
+        char ch = input[i];
+        if (g_tty_0.inlen < TTY_BUFFER_SIZE) {
+            g_tty_0.inbuf[g_tty_0.in_tail] = ch;
+            g_tty_0.in_tail = (uint16_t)((g_tty_0.in_tail + 1) % TTY_BUFFER_SIZE);
+            g_tty_0.inlen++;
+            written++;
+            continue;
+        }
+
+        if (ch != '\n') {
+            continue;
+        }
+
+        uint16_t last = (uint16_t)((g_tty_0.in_tail + TTY_BUFFER_SIZE - 1) % TTY_BUFFER_SIZE);
+        if (g_tty_0.inbuf[last] == '\n') {
+            continue;
+        }
+
+        g_tty_0.inbuf[last] = '\n';
+        written++;
+    }
+
+    if (was_empty && g_tty_0.inlen > 0) {
+        event_signal(&g_tty_0.input_ev);
+    }
+
+    irqlock_release(&irqlock);
+    return written;
+}
+
+char tty0_getchar(void) {
+    irqlock_t irqlock = irqlock_acquire();
+
+    tty0_flush();
+
+    while (g_tty_0.inlen == 0) {
+        event_wait(&g_tty_0.input_ev, TIMEOUT_INFINITY);
+    }
+
+    char ch = g_tty_0.inbuf[g_tty_0.in_head];
+    g_tty_0.in_head = (uint16_t)((g_tty_0.in_head + 1) % TTY_BUFFER_SIZE);
+    g_tty_0.inlen--;
+    if (g_tty_0.inlen == 0) {
+        event_reset(&g_tty_0.input_ev);
+    }
+
+    irqlock_release(&irqlock);
+    return ch;
+}
+
+size_t tty0_getline(char *buf, size_t len) {
+    if (len == 0) {
+        return 0;
+    }
+
+    size_t written = 0;
+    size_t cap = len - 1;
+    while (1) {
+        char ch = tty0_getchar();
+        if (ch == '\n') {
+            break;
+        }
+
+        if (written < cap) {
+            buf[written++] = ch;
+        }
+    }
+
+    buf[written] = '\0';
+    return written;
 }

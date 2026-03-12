@@ -51,8 +51,12 @@ void fb_init(void) {
     tty0_register(&g_fb_tty.tty);
 }
 
-bool fb_is_available(void) {
+static bool is_exist(void) {
     return g_fb.fb != NULL;
+}
+
+bool fb_is_available(void) {
+    return is_exist();
 }
 
 int fb_get_width(void) {
@@ -63,8 +67,8 @@ int fb_get_height(void) {
     return g_fb.height;
 }
 
-static bool is_exist(void) {
-    return g_fb.fb;
+struct fb_tty *fb_tty_get(void) {
+    return is_exist() ? &g_fb_tty : NULL;
 }
 
 static bool is_valid(int x, int y) {

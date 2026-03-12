@@ -8,6 +8,8 @@
 
 #include <collections/linkedlist.h>
 
+#include <opal/task/event.h>
+
 #define TTY_BUFFER_SIZE 512
 
 enum {
@@ -35,8 +37,8 @@ struct tty;
 
 struct tty_ops {
     // writes bytes. returns the count of written bytes.
-    // unwritten bytes will remain in tty buffer.
-    // unbuffered tty always calls with len=1
+    // unwritten bytes will remain in tty write buffer.
+    // unbuffered tty always calls write with len=1
     size_t (*write)(struct tty *tty, const char *buf, size_t len);
 
     // if only one of color arguments is -1, it means "do not change"
@@ -55,6 +57,7 @@ struct tty_buffered {
         const struct tty_ops *ops;
         struct tty tty;
     };
+
     char buffer[TTY_BUFFER_SIZE];
     uint16_t buflen;
 };
@@ -62,11 +65,18 @@ struct tty_buffered {
 struct tty_0 {
     struct tty tty;
     struct linkedlist subtty_list;
+
+    char inbuf[TTY_BUFFER_SIZE];
+    uint16_t inlen;
+    uint16_t in_head;
+    uint16_t in_tail;
+    struct event input_ev;
 };
 
 void tty_init(struct tty *tty, const struct tty_ops *ops);
 void tty_buffered_init(struct tty_buffered *tty, const struct tty_ops *ops);
 void tty_flush(struct tty *tty);
+
 void tty_puts(struct tty *tty, const char *str);
 void tty_puts_len(struct tty *tty, const char *str, size_t len);
 void tty_printf(struct tty *tty, const char *fmt, ...) PRINTF_ATTR(2, 3);
@@ -79,6 +89,10 @@ void tty0_unregister(struct tty *tty);
 void tty0_set_fgcolor(tty_color_t color);
 void tty0_set_bgcolor(tty_color_t color);
 void tty0_reset_color(void);
+
+size_t tty0_put_input(const char *input, size_t len);
+char tty0_getchar(void);
+size_t tty0_getline(char *buf, size_t len);
 
 #define tty0_puts(str) tty_puts(tty0_get(), str)
 #define tty0_puts_len(str, len) tty_puts_len(tty0_get(), str, len)

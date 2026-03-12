@@ -202,6 +202,8 @@ static void tx_pump_locked(struct uart *u) {
 }
 
 static void uart_isr(struct uart *uart) {
+    bool rx_ready = false;
+
     for (int i = 0; i < UART_INTR_SPIN; i++) {
         if (!uart->present) {
             break;
@@ -219,6 +221,7 @@ static void uart_isr(struct uart *uart) {
                 while (hw_try_read(uart, &data)) {
                     if (!ringbuffer_is_full(&uart->rx_queue)) {
                         ringbuffer_push(&uart->rx_queue, uint8_t, data);
+                        rx_ready = true;
                     }
                 }
                 break;
@@ -232,6 +235,11 @@ static void uart_isr(struct uart *uart) {
             default:
                 break;
         }
+    }
+
+    if (rx_ready) {
+        uint8_t port = (uint8_t)(uart - g_uarts);
+        irqmsg_push((struct irqmsg){ .type = IRQMSG_UART_RX, .data = port });
     }
 
     irq_send_eoi(uart->irq_line);
@@ -283,6 +291,10 @@ void uart_init(void) {
         }
         irq_enable(u->irq_line);
         u->irq_mode = true;
+    }
+
+    if (g_default_uart) {
+        uart_tty_enable_irqmsg();
     }
 }
 

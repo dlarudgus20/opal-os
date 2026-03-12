@@ -5,10 +5,14 @@
 
 typedef uint32_t fb_color_t;
 
+struct fb_tty;
+
 void fb_init(void);
 [[nodiscard]] bool fb_is_available(void);
 [[nodiscard]] int fb_get_width(void);
 [[nodiscard]] int fb_get_height(void);
+
+[[nodiscard]] struct fb_tty *fb_tty_get(void);
 
 void fb_draw_pixel(int x, int y, fb_color_t color);
 

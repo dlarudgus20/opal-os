@@ -22,7 +22,7 @@ void uart_init(void);
 [[nodiscard]] bool uart_is_available(uart_handle_t uart);
 
 [[nodiscard]] size_t uart_rx_pending(uart_handle_t uart);
-[[nodiscard]] size_t uart_try_write(uart_handle_t uart, const char *buf, size_t len);
+size_t uart_try_write(uart_handle_t uart, const char *buf, size_t len);
 [[nodiscard]] size_t uart_try_read(uart_handle_t uart, char *buf, size_t len);
 
 #endif

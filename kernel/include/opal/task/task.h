@@ -11,7 +11,6 @@
 #include <opal/platform/task/context.h>
 
 #define TID_INVALID -1
-#define TIMEOUT_INFINITY UINT64_MAX
 
 typedef int tid_t;
 
