@@ -6,7 +6,7 @@
 #include <opal/irq.h>
 #include <opal/klog.h>
 #include <opal/task/task.h>
-#include <opal/task/waitable.h>
+#include <opal/task/event.h>
 #include <opal/locks/irqlock.h>
 #include <opal/platform/asm.h>
 
@@ -20,7 +20,7 @@ static struct ringbuffer g_msg_queue;
 static uint32_t g_msg_drops = 0;
 static bool g_msg_drop_event = false;
 
-static struct waitable g_waitable;
+static struct event g_event;
 
 static void isrmsg_drop(struct irqmsg) {
     kwarn("irqmsg: queue full, dropped #%u", g_msg_drops);
@@ -34,7 +34,7 @@ void irq_init(void) {
 
     irqmsg_register(IRQMSG_DROP, isrmsg_drop);
 
-    waitable_init(&g_waitable, true);
+    event_init(&g_event, true);
 }
 
 void irqmsg_register(irqmsg_type_t msg, irqmsg_handler_t handler) {
@@ -50,14 +50,14 @@ bool irqmsg_push(struct irqmsg msg) {
     if (ringbuffer_is_full(&g_msg_queue)) {
         g_msg_drops++;
         g_msg_drop_event = true;
-        waitable_trigger(&g_waitable);
+        event_signal(&g_event);
 
         irqlock_release(&irqlock);
         return false;
     }
 
     ringbuffer_push(&g_msg_queue, struct irqmsg, msg);
-    waitable_trigger(&g_waitable);
+    event_signal(&g_event);
 
     irqlock_release(&irqlock);
     return true;
@@ -90,7 +90,7 @@ exit:
 
     interrupts_disable();
     while (1) {
-        task_wait_for(&g_waitable, TIMEOUT_INFINITY);
+        event_wait(&g_event, TIMEOUT_INFINITY);
 
         while (irqmsg_pop(&msg)) {
             interrupts_enable();

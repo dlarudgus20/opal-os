@@ -1,10 +1,11 @@
+#include <stdatomic.h>
+
 #include <opal/timer.h>
 #include <opal/task/task.h>
-#include <opal/locks/irqlock.h>
 #include <opal/platform/drivers/pic.h>
 #include <opal/platform/drivers/pit.h>
 
-static uint64_t g_tick = 0;
+static _Atomic uint64_t g_tick = 0;
 
 static void isr_timer(void) {
     g_tick++;
@@ -18,8 +19,5 @@ void timer_init(void) {
 }
 
 uint64_t timer_get_tick(void) {
-    irqlock_t irqlock = irqlock_acquire();
-    uint64_t tick = g_tick;
-    irqlock_release(&irqlock);
-    return tick;
+    return g_tick;
 }

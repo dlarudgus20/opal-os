@@ -156,8 +156,8 @@ static void run_shell(uintptr_t) {
 }
 
 void shell_start(void) {
-    struct task *task = task_create(run_shell, 0);
-    if (!task) {
+    taskptr_t task = task_create(run_shell, 0);
+    if (!task.ptr) {
         return;
     }
 

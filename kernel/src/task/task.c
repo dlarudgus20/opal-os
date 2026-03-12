@@ -7,7 +7,7 @@
 #include <opal/irq.h>
 #include <opal/timer.h>
 #include <opal/task/task.h>
-#include <opal/task/waitable.h>
+#include <opal/task/wait_list.h>
 #include <opal/mm/mm.h>
 #include <opal/mm/slab.h>
 #include <opal/locks/irqlock.h>
@@ -56,10 +56,6 @@ alignas(PAGE_SIZE) static char g_idle_stack[PAGE_SIZE];
 static void idle_task(uintptr_t);
 static void irqmsg_timeout(struct irqmsg);
 
-static uint64_t timeout_tick(uint32_t ms) {
-    return timer_get_tick() + (uint64_t)ms * TIMER_HZ / 1000;
-}
-
 static void set_running(struct task *task) {
     task->state = TASK_RUNNING;
 }
@@ -91,20 +87,20 @@ static void reset_timeout(struct task *task) {
     task->has_timeout = false;
 }
 
-static void set_waiting(struct task *task, struct waitable *obj, uint32_t ms) {
+static void set_wait_for(struct task *task, struct wait_list *wl) {
     task->state = TASK_WAITING;
-    task->wait_for = obj;
-    if (obj) {
-        linkedlist_push_back(&obj->wait_queue, &task->queue_link);
+    task->wait_for = wl;
+    if (wl) {
+        linkedlist_push_back(&wl->queue, &task->queue_link);
     }
+    task->has_timeout = false;
+}
 
-    if (ms == TIMEOUT_INFINITY) {
-        task->has_timeout = false;
-        return;
-    }
+static void set_wait_timeout(struct task *task, struct wait_list *wl, uint64_t timeout) {
+    set_wait_for(task, wl);
 
     task->has_timeout = true;
-    task->wait_timeout = timeout_tick(ms);
+    task->wait_timeout = timeout;
     rbtree_insert_timeout(&g_sched.timeout_queue, task);
     if (g_sched.soonest_timeout > task->wait_timeout) {
         g_sched.soonest_timeout = task->wait_timeout;
@@ -126,6 +122,8 @@ static void task_init(struct task *task) {
     task->has_timeout = false;
     task->wait_timeout = 0;
     task->stack = NULL;
+
+    wait_list_init(&task->join_list);
     rbtree_insert_task(&g_sched.tid_tree, task);
 }
 
@@ -158,7 +156,7 @@ static void idle_task(uintptr_t) {
         struct linkedlist_link *link = linkedlist_pop_front(&g_sched.dead_list);
         if (link) {
             struct task *task = container_of(link, struct task, queue_link);
-            task_release(task);
+            task_release((taskptr_t){ .ptr = task });
         }
 
         interrupts_enable_and_wait();
@@ -215,20 +213,20 @@ exit:
     irqlock_release(&irqlock);
 }
 
-struct task *task_create(void (*entry)(uintptr_t), uintptr_t arg) {
+taskptr_t task_create(void (*entry)(uintptr_t), uintptr_t arg) {
     irqlock_t irqlock = irqlock_acquire();
 
     struct task *task = slab_alloc(&g_sched.task_slab);
     if (!task) {
         irqlock_release(&irqlock);
-        return NULL;
+        return (taskptr_t){ .ptr = NULL };
     }
 
     pfn_t stack_page = mm_alloc_page(0);
     if (stack_page == PFN_INVALID) {
         slab_free(&g_sched.task_slab, task);
         irqlock_release(&irqlock);
-        return NULL;
+        return (taskptr_t){ .ptr = NULL };
     }
 
     task_init(task);
@@ -238,7 +236,7 @@ struct task *task_create(void (*entry)(uintptr_t), uintptr_t arg) {
     context_init(&task->ctx, (uintptr_t)entry, task->stack, PAGE_SIZE, arg);
 
     irqlock_release(&irqlock);
-    return task;
+    return (taskptr_t){ .ptr = task };
 }
 
 static void task_free_stack(struct task *task) {
@@ -255,25 +253,27 @@ static void task_free(struct task *task) {
     slab_free(&g_sched.task_slab, task);
 }
 
-void task_terminate(struct task *task) {
+void task_terminate(taskptr_t task) {
     irqlock_t irqlock = irqlock_acquire();
 
-    switch (task->state) {
+    switch (task.ptr->state) {
         case TASK_DEAD:
             panic("cannot terminate dead task");
         case TASK_RUNNING:
             panic("cannot terminate current task");
         case TASK_READY:
-            reset_ready(task);
+            reset_ready(task.ptr);
             break;
         case TASK_WAITING:
-            reset_timeout(task);
-            reset_wait_for(task);
+            reset_timeout(task.ptr);
+            reset_wait_for(task.ptr);
             break;
     }
 
-    set_dead(task);
-    task_free_stack(task);
+    set_dead(task.ptr);
+    wait_list_wake_all(&task.ptr->join_list);
+    task_free_stack(task.ptr);
+    task_release(task);
 
     irqlock_release(&irqlock);
 }
@@ -282,21 +282,24 @@ void task_terminate(struct task *task) {
     irqlock_t irqlock = irqlock_acquire();
 
     set_dead(g_sched.current);
+    wait_list_wake_all(&g_sched.current->join_list);
+
     g_sched.current->refcount++;
     linkedlist_push_back(&g_sched.dead_list, &g_sched.current->queue_link);
+
     schedule();
 
     panic("unreachable!");
     (void)irqlock;
 }
 
-struct task *task_from_id(tid_t id) {
+taskptr_t task_from_id(tid_t id) {
     irqlock_t irqlock = irqlock_acquire();
 
     struct rbtree_find_result result = rbtree_find_task(&g_sched.tid_tree, id);
     if (result.lower == NULL || result.lower != result.upper) {
         irqlock_release(&irqlock);
-        return NULL;
+        return (taskptr_t){ .ptr = NULL };
     }
 
     struct task *task = container_of(result.lower, struct task, tid_node);
@@ -304,19 +307,31 @@ struct task *task_from_id(tid_t id) {
     task->refcount++;
 
     irqlock_release(&irqlock);
-    return task;
+    return (taskptr_t){ .ptr = task };
 }
 
-tid_t task_release(struct task *task) {
+struct task *task_current(void) {
+    return g_sched.current;
+}
+
+taskptr_t task_addref(struct task *task) {
+    irqlock_t irqlock = irqlock_acquire();
+    assert(task->refcount < UINT_MAX);
+    task->refcount++;
+    irqlock_release(&irqlock);
+    return (taskptr_t){ .ptr = task };
+}
+
+tid_t task_release(taskptr_t task) {
     irqlock_t irqlock = irqlock_acquire();
 
-    assert(task->refcount > 0);
-    task->refcount--;
+    assert(task.ptr->refcount > 0);
+    task.ptr->refcount--;
 
-    tid_t id = task->id;
+    tid_t id = task.ptr->id;
 
-    if (task->refcount == 0 && task->state == TASK_DEAD) {
-        task_free(task);
+    if (task.ptr->refcount == 0 && task.ptr->state == TASK_DEAD) {
+        task_free(task.ptr);
         id = TID_INVALID;
     }
 
@@ -324,59 +339,83 @@ tid_t task_release(struct task *task) {
     return id;
 }
 
-bool task_wait_for(struct waitable *obj, uint32_t ms) {
-    irqlock_t irqlock = irqlock_acquire();
+bool wait_list_wake_one(struct wait_list *wl) {
+    assert(wl);
 
-    if (obj && obj->triggered) {
-        if (obj->reset) {
-            obj->triggered = false;
-        }
-        irqlock_release(&irqlock);
-        return true;
+    irqlock_t irqlock = irqlock_acquire();
+    bool waken = true;
+
+    struct linkedlist_link *link = linkedlist_pop_front(&wl->queue);
+    if (!link) {
+        waken = false;
+        goto exit;
     }
 
-    struct task *current = g_sched.current;
-    set_waiting(current, obj, ms);
+    struct task *task = container_of(link, struct task, queue_link);
 
+    task->wait_for = NULL;
+    if (task->has_timeout) {
+        reset_timeout(task);
+    }
+    set_ready(task);
+
+exit:
+    irqlock_release(&irqlock);
+    return waken;
+}
+
+void wait_list_wake_all(struct wait_list *wl) {
+    assert(wl);
+
+    irqlock_t irqlock = irqlock_acquire();
+
+    while (!linkedlist_is_empty(&wl->queue)) {
+        wait_list_wake_one(wl);
+    }
+
+    irqlock_release(&irqlock);
+}
+
+bool task_wait(struct wait_list *wl, uint64_t timeout) {
+    if (timeout <= timer_get_tick()) {
+        return false;
+    }
+
+    irqlock_t irqlock = irqlock_acquire();
+
+    if (timeout == TIMEOUT_INFINITY) {
+        set_wait_for(g_sched.current, wl);
+    } else {
+        set_wait_timeout(g_sched.current, wl, timeout);
+    }
     schedule();
 
-    bool timeout = current->has_timeout;
-    current->has_timeout = false;
+    bool is_timeout = g_sched.current->has_timeout;
+    g_sched.current->has_timeout = false;
 
     irqlock_release(&irqlock);
-    return !timeout;
+    return !is_timeout;
 }
 
-void waitable_trigger(struct waitable *obj) {
-    assert(obj);
+bool task_join(struct task *task, uint64_t timeout) {
+    assert(task);
+    assert(task != g_sched.current, "cannot join self");
 
     irqlock_t irqlock = irqlock_acquire();
+    bool ok = true;
 
-    obj->triggered = true;
-    while (1) {
-        struct linkedlist_link *link = linkedlist_pop_front(&obj->wait_queue);
-        if (!link) {
-            break;
-        }
-
-        struct task *task = container_of(link, struct task, queue_link);
-
-        task->wait_for = NULL;
-        if (task->has_timeout) {
-            reset_timeout(task);
-        }
-
-        set_ready(task);
-
-        if (obj->reset) {
-            obj->triggered = false;
-            break;
-        }
+    if (task->state == TASK_DEAD) {
+        goto exit;
     }
 
-    irqlock_release(&irqlock);
-}
+    if (timeout <= timer_get_tick()) {
+        ok = false;
+        goto exit;
+    }
 
-void task_sleep(uint32_t ms) {
-    task_wait_for(NULL, ms);
+    ok = task_wait(&task->join_list, timeout);
+
+exit:
+    irqlock_release(&irqlock);
+    return ok;
 }
