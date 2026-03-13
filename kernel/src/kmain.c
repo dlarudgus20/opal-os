@@ -1,11 +1,12 @@
 #include <opal/test.h>
 #include <opal/tty.h>
 #include <opal/klog.h>
-#include <opal/hid/hid.h>
-#include <opal/mm/mm.h>
 #include <opal/irq.h>
 #include <opal/timer.h>
+#include <opal/kargs.h>
+#include <opal/mm/mm.h>
 #include <opal/fb/fb.h>
+#include <opal/hid/hid.h>
 #include <opal/task/task.h>
 #include <opal/shell/shell.h>
 #include <opal/platform/asm.h>
@@ -31,6 +32,7 @@ void kmain(void) {
     klog_init();
 
     boot_init();
+    kargs_init();
 
     mm_init();
     fb_init();

@@ -7,6 +7,7 @@
 #include <opal/test.h>
 #include <opal/tty.h>
 #include <opal/klog.h>
+#include <opal/kargs.h>
 #include <opal/shell/shell.h>
 #include <opal/shell/shell_cmd.h>
 #include <opal/mm/mm.h>
@@ -46,6 +47,7 @@ static int handle_command(const char *cmd) {
         tty0_puts("  ptable    - show pagetable\n");
         tty0_puts("  pfns      - show pfn list\n");
         tty0_puts("  kargs     - show kernel boot argument\n");
+        tty0_puts("  bootmodules - show boot module list\n");
         tty0_puts("  fbinfo    - show framebuffer info\n");
         tty0_puts("  allocinfo - show buddy allocator info\n");
         tty0_puts("  priotest  - run priority scheduler smoke test\n");
@@ -119,8 +121,19 @@ static int handle_command(const char *cmd) {
     }
 
     if (strcmp(cmd, "kargs") == 0) {
-        tty0_puts(bootinfo_get_cmdline());
+        kargs_print_log();
         tty0_puts("\n");
+        return 1;
+    }
+
+    if (strcmp(cmd, "bootmodules") == 0) {
+        const struct bootinfo_module_list *modules = bootinfo_get_modules();
+        tty0_printf("boot modules: %u\n", modules->len);
+        for (uint32_t i = 0; i < modules->len; i++) {
+            const struct bootinfo_module *module = &modules->modules[i];
+            tty0_printf("  [%u] [%#018"PRIphys", %#018"PRIphys") %s\n",
+                i, module->begin, module->end, module->name);
+        }
         return 1;
     }
 

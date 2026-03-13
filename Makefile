@@ -26,9 +26,9 @@ build:
 	$(MAKE) -C kernel
 
 iso: build
-	@mkdir -p $(ISO_DIR)/boot/grub
+	@mkdir -p $(ISO_DIR)/boot
+	cp -rT iso $(ISO_DIR)
 	cp $(KERNEL_BIN) $(ISO_DIR)/boot/kernel.sys
-	cp grub/grub.cfg $(ISO_DIR)/boot/grub/grub.cfg
 	grub-mkrescue -o $(ISO_FILE) $(ISO_DIR)
 
 run: iso
