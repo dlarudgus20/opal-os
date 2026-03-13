@@ -13,5 +13,6 @@ void mm_free_page(pfn_t pfn, uint8_t order);
 struct buddy *mm_get_buddy(void);
 
 void mm_log_map(void);
+void mm_log_buddy(void);
 
 #endif

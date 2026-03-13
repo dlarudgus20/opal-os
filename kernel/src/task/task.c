@@ -150,6 +150,8 @@ void sched_init(void) {
     context_init(&g_idle.ctx, (uintptr_t)idle_task, g_idle_stack, sizeof(g_idle_stack), 0);
     set_ready(&g_idle);
 
+    fpu_init();
+
     irqmsg_register(IRQMSG_SCHED_TIMEOUT, irqmsg_timeout);
 }
 
@@ -239,6 +241,7 @@ void schedule(void) {
     set_running(next);
 
     g_sched.current = next;
+    fpu_on_task_switch(current, next);
     context_switch(&current->ctx, &next->ctx);
 
 exit:
@@ -311,6 +314,8 @@ void task_terminate(taskptr_t task) {
 
     set_dead(task.ptr);
     wait_list_wake_all(&task.ptr->join_list);
+
+    fpu_on_task_exit(task.ptr);
     task_free_stack(task.ptr);
     task_release(task);
 
@@ -322,6 +327,8 @@ void task_terminate(taskptr_t task) {
 
     set_dead(g_sched.current);
     wait_list_wake_all(&g_sched.current->join_list);
+
+    fpu_on_task_exit(g_sched.current);
 
     g_sched.current->refcount++;
     linkedlist_push_back(&g_sched.dead_list, &g_sched.current->queue_link);

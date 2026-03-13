@@ -133,6 +133,7 @@ void buddy_create(struct buddy *buddy, const struct mmap *mmap) {
     }
 
     prepare_from_mmap(buddy, mmap);
+    buddy->total_pages = buddy->free_pages;
 }
 
 pfn_t buddy_alloc(struct buddy *buddy, uint8_t order) {
@@ -188,6 +189,10 @@ void buddy_free(struct buddy *buddy, pfn_t pfn, uint8_t order) {
 
 size_t buddy_get_free_pages(struct buddy *buddy) {
     return buddy->free_pages;
+}
+
+size_t buddy_get_total_pages(struct buddy *buddy) {
+    return buddy->total_pages;
 }
 
 uint8_t buddy_get_max_order(struct buddy *buddy) {

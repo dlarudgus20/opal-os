@@ -3,6 +3,7 @@
 #include <opal/irq.h>
 #include <opal/platform/interrupt.h>
 #include <opal/platform/asm.h>
+#include <opal/platform/task/context.h>
 
 void isr_impl_divide_by_zero(struct isr_stackframe* frame) {
     panicf("#DE "PRI_ISR_STACKFRAME, ARG_ISR_STACKFRAME(frame));
@@ -33,7 +34,8 @@ void isr_impl_invalid_opcode(struct isr_stackframe* frame) {
 }
 
 void isr_impl_device_not_available(struct isr_stackframe* frame) {
-    panicf("#NM "PRI_ISR_STACKFRAME, ARG_ISR_STACKFRAME(frame));
+    (void)frame;
+    fpu_on_device_not_available();
 }
 
 void isr_impl_double_fault(struct isr_stackframe_ec* frame) {

@@ -53,6 +53,9 @@ struct task {
 
     struct context ctx;
     void *stack;
+
+    struct fpu_context fpu_ctx;
+    bool fpu_initialized;
 };
 
 typedef struct taskptr {

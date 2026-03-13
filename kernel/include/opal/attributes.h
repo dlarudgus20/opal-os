@@ -15,4 +15,10 @@
 #error "Compiler does not support packed attribute"
 #endif
 
+#if __has_attribute(aligned)
+#define ALIGNED(n) [[gnu::aligned(n)]]
+#else
+#error "Compiler does not support aligned attribute"
+#endif
+
 #endif

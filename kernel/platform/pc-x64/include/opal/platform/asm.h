@@ -22,6 +22,24 @@
 #define RFLAGS_DIR      (1 << 10)
 #define RFLAGS_OVERFLOW (1 << 11)
 
+#define CR0_MP             (1ull << 1)
+#define CR0_EM             (1ull << 2)
+#define CR0_TS             (1ull << 3)
+#define CR0_NE             (1ull << 5)
+
+#define CR4_OSFXSR         (1ull << 9)
+#define CR4_OSXMMEXCPT     (1ull << 10)
+
+#define CPUID_1_FXSR       (1u << 24)
+#define CPUID_1_SSE        (1u << 25)
+
+struct cpuid_info {
+    uint32_t eax;
+    uint32_t ebx;
+    uint32_t ecx;
+    uint32_t edx;
+};
+
 ALWAYS_INLINE void out8(uint16_t port, uint8_t value) {
     __asm__ volatile ("out %1, %0" : : "a"(value), "Nd"(port));
 }
@@ -71,6 +89,26 @@ ALWAYS_INLINE uint64_t read_cr2(void) {
     return value;
 }
 
+ALWAYS_INLINE uint64_t read_cr0(void) {
+    uint64_t value;
+    __asm__ volatile ("mov %0, cr0" : "=r"(value));
+    return value;
+}
+
+ALWAYS_INLINE void write_cr0(uint64_t value) {
+    __asm__ volatile ("mov cr0, %0" : : "r"(value) : "memory");
+}
+
+ALWAYS_INLINE uint64_t read_cr4(void) {
+    uint64_t value;
+    __asm__ volatile ("mov %0, cr4" : "=r"(value));
+    return value;
+}
+
+ALWAYS_INLINE void write_cr4(uint64_t value) {
+    __asm__ volatile ("mov cr4, %0" : : "r"(value) : "memory");
+}
+
 ALWAYS_INLINE uint64_t read_cr3(void) {
     uint64_t value;
     __asm__ volatile ("mov %0, cr3" : "=r"(value));
@@ -79,6 +117,36 @@ ALWAYS_INLINE uint64_t read_cr3(void) {
 
 ALWAYS_INLINE void write_cr3(uint64_t value) {
     __asm__ volatile ("mov cr3, %0" : : "r"(value) : "memory");
+}
+
+ALWAYS_INLINE struct cpuid_info cpuid(uint32_t leaf, uint32_t subleaf) {
+    struct cpuid_info info;
+    __asm__ volatile (
+        "cpuid"
+        : "=a"(info.eax), "=b"(info.ebx), "=c"(info.ecx), "=d"(info.edx)
+        : "a"(leaf), "c"(subleaf)
+    );
+    return info;
+}
+
+ALWAYS_INLINE void clear_cr0_ts(void) {
+    __asm__ volatile ("clts");
+}
+
+ALWAYS_INLINE void fninit(void) {
+    __asm__ volatile ("fninit");
+}
+
+ALWAYS_INLINE void ldmxcsr(const uint32_t *value) {
+    __asm__ volatile ("ldmxcsr %0" : : "m"(*value));
+}
+
+ALWAYS_INLINE void fxsave(void *ctx) {
+    __asm__ volatile ("fxsave %0" : "=m"(*(char (*)[512])ctx));
+}
+
+ALWAYS_INLINE void fxrstor(const void *ctx) {
+    __asm__ volatile ("fxrstor %0" : : "m"(*(const char (*)[512])ctx));
 }
 
 ALWAYS_INLINE void tlb_flush_for(uintptr_t va) {

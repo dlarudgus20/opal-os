@@ -7,7 +7,7 @@
 #include <opal/timer.h>
 #include <opal/fb/fb.h>
 #include <opal/task/task.h>
-#include <opal/shell.h>
+#include <opal/shell/shell.h>
 #include <opal/platform/boot.h>
 #include <opal/platform/descriptors.h>
 #include <opal/platform/asm.h>

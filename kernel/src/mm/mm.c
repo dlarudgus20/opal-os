@@ -16,8 +16,7 @@ static struct buddy g_buddy;
 
 static void log_mm(void) {
     mm_log_map();
-
-    kinfo("buddy max order=%u / free pages=%zu", buddy_get_max_order(&g_buddy), buddy_get_free_pages(&g_buddy));
+    mm_log_buddy();
 }
 
 void mm_init(void) {
@@ -75,4 +74,13 @@ void mm_log_map(void) {
     log_map(mm_get_memory_map(), mmap_entry_type_str);
     kinfo("memory section map:");
     log_map(mm_get_section_map(), mm_sec_entry_type_str);
+}
+
+void mm_log_buddy(void) {
+    struct buddy *buddy = mm_get_buddy();
+    size_t free = buddy_get_free_pages(buddy);
+    size_t total = buddy_get_total_pages(buddy);
+    uint8_t max_order = buddy_get_max_order(buddy);
+    kinfo("buddy: used: %zu / free: %zu / total=%zu / max_order=%u",
+        total - free, free, total, max_order);
 }
