@@ -47,6 +47,7 @@ static int handle_command(const char *cmd) {
         tty0_puts("  ptable    - show pagetable\n");
         tty0_puts("  pfns      - show pfn list\n");
         tty0_puts("  kargs     - show kernel boot argument\n");
+        tty0_puts("  irfdump   - hexdump first 256 bytes of initramfs\n");
         tty0_puts("  bootmodules - show boot module list\n");
         tty0_puts("  fbinfo    - show framebuffer info\n");
         tty0_puts("  allocinfo - show buddy allocator info\n");
@@ -124,6 +125,10 @@ static int handle_command(const char *cmd) {
         kargs_print_log();
         tty0_puts("\n");
         return 1;
+    }
+
+    if (strcmp(cmd, "irfdump") == 0) {
+        return shell_cmd_irfdump();
     }
 
     if (strcmp(cmd, "bootmodules") == 0) {
