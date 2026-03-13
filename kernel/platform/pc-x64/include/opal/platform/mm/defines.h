@@ -17,8 +17,8 @@
 #define DIRECT_MAP_END_VIRT     0xffffc80000000000u
 #define PAGES_START_VIRT        0xffffc90000000000u
 #define PAGES_END_VIRT          0xffffca0000000000u
-#define VMAP_START_VIRT       0xffffcb0000000000u
-#define VMAP_END_VIRT         0xffffeb0000000000u
+#define VMAP_START_VIRT         0xffffcb0000000000u
+#define VMAP_END_VIRT           0xffffeb0000000000u
 
 #ifdef OPAL_TEST
 #define __kernel_start_lba  ((char*)1)

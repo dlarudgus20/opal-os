@@ -5,8 +5,9 @@
 
 #include <opal/test.h>
 #include <opal/mm/map.h>
-#include <opal/platform/boot.h>
+#include <opal/mm/tmpalloc.h>
 #include <opal/platform/mm/defines.h>
+#include <opal/platform/boot/bootinfo.h>
 
 static struct mmap_entry g_mmap_entries[MAX_MMAP_ENTRIES];
 static struct mmap g_mmap = {
@@ -18,14 +19,6 @@ static struct mmap_entry g_mm_sec_entries[MAX_MMAP_ENTRIES];
 static struct mmap g_mm_sec = {
     .entries = g_mm_sec_entries,
     .length = 0,
-};
-
-static struct mmap_entry g_tmp_alloc_entries[MAX_MMAP_ENTRIES];
-static struct mm_tmp_alloc g_tmp_alloc = {
-    .mm ={
-        .entries = g_tmp_alloc_entries,
-        .length = 0,
-    },
 };
 
 static bool align_if_usable(struct mmap_entry* entry) {
@@ -274,61 +267,16 @@ static void init_mm_section(void) {
 }
 
 void mm_map_init(void) {
-    refine_mmap(&g_mmap, MAX_MMAP_ENTRIES, boot_get_mmap());
+    refine_mmap(&g_mmap, MAX_MMAP_ENTRIES, bootinfo_get_mmap());
     init_mm_section();
 }
 
-void mm_tmp_alloc_create(void) {
-    assert(g_tmp_alloc.mm.entries && g_tmp_alloc.mm.length == 0, "tmp_alloc cannot created twice");
+void mm_map_finalize_tmpalloc(struct tmpalloc *ta) {
+    assert(ta->mm.entries, "tmp_alloc is already finalized");
 
-    memcpy(g_tmp_alloc_entries, g_mm_sec.entries, g_mm_sec.length * sizeof(struct mmap_entry));
-    g_tmp_alloc.mm.length = g_mm_sec.length;
-}
-
-void mm_tmp_alloc_finalize(void) {
-    assert(g_tmp_alloc.mm.entries, "tmp_alloc is already finalized");
-
-    memcpy(g_mm_sec.entries, g_tmp_alloc_entries, g_tmp_alloc.mm.length * sizeof(struct mmap_entry));
-    g_mm_sec.length = g_tmp_alloc.mm.length;
-    g_tmp_alloc.mm.entries = NULL;
-}
-
-const struct mm_tmp_alloc *mm_tmp_alloc_get(void) {
-    return g_tmp_alloc.mm.entries ? &g_tmp_alloc : NULL;
-}
-
-phys_addr_t mm_tmp_alloc_pages(size_t max_pages, size_t *allocated_pages) {
-    assert(allocated_pages);
-    assert(g_tmp_alloc.mm.entries, "tmp_alloc is already finalized");
-
-    for (uint32_t i = 0; i + 1 < g_tmp_alloc.mm.length; i++) {
-        struct mmap_entry *const entry = &g_tmp_alloc.mm.entries[i];
-        struct mmap_entry *const next = &g_tmp_alloc.mm.entries[i + 1];
-
-        if (entry->type == MM_SEC_ENTRY_USABLE) {
-            panic("mm_section is corrupted");
-        }
-
-        if (next->len < PAGE_SIZE) {
-            next->type = MM_SEC_ENTRY_METADATA;
-            continue;
-        }
-
-        phys_size_t allocated = next->len / PAGE_SIZE;
-        if (allocated > max_pages) {
-            allocated = max_pages;
-        }
-
-        const phys_addr_t addr = next->addr;
-
-        entry->len += allocated * PAGE_SIZE;
-        next->addr += allocated * PAGE_SIZE;
-        next->len -= allocated * PAGE_SIZE;
-        *allocated_pages = allocated;
-        return addr;
-    }
-
-    panic("mm_section is already full of metadata page");
+    memcpy(g_mm_sec.entries, ta->mm.entries, ta->mm.length * sizeof(struct mmap_entry));
+    g_mm_sec.length = ta->mm.length;
+    ta->mm.entries = NULL;
 }
 
 const struct mmap *mm_get_memory_map(void) {

@@ -4,8 +4,8 @@
 #include <opal/mm/vmap.h>
 #include <opal/fb/fb.h>
 #include <opal/tty/fb_tty.h>
-#include <opal/platform/boot.h>
 #include <opal/platform/mm/defines.h>
+#include <opal/platform/boot/bootinfo.h>
 
 extern unsigned char g_font_data[];
 
@@ -23,7 +23,7 @@ static struct fbinfo g_fb;
 static struct fb_tty g_fb_tty;
 
 void fb_init(void) {
-    const struct boot_fbinfo *fbinfo = boot_get_fbinfo();
+    const struct bootinfo_fb *fbinfo = bootinfo_get_fb();
     if (!fbinfo) {
         return;
     }

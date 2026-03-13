@@ -8,19 +8,29 @@
 #include <opal/fb/fb.h>
 #include <opal/task/task.h>
 #include <opal/shell/shell.h>
-#include <opal/platform/boot.h>
-#include <opal/platform/descriptors.h>
 #include <opal/platform/asm.h>
+#include <opal/platform/boot/boot.h>
 #include <opal/platform/drivers/uart.h>
 #include <opal/platform/drivers/ps2.h>
+
+static void drivers_init(void) {
+    ps2_init();
+    uart_init();
+}
+
+static void run_user(void) {
+#ifdef OPAL_UNIT_TEST
+    unit_test_run();
+#endif
+    shell_start();
+}
 
 void kmain(void) {
     tty0_init();
     uart_early_init();
     klog_init();
 
-    boot_info_init();
-    descriptors_init();
+    boot_init();
 
     mm_init();
     fb_init();
@@ -30,18 +40,12 @@ void kmain(void) {
     timer_init();
     sched_init();
 
-    ps2_init();
-    uart_init();
+    drivers_init();
 
     irq_enable_intr();
     interrupts_enable();
 
-#ifdef OPAL_UNIT_TEST
-    unit_test_run();
-#endif
-
-    kinfo("boot args=%s", boot_get_cmdline());
-    shell_start();
+    run_user();
 
     irqmsg_drain_loop();
 }

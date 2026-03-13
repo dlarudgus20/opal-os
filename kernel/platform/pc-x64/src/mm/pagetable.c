@@ -8,9 +8,10 @@
 #include <opal/mm/mm.h>
 #include <opal/mm/pfn.h>
 #include <opal/mm/map.h>
-#include <opal/platform/boot.h>
+#include <opal/mm/tmpalloc.h>
 #include <opal/platform/asm.h>
 #include <opal/platform/mm/pagetable.h>
+#include <opal/platform/boot/bootinfo.h>
 
 #define PAGETABLE_LENGTH 512
 #define BOOTSTRAP_MAP_END_PHYS 0x00a00000u
@@ -21,6 +22,8 @@ typedef page_entry_t pagetable_t[PAGETABLE_LENGTH];
 
 static pagetable_t *g_ptable;
 static bool g_direct_access_ready = false;
+
+static struct tmpalloc *g_tmpalloc;
 
 static virt_addr_t phys_to_virt_kernel(phys_addr_t pa) {
     return pa - KERNEL_START_PHYS + KERNEL_START_VIRT;
@@ -40,9 +43,9 @@ static virt_addr_t phys_to_virt_table(phys_addr_t pa) {
 }
 
 static phys_addr_t allocate_page(void) {
-    if (mm_tmp_alloc_get()) {
+    if (g_tmpalloc) {
         size_t allocated;
-        return mm_tmp_alloc_pages(1, &allocated);
+        return tmpalloc_alloc_pages(g_tmpalloc, 1, &allocated);
     } else {
         pfn_t pfn = mm_alloc_page(0);
         if (pfn == PFN_INVALID) {
@@ -158,7 +161,9 @@ void mm_pagetable_unmap(virt_addr_t va, phys_size_t len) {
     panic("mm_pagetable_unmap(): unimplemneted");
 }
 
-void mm_pagetable_init(void) {
+void mm_pagetable_init(struct tmpalloc *ta) {
+    g_tmpalloc = ta;
+
     const phys_addr_t new_pml4_pa = allocate_page();
     g_ptable = (pagetable_t *)phys_to_virt_kernel(new_pml4_pa);
     memset(g_ptable, 0, sizeof(*g_ptable));
@@ -209,6 +214,10 @@ void mm_pagetable_init(void) {
 
         map_range_len(va_start, addr, len, PTE_FLAG_PRESENT | PTE_FLAG_WRITABLE);
     }
+}
+
+void mm_pagetable_unuse_tmpalloc(void) {
+    g_tmpalloc = NULL;
 }
 
 #include <opal/tty.h>

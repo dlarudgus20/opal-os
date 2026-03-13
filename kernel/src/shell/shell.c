@@ -13,9 +13,9 @@
 #include <opal/mm/pfn.h>
 #include <opal/fb/fb.h>
 #include <opal/task/task.h>
-#include <opal/platform/boot.h>
-#include <opal/platform/shell/shell_cmd.h>
 #include <opal/platform/mm/pagetable.h>
+#include <opal/platform/boot/bootinfo.h>
+#include <opal/platform/shell/shell_cmd.h>
 
 #define UNAME_MSG "opal-os ("OPAL_PLATFORM" "OPAL_CONFIG")"
 
@@ -119,13 +119,13 @@ static int handle_command(const char *cmd) {
     }
 
     if (strcmp(cmd, "kargs") == 0) {
-        tty0_puts(boot_get_cmdline());
+        tty0_puts(bootinfo_get_cmdline());
         tty0_puts("\n");
         return 1;
     }
 
     if (strcmp(cmd, "fbinfo") == 0) {
-        const struct boot_fbinfo *fbinfo = boot_get_fbinfo();
+        const struct bootinfo_fb *fbinfo = bootinfo_get_fb();
         if (fbinfo) {
             tty0_printf("addr=%#010"PRIphys", %ux%u, pitch=%u, bpp=%u\n",
                 fbinfo->addr, fbinfo->width, fbinfo->height, fbinfo->pitch, fbinfo->bpp);

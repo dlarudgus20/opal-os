@@ -5,6 +5,7 @@
 #include <kc/stdlib.h>
 
 #include <opal/mm/map.h>
+#include <opal/mm/tmpalloc.h>
 #include <opal/mm/pfn.h>
 #include <opal/mm/page.h>
 #include <opal/platform/asm.h>
@@ -41,7 +42,12 @@ static void prepare_pagetable(virt_addr_t va, virt_size_t pages_needed) {
     mm_pagetable_map(va, 0, pages_needed * PAGE_SIZE, 0);
 }
 
-static virt_addr_t allocate_pages(virt_addr_t va, virt_size_t pages_needed, virt_addr_t allocated_end) {
+static virt_addr_t allocate_pages(
+    struct tmpalloc *ta,
+    virt_addr_t va,
+    virt_size_t pages_needed,
+    virt_addr_t allocated_end
+) {
     if (allocated_end > va) {
         size_t pages_allocated = (allocated_end - va) / PAGE_SIZE;
         if (pages_needed <= pages_allocated) {
@@ -54,7 +60,7 @@ static virt_addr_t allocate_pages(virt_addr_t va, virt_size_t pages_needed, virt
 
     while (pages_needed > 0) {
         size_t pages_allocated;
-        phys_addr_t pa = mm_tmp_alloc_pages(pages_needed, &pages_allocated);
+        phys_addr_t pa = tmpalloc_alloc_pages(ta, pages_needed, &pages_allocated);
 
         mm_pagetable_map(va, pa, pages_allocated * PAGE_SIZE, PTE_FLAG_WRITABLE | PTE_FLAG_PRESENT);
 
@@ -83,7 +89,7 @@ static void initialize_pages(pfn_t pfn_start, pfn_t pfn_end, bool is_metadata) {
 
 enum build_stage { STAGE_PREPARE, STAGE_ALLOC, STAGE_INIT };
 
-static void build_metadata(const struct mmap *section_map, enum build_stage stage) {
+static void build_metadata(struct tmpalloc *ta, const struct mmap *section_map, enum build_stage stage) {
     virt_addr_t allocated_end = PAGES_START_VIRT;
 
     for (uint32_t i = 0; i < section_map->length; i++) {
@@ -96,7 +102,7 @@ static void build_metadata(const struct mmap *section_map, enum build_stage stag
         if (stage == STAGE_PREPARE) {
             prepare_pagetable(va_start, pages_needed);
         } else if (stage == STAGE_ALLOC) {
-            allocated_end = allocate_pages(va_start, pages_needed, allocated_end);
+            allocated_end = allocate_pages(ta, va_start, pages_needed, allocated_end);
         } else {
             bool is_metadata = entry->type == MM_SEC_ENTRY_METADATA;
             initialize_pages(ranges.pfn_start, ranges.pfn_end, is_metadata);
@@ -104,15 +110,15 @@ static void build_metadata(const struct mmap *section_map, enum build_stage stag
     }
 }
 
-static void build_metadata_run(void) {
+static void build_metadata_run(struct tmpalloc *ta) {
     // STAGE_PREPARE
-    build_metadata(mm_get_section_map(), STAGE_PREPARE);
+    build_metadata(ta, mm_get_section_map(), STAGE_PREPARE);
 
     // STAGE_ALLOC
-    build_metadata(mm_get_section_map(), STAGE_ALLOC);
+    build_metadata(ta, mm_get_section_map(), STAGE_ALLOC);
 
     // STAGE_INIT
-    build_metadata(&mm_tmp_alloc_get()->mm, STAGE_INIT);
+    build_metadata(ta, &ta->mm, STAGE_INIT);
 }
 
 static pfn_t get_pfn_end(void) {
@@ -126,8 +132,8 @@ static pfn_t get_pfn_end(void) {
     return ranges.pfn_end;
 }
 
-void mm_pfn_init(void) {
-    build_metadata_run();
+void mm_pfn_init(struct tmpalloc *ta) {
+    build_metadata_run(ta);
     g_pfn_end = get_pfn_end();
 }
 

@@ -3,9 +3,10 @@
 
 #include <opal/mm/types.h>
 
+struct tmpalloc;
 struct page;
 
-void mm_pfn_init(void);
+void mm_pfn_init(struct tmpalloc *ta);
 
 [[nodiscard]] pfn_t mm_get_pfn_end(void);
 [[nodiscard]] bool mm_pfn_is_valid(pfn_t pfn);

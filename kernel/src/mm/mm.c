@@ -4,12 +4,13 @@
 
 #include <opal/klog.h>
 #include <opal/mm/mm.h>
-#include <opal/mm/buddy.h>
 #include <opal/mm/map.h>
+#include <opal/mm/tmpalloc.h>
 #include <opal/mm/pfn.h>
+#include <opal/mm/buddy.h>
 #include <opal/mm/vmap.h>
 #include <opal/locks/irqlock.h>
-#include <opal/platform/boot.h>
+#include <opal/platform/boot/bootinfo.h>
 #include <opal/platform/mm/pagetable.h>
 
 static struct buddy g_buddy;
@@ -22,14 +23,19 @@ static void log_mm(void) {
 void mm_init(void) {
     mm_map_init();
 
-    mm_tmp_alloc_create();
+    {
+        struct mmap_entry buffer[MAX_MMAP_ENTRIES];
+        struct tmpalloc ta;
+        tmpalloc_create(&ta, buffer, MAX_MMAP_ENTRIES, mm_get_section_map());
 
-    mm_pagetable_init();
-    mm_pfn_init();
+        mm_pagetable_init(&ta);
+        mm_pfn_init(&ta);
 
-    mm_tmp_alloc_finalize();
+        mm_pagetable_unuse_tmpalloc();
+        mm_map_finalize_tmpalloc(&ta);
+    }
+
     buddy_create(&g_buddy, mm_get_section_map());
-
     mm_vmap_init();
 
     log_mm();
@@ -69,7 +75,7 @@ static void log_map(const struct mmap *mmap, const char *(*entry_type_str)(mmap_
 
 void mm_log_map(void) {
     kinfo("boot memory map:");
-    log_map(boot_get_mmap(), mmap_entry_type_str);
+    log_map(bootinfo_get_mmap(), mmap_entry_type_str);
     kinfo("canonical memory map:");
     log_map(mm_get_memory_map(), mmap_entry_type_str);
     kinfo("memory section map:");
