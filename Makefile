@@ -25,7 +25,9 @@ all: build
 build:
 	$(MAKE) -C kernel
 
-iso: build
+iso: $(ISO_FILE)
+
+$(ISO_FILE): build
 	@mkdir -p $(ISO_DIR)/boot
 	cp -rT iso $(ISO_DIR)
 	cp $(KERNEL_BIN) $(ISO_DIR)/boot/kernel.sys

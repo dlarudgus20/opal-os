@@ -108,13 +108,15 @@ static void add_range(struct buddy *buddy, pfn_t start, pfn_t end) {
 static void prepare_from_mmap(struct buddy *buddy, const struct mmap *mmap) {
     for (uint32_t i = 0; i < mmap->length; i++) {
         const struct mmap_entry *entry = &mmap->entries[i];
-        if (entry->type != MM_SEC_ENTRY_USABLE) {
-            continue;
-        }
 
         const pfn_t start = entry->addr / PAGE_SIZE;
         const pfn_t end = start + entry->len / PAGE_SIZE;
-        add_range(buddy, start, end);
+
+        if (entry->type == MM_SEC_ENTRY_USABLE) {
+            add_range(buddy, start, end);
+        } else if (entry->type == MM_SEC_ENTRY_RESERVED) {
+            buddy->reserved_pages += end - start;
+        }
     }
 }
 
@@ -123,6 +125,7 @@ void buddy_create(struct buddy *buddy, const struct mmap *mmap) {
         linkedlist_init(&buddy->free_list[i]);
     }
     buddy->free_pages = 0;
+    buddy->reserved_pages = 0;
 
     const pfn_t pfn_end = mm_get_pfn_end();
     buddy->max_order = 0;
@@ -133,7 +136,7 @@ void buddy_create(struct buddy *buddy, const struct mmap *mmap) {
     }
 
     prepare_from_mmap(buddy, mmap);
-    buddy->total_pages = buddy->free_pages;
+    buddy->total_pages = buddy->free_pages + buddy->reserved_pages;
 }
 
 pfn_t buddy_alloc(struct buddy *buddy, uint8_t order) {
@@ -193,6 +196,10 @@ size_t buddy_get_free_pages(struct buddy *buddy) {
 
 size_t buddy_get_total_pages(struct buddy *buddy) {
     return buddy->total_pages;
+}
+
+size_t buddy_get_reserved_pages(struct buddy *buddy) {
+    return buddy->reserved_pages;
 }
 
 uint8_t buddy_get_max_order(struct buddy *buddy) {

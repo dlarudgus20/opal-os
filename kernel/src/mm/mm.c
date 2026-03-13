@@ -1,5 +1,6 @@
 #include <stdint.h>
 
+#include <kc/assert.h>
 #include <kc/string.h>
 
 #include <opal/klog.h>
@@ -83,10 +84,18 @@ void mm_log_map(void) {
 }
 
 void mm_log_buddy(void) {
+    irqlock_t irqlock = irqlock_acquire();
+
     struct buddy *buddy = mm_get_buddy();
     size_t free = buddy_get_free_pages(buddy);
+    size_t reserved = buddy_get_reserved_pages(buddy);
     size_t total = buddy_get_total_pages(buddy);
     uint8_t max_order = buddy_get_max_order(buddy);
-    kinfo("buddy: used: %zu / free: %zu / total=%zu / max_order=%u",
-        total - free, free, total, max_order);
+
+    irqlock_release(&irqlock);
+
+    assert(total >= free + reserved);
+    size_t used = total - free - reserved;
+    kinfo("buddy: used: %zu / free: %zu / reserved: %zu / total=%zu / max_order=%u",
+        used, free, reserved, total, max_order);
 }

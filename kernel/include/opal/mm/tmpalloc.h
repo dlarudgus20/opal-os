@@ -5,6 +5,7 @@
 
 struct tmpalloc {
     struct mmap mm;
+    size_t capacity;
 };
 
 void tmpalloc_create(struct tmpalloc *ta, struct mmap_entry *buffer, size_t len, const struct mmap *src);

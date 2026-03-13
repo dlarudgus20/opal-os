@@ -30,7 +30,7 @@ virtual range                                physical range              size   
 
 1. boot memory map: 부트로더가 전달한 원본 mmap
 2. (canonical) memory map: boot mmap에서 오버랩, 분할영역 등을 제거하고 정렬한 mmap
-3. memory section map: 사용가능 메모리 관리용(metadata + usable)
+3. memory section map: 사용가능 메모리 관리용(`metadata`, `reserved`, `usable`)
 
 ## 3. mmap_init 흐름 (`kernel/src/mm/map.c`)
 1. `refine_mmap()`
@@ -42,13 +42,15 @@ virtual range                                physical range              size   
 
 2. `init_mm_section()`
    - canonical map에서 usable만 추출
-   - `__kernel_end_lba` 이하 제외
-   - 첫 엔트리를 `MM_SEC_ENTRY_METADATA(len=0)`로 예약
+   - `__kernel_end_lba` 이하 제외(`section_start`)
+   - `kargs.initramfs`가 있으면 해당 물리 범위를 페이지 정렬 후 `MM_SEC_ENTRY_RESERVED`로 예약
+   - 이 단계 출력은 `reserved`/`usable`만 포함하며, metadata 엔트리는 아직 생성하지 않음
 
 3. 이후 단계
    - `mm_init()` 내부에서 `tmpalloc`을 임시 생성해 초기 메모리 메타데이터 구축에 사용
    - `mm_pagetable_init(&ta)`는 tmpalloc에서 페이지를 받아 새 페이지테이블을 구성하고 direct map을 확장
    - `mm_pfn_init(&ta)`는 `PAGES_START_VIRT + pfn * sizeof(struct page)` 형태 메타데이터 배열을 구성
+   - `tmpalloc_alloc_pages()`는 `MM_SEC_ENTRY_USABLE` 앞부분을 소비해 `MM_SEC_ENTRY_METADATA`를 동적으로 삽입/병합
    - 메타데이터 구축 후 `mm_pagetable_unuse_tmpalloc()`, `mm_map_finalize_tmpalloc(&ta)`로 tmpalloc을 버리고 section map을 확정
 
 ## 4. 부트스트랩 페이지 테이블

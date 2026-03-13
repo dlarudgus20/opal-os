@@ -4,6 +4,8 @@
 #include <kc/stdlib.h>
 
 #include <opal/test.h>
+#include <opal/klog.h>
+#include <opal/kargs.h>
 #include <opal/mm/map.h>
 #include <opal/mm/tmpalloc.h>
 #include <opal/platform/mm/defines.h>
@@ -219,56 +221,108 @@ STATIC_OR_TEST void refine_mmap(struct mmap *mmap_out, uint32_t max_entries, con
     remove_overlaps_mmap(mmap_out, max_entries, &aligned_mmap);
 }
 
-static void init_mm_section(void) {
-    if (g_mmap.length == 0) {
-        g_mm_sec.length = 0;
-        return;
+static void append_section(struct mmap *sec, phys_addr_t start, phys_addr_t last, mmap_entry_type_t type) {
+    if (sec->length >= MAX_MMAP_ENTRIES) {
+        panic("too many mmap entries");
     }
 
-    const phys_addr_t kernel_end = (phys_addr_t)__kernel_end_lba;
+    sec->entries[sec->length++] = (struct mmap_entry){
+        .addr = start,
+        .len = last - start + 1,
+        .type = type,
+    };
+}
 
-    uint32_t sec_len = 1;
+STATIC_OR_TEST void init_mm_section(
+    struct mmap *sec,
+    const struct mmap *mmap,
+    phys_addr_t section_start,
+    phys_addr_t reserved_start,
+    phys_addr_t reserved_end
+) {
+    sec->length = 0;
 
-    for (uint32_t i = 0; i < g_mmap.length; i++) {
-        const struct mmap_entry *entry = &g_mmap.entries[i];
+    for (uint32_t i = 0; i < mmap->length; i++) {
+        const struct mmap_entry *entry = &mmap->entries[i];
 
-        if (g_mmap.entries[i].type != MMAP_ENTRY_USABLE) {
+        if (entry->type != MMAP_ENTRY_USABLE) {
             continue;
         }
 
         phys_addr_t entry_start = entry->addr;
         const phys_addr_t entry_last = entry->addr + entry->len - 1;
 
-        if (entry_last < kernel_end) {
+        if (entry_last < section_start) {
             continue;
         }
-        if (entry_start < kernel_end) {
-            entry_start = kernel_end;
+        if (entry_start < section_start) {
+            entry_start = section_start;
         }
 
-        if (sec_len >= MAX_MM_SEC_ENTRIES) {
-            panic("too many mmap entries");
+        if (reserved_end <= entry_start || entry_last < reserved_start) {
+            append_section(sec, entry_start, entry_last, MM_SEC_ENTRY_USABLE);
+            continue;
         }
 
-        g_mm_sec.entries[sec_len++] = (struct mmap_entry){
-            .addr = entry_start,
-            .len = entry_last - entry_start + 1,
-            .type = MM_SEC_ENTRY_USABLE,
-        };
+        if (entry_start < reserved_start) {
+            append_section(sec, entry_start, reserved_start - 1, MM_SEC_ENTRY_USABLE);
+        }
+
+        const phys_addr_t reserved_last = reserved_end - 1;
+        const phys_addr_t overlap_start = MAX(entry_start, reserved_start);
+        const phys_addr_t overlap_last = MIN(entry_last, reserved_last);
+        append_section(sec, overlap_start, overlap_last, MM_SEC_ENTRY_RESERVED);
+
+        if (reserved_last < entry_last) {
+            append_section(sec, reserved_last + 1, entry_last, MM_SEC_ENTRY_USABLE);
+        }
+    }
+}
+
+static void get_initramfs_reserved_range(phys_addr_t *start_out, phys_addr_t *end_out) {
+    const struct kargs *kargs = kargs_get();
+    if (!kargs->initramfs) {
+        goto none;
     }
 
-    g_mm_sec.entries[0] = (struct mmap_entry){
-        .addr = g_mm_sec.entries[1].addr,
-        .len = 0,
-        .type = MM_SEC_ENTRY_METADATA,
-    };
+    const phys_addr_t module_begin = kargs->initramfs->begin;
+    const phys_addr_t module_end = kargs->initramfs->end;
 
-    g_mm_sec.length = sec_len;
+    if (module_begin >= module_end) {
+        kwarn("mm: invalid initramfs range [%#018"PRIphys", %#018"PRIphys") is ignored",
+            module_begin, module_end);
+        goto none;
+    }
+
+    const phys_addr_t start = align_floor_sz_p2(module_begin, PAGE_SIZE);
+    const phys_addr_t end = align_ceil_sz_p2(module_end, PAGE_SIZE);
+
+    if (end < module_end || end <= start) {
+        kwarn("mm: failed to align initramfs range [%#018"PRIphys", %#018"PRIphys")",
+            module_begin, module_end);
+        goto none;
+    }
+
+    *start_out = start;
+    *end_out = end;
+    return;
+
+none:
+    *start_out = 0;
+    *end_out = 0;
 }
 
 void mm_map_init(void) {
+    phys_addr_t reserved_start;
+    phys_addr_t reserved_end;
+    get_initramfs_reserved_range(&reserved_start, &reserved_end);
+    if (reserved_start < reserved_end) {
+        kinfo("mm: reserved initramfs pages [%#018"PRIphys", %#018"PRIphys")",
+            reserved_start, reserved_end);
+    }
+
     refine_mmap(&g_mmap, MAX_MMAP_ENTRIES, bootinfo_get_mmap());
-    init_mm_section();
+    init_mm_section(&g_mm_sec, &g_mmap, (phys_addr_t)__kernel_end_lba, reserved_start, reserved_end);
 }
 
 void mm_map_finalize_tmpalloc(struct tmpalloc *ta) {
@@ -291,6 +345,8 @@ const char *mm_sec_entry_type_str(mmap_entry_type_t type) {
     switch (type) {
         case MM_SEC_ENTRY_METADATA:
             return "Metadata";
+        case MM_SEC_ENTRY_RESERVED:
+            return "Reserved";
         case MM_SEC_ENTRY_USABLE:
             return "Usable";
         default:

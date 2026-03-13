@@ -7,12 +7,10 @@
 
 #define MAX_MMAP_ENTRIES 128
 
-// +1 required for metadata entry
-#define MAX_MM_SEC_ENTRIES (MAX_MMAP_ENTRIES + 1)
-
 enum {
-    MM_SEC_ENTRY_METADATA = 0,
-    MM_SEC_ENTRY_USABLE = 1,
+    MM_SEC_ENTRY_METADATA,
+    MM_SEC_ENTRY_RESERVED,
+    MM_SEC_ENTRY_USABLE,
 };
 
 struct tmpalloc;
@@ -38,6 +36,13 @@ const char *mm_sec_entry_type_str(mmap_entry_type_t type);
 
 #ifdef OPAL_TEST
 void refine_mmap(struct mmap *mmap_out, uint32_t max_entries, const struct mmap *boot_map);
+void init_mm_section(
+    struct mmap *sec,
+    const struct mmap *mmap,
+    phys_addr_t section_start,
+    phys_addr_t reserved_start,
+    phys_addr_t reserved_end
+);
 #endif
 
 #endif

@@ -24,6 +24,27 @@ static struct mmap sanitize_with_capacity(
     return out_map;
 }
 
+static struct mmap sectionize_with_reserved(
+    const struct mmap_entry *in_entries,
+    uint32_t in_len,
+    struct mmap_entry *out_entries,
+    uint32_t section_start,
+    uint32_t reserved_start,
+    uint32_t reserved_end
+) {
+    struct mmap in_map = {
+        .entries = const_cast<struct mmap_entry *>(in_entries),
+        .length = in_len,
+    };
+    struct mmap out_map = {
+        .entries = out_entries,
+        .length = 0,
+    };
+
+    init_mm_section(&out_map, &in_map, section_start, reserved_start, reserved_end);
+    return out_map;
+}
+
 TEST(MmapRefineTest, FiltersAlignsSortsAndMergesUsableOnly) {
     std::array<struct mmap_entry, 8> in = {{
         {.addr = 0x3000, .len = 0x1000, .type = MMAP_ENTRY_USABLE},
@@ -156,5 +177,122 @@ TEST(MmapRefineDeathTest, RespectsOutputCapacity) {
 
     EXPECT_DEATH({
         sanitize_with_capacity(in.data(), in.size(), out_storage.data(), out_storage.size());
+    }, "too many mmap entries");
+}
+
+TEST(MmapSectionTest, SplitsUsableAroundReservedRange) {
+    std::array<struct mmap_entry, 1> in = {{
+        {.addr = 0x1000, .len = 0x8000, .type = MMAP_ENTRY_USABLE},
+    }};
+    std::array<struct mmap_entry, MAX_MMAP_ENTRIES> out_storage = {};
+
+    const struct mmap out = sectionize_with_reserved(
+        in.data(), in.size(), out_storage.data(),
+        0x1000, 0x3000, 0x5000
+    );
+
+    ASSERT_EQ(out.length, 3u);
+    EXPECT_EQ(out.entries[0].type, MM_SEC_ENTRY_USABLE);
+    EXPECT_EQ(out.entries[0].addr, 0x1000u);
+    EXPECT_EQ(out.entries[0].len, 0x2000u);
+
+    EXPECT_EQ(out.entries[1].type, MM_SEC_ENTRY_RESERVED);
+    EXPECT_EQ(out.entries[1].addr, 0x3000u);
+    EXPECT_EQ(out.entries[1].len, 0x2000u);
+
+    EXPECT_EQ(out.entries[2].type, MM_SEC_ENTRY_USABLE);
+    EXPECT_EQ(out.entries[2].addr, 0x5000u);
+    EXPECT_EQ(out.entries[2].len, 0x4000u);
+}
+
+TEST(MmapSectionTest, TrimsBySectionStartBeforeReservedSplit) {
+    std::array<struct mmap_entry, 1> in = {{
+        {.addr = 0x1000, .len = 0x8000, .type = MMAP_ENTRY_USABLE},
+    }};
+    std::array<struct mmap_entry, MAX_MMAP_ENTRIES> out_storage = {};
+
+    const struct mmap out = sectionize_with_reserved(
+        in.data(), in.size(), out_storage.data(),
+        0x4000, 0x3000, 0x5000
+    );
+
+    ASSERT_EQ(out.length, 2u);
+    EXPECT_EQ(out.entries[0].type, MM_SEC_ENTRY_RESERVED);
+    EXPECT_EQ(out.entries[0].addr, 0x4000u);
+    EXPECT_EQ(out.entries[0].len, 0x1000u);
+
+    EXPECT_EQ(out.entries[1].type, MM_SEC_ENTRY_USABLE);
+    EXPECT_EQ(out.entries[1].addr, 0x5000u);
+    EXPECT_EQ(out.entries[1].len, 0x4000u);
+}
+
+TEST(MmapSectionTest, KeepsUsableWhenReservedIsDisabled) {
+    std::array<struct mmap_entry, 1> in = {{
+        {.addr = 0x2000, .len = 0x5000, .type = MMAP_ENTRY_USABLE},
+    }};
+    std::array<struct mmap_entry, MAX_MMAP_ENTRIES> out_storage = {};
+
+    const struct mmap out = sectionize_with_reserved(
+        in.data(), in.size(), out_storage.data(),
+        0x2000, 0x0, 0x0
+    );
+
+    ASSERT_EQ(out.length, 1u);
+    EXPECT_EQ(out.entries[0].type, MM_SEC_ENTRY_USABLE);
+    EXPECT_EQ(out.entries[0].addr, 0x2000u);
+    EXPECT_EQ(out.entries[0].len, 0x5000u);
+}
+
+TEST(MmapSectionTest, KeepsUsableWhenReservedIsOutOfRange) {
+    std::array<struct mmap_entry, 1> in = {{
+        {.addr = 0x1000, .len = 0x4000, .type = MMAP_ENTRY_USABLE},
+    }};
+    std::array<struct mmap_entry, MAX_MMAP_ENTRIES> out_storage = {};
+
+    const struct mmap out = sectionize_with_reserved(
+        in.data(), in.size(), out_storage.data(),
+        0x1000, 0x9000, 0xa000
+    );
+
+    ASSERT_EQ(out.length, 1u);
+    EXPECT_EQ(out.entries[0].type, MM_SEC_ENTRY_USABLE);
+    EXPECT_EQ(out.entries[0].addr, 0x1000u);
+    EXPECT_EQ(out.entries[0].len, 0x4000u);
+}
+
+TEST(MmapSectionTest, FullyCoveredUsableBecomesReserved) {
+    std::array<struct mmap_entry, 1> in = {{
+        {.addr = 0x3000, .len = 0x2000, .type = MMAP_ENTRY_USABLE},
+    }};
+    std::array<struct mmap_entry, MAX_MMAP_ENTRIES> out_storage = {};
+
+    const struct mmap out = sectionize_with_reserved(
+        in.data(), in.size(), out_storage.data(),
+        0x1000, 0x2000, 0x7000
+    );
+
+    ASSERT_EQ(out.length, 1u);
+    EXPECT_EQ(out.entries[0].type, MM_SEC_ENTRY_RESERVED);
+    EXPECT_EQ(out.entries[0].addr, 0x3000u);
+    EXPECT_EQ(out.entries[0].len, 0x2000u);
+}
+
+TEST(MmapSectionDeathTest, PanicsWhenSectionEntriesOverflow) {
+    std::array<struct mmap_entry, MAX_MMAP_ENTRIES> in = {};
+    for (size_t i = 0; i < in.size(); i++) {
+        in[i] = mmap_entry{
+            .addr = 0x1000,
+            .len = 0x3000,
+            .type = MMAP_ENTRY_USABLE,
+        };
+    }
+
+    std::array<struct mmap_entry, MAX_MMAP_ENTRIES> out_storage = {};
+
+    EXPECT_DEATH({
+        sectionize_with_reserved(
+            in.data(), in.size(), out_storage.data(),
+            0x1000, 0x2000, 0x3000
+        );
     }, "too many mmap entries");
 }
