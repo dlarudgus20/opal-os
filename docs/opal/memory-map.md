@@ -46,8 +46,10 @@ virtual range                                physical range              size   
    - 첫 엔트리를 `MM_SEC_ENTRY_METADATA(len=0)`로 예약
 
 3. 이후 단계
-   - `mm_pagetable_init()`은 section map snapshot(usable 구간) 기준으로 direct map 확장
-   - `mm_page_init()`은 `PAGES_START_VIRT + pfn * sizeof(struct page)` 형태 메타데이터 배열 구성
+   - `mm_init()` 내부에서 `tmpalloc`을 임시 생성해 초기 메모리 메타데이터 구축에 사용
+   - `mm_pagetable_init(&ta)`는 tmpalloc에서 페이지를 받아 새 페이지테이블을 구성하고 direct map을 확장
+   - `mm_pfn_init(&ta)`는 `PAGES_START_VIRT + pfn * sizeof(struct page)` 형태 메타데이터 배열을 구성
+   - 메타데이터 구축 후 `mm_pagetable_unuse_tmpalloc()`, `mm_map_finalize_tmpalloc(&ta)`로 tmpalloc을 버리고 section map을 확정
 
 ## 4. 부트스트랩 페이지 테이블
 `boot.asm`의 `tmp_table`(5 pages, `0x5000`)은 64비트 진입과 초기 higher-half 전환용 임시 테이블입니다.

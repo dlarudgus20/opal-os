@@ -1,17 +1,5 @@
 # Interrupt / IO Path
 
-## 부팅 시 초기화 순서 (`kmain`)
-- 구현: `kernel/src/kmain.c`
-- 현재 흐름:
-  - `tty0_init() -> uart_early_init() -> klog_init()`
-  - `boot_info_init() -> descriptors_init()`
-  - `mm_init() -> fb_init() -> hid_init()`
-  - `irq_init() -> timer_init() -> sched_init()`
-  - `ps2_init() -> uart_init()`
-  - `irq_enable_intr() -> interrupts_enable()`
-  - `shell_start()`
-  - `irqmsg_drain_loop()`
-
 ## IRQ 처리 모델
 - top-half: 플랫폼 IRQ 핸들러가 최소 작업 후 `irqmsg_push()`로 메시지 큐잉
 - bottom-half: `irqmsg_drain_loop()`에서 메시지를 pop해 실제 핸들러 실행
