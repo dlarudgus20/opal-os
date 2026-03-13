@@ -7,6 +7,7 @@ KERNEL_ELF  := kernel/$(BUILD_DIR)/kernel.elf
 KERNEL_BIN  := kernel/$(BUILD_DIR)/kernel.sys
 
 ISO_DIR     := $(BUILD_DIR)/iso
+INITRAMFS   := $(BUILD_DIR)/iso/boot/initramfs
 ISO_FILE    := $(BUILD_DIR)/opal-os.iso
 
 QEMU_FLAGS  += -m 128 -serial stdio -no-reboot
@@ -18,7 +19,8 @@ endif
 
 SUBDIRS     := test-pch kernel libkubsan libkc libpanicimpl libcoll
 
-.PHONY: all build iso run clean fullclean gen clean-gen build-test test clean-test unit-test clean-unit-test
+.PHONY: .FORCE all build iso run clean fullclean gen clean-gen build-test test clean-test unit-test clean-unit-test
+.FORCE:
 
 all: build
 
@@ -29,9 +31,15 @@ iso: $(ISO_FILE)
 
 $(ISO_FILE): build
 	@mkdir -p $(ISO_DIR)/boot
+	rm -rf $(ISO_DIR)
 	cp -rT iso $(ISO_DIR)
+	$(MAKE) $(INITRAMFS)
 	cp $(KERNEL_BIN) $(ISO_DIR)/boot/kernel.sys
 	grub-mkrescue -o $(ISO_FILE) $(ISO_DIR)
+
+$(INITRAMFS): .FORCE
+	@mkdir -p $(dir $@)
+	cd initramfs && (find . | cpio -o -H newc > ../$(INITRAMFS))
 
 run: iso
 	qemu-system-x86_64 $(QEMU_FLAGS) -cdrom $(ISO_FILE) -D qemu.log
