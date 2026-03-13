@@ -2,10 +2,11 @@
 #define OPAL_PLATFORM_PC_X64_DRIVERS_UART_H
 
 #include <stddef.h>
+#include <stdint.h>
 
 #define UART_INVALID NULL
 
-enum uart_port {
+enum uart_port : uint8_t {
     UART_PORT_COM1 = 0,
     UART_PORT_COM2 = 1,
     UART_PORT_COUNT,

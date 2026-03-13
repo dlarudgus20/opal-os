@@ -11,7 +11,7 @@ static void isr_timer(void) {
     g_tick++;
     irq_send_eoi(PIC_IRQ_TIMER);
 
-    schedule();
+    sched_on_timer();
 }
 
 void timer_init(void) {

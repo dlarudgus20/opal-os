@@ -39,7 +39,7 @@ struct sched {
     struct rbtree tid_tree;
     struct slab task_slab;
 
-    struct linkedlist ready_queue;
+    struct linkedlist ready_queue[TASK_PRIORITY_COUNT];
     struct linkedlist dead_list;
 
     struct rbtree timeout_queue;
@@ -62,7 +62,7 @@ static void set_running(struct task *task) {
 
 static void set_ready(struct task *task) {
     task->state = TASK_READY;
-    linkedlist_push_back(&g_sched.ready_queue, &task->queue_link);
+    linkedlist_push_back(&g_sched.ready_queue[task->priority], &task->queue_link);
 }
 
 static void reset_ready(struct task *task) {
@@ -118,6 +118,7 @@ static void task_init(struct task *task) {
     task->id = g_sched.tid_next++;
     task->refcount = 1;
     task->state = TASK_WAITING;
+    task->priority = TASK_PRIORITY_NORMAL;
     task->wait_for = NULL;
     task->has_timeout = false;
     task->wait_timeout = 0;
@@ -131,20 +132,36 @@ void sched_init(void) {
     g_sched.tid_next = 0;
     rbtree_init(&g_sched.tid_tree);
     slab_create_for(&g_sched.task_slab, struct task);
-    linkedlist_init(&g_sched.ready_queue);
     linkedlist_init(&g_sched.dead_list);
     rbtree_init(&g_sched.timeout_queue);
     g_sched.soonest_timeout = UINT64_MAX;
 
+    for (size_t i = 0; i < TASK_PRIORITY_COUNT; i++) {
+        linkedlist_init(&g_sched.ready_queue[i]);
+    }
+
     task_init(&g_kernel);
+    g_kernel.priority = TASK_PRIORITY_KERNEL;
     set_running(&g_kernel);
     g_sched.current = &g_kernel;
 
     task_init(&g_idle);
+    g_idle.priority = TASK_PRIORITY_IDLE;
     context_init(&g_idle.ctx, (uintptr_t)idle_task, g_idle_stack, sizeof(g_idle_stack), 0);
     set_ready(&g_idle);
 
     irqmsg_register(IRQMSG_SCHED_TIMEOUT, irqmsg_timeout);
+}
+
+static bool drain_dead(void) {
+    struct linkedlist_link *link = linkedlist_pop_front(&g_sched.dead_list);
+    if (!link) {
+        return false;
+    }
+
+    struct task *task = container_of(link, struct task, queue_link);
+    task_release((taskptr_t){ .ptr = task });
+    return true;
 }
 
 static void idle_task(uintptr_t) {
@@ -152,12 +169,7 @@ static void idle_task(uintptr_t) {
         interrupts_disable();
 
         schedule();
-
-        struct linkedlist_link *link = linkedlist_pop_front(&g_sched.dead_list);
-        if (link) {
-            struct task *task = container_of(link, struct task, queue_link);
-            task_release((taskptr_t){ .ptr = task });
-        }
+        while (drain_dead()) {}
 
         interrupts_enable_and_wait();
     }
@@ -184,6 +196,22 @@ static void irqmsg_timeout(struct irqmsg) {
     irqlock_release(&irqlock);
 }
 
+static struct task *ready_queue_top(void) {
+    for (size_t i = 0; i < TASK_PRIORITY_COUNT; i++) {
+        struct linkedlist *queue = &g_sched.ready_queue[i];
+        struct linkedlist_link *head = linkedlist_head(queue);
+        if (linkedlist_is_nil(queue, head)) {
+            continue;
+        }
+        return container_of(head, struct task, queue_link);
+    }
+    return NULL;
+}
+
+static void ready_queue_pop(struct task *task) {
+    linkedlist_remove(&task->queue_link);
+}
+
 void schedule(void) {
     irqlock_t irqlock = irqlock_acquire();
 
@@ -193,18 +221,22 @@ void schedule(void) {
         }
     }
 
-    struct linkedlist_link *link = linkedlist_pop_front(&g_sched.ready_queue);
-    if (!link) {
+    struct task *current = g_sched.current;
+    struct task *next = ready_queue_top();
+    if (!next) {
         goto exit;
     }
 
-    struct task *current = g_sched.current;
-    struct task *next = container_of(link, struct task, queue_link);
-
-    set_running(next);
     if (current->state == TASK_RUNNING) {
+        if (current->priority < next->priority) {
+            goto exit;
+        }
+
         set_ready(current);
     }
+
+    ready_queue_pop(next);
+    set_running(next);
 
     g_sched.current = next;
     context_switch(&current->ctx, &next->ctx);
@@ -213,7 +245,13 @@ exit:
     irqlock_release(&irqlock);
 }
 
-taskptr_t task_create(void (*entry)(uintptr_t), uintptr_t arg) {
+void sched_on_timer(void) {
+    schedule();
+}
+
+taskptr_t task_create(void (*entry)(uintptr_t), uintptr_t arg, enum task_priority priority) {
+    assert(priority < TASK_PRIORITY_COUNT);
+
     irqlock_t irqlock = irqlock_acquire();
 
     struct task *task = slab_alloc(&g_sched.task_slab);
@@ -230,6 +268,7 @@ taskptr_t task_create(void (*entry)(uintptr_t), uintptr_t arg) {
     }
 
     task_init(task);
+    task->priority = priority;
     set_ready(task);
 
     task->stack = mm_pfn_to_ptr(stack_page);

@@ -21,6 +21,18 @@ enum task_state {
     TASK_DEAD,
 };
 
+enum task_priority : uint8_t {
+    TASK_PRIORITY_CRITICAL,
+    TASK_PRIORITY_KERNEL,
+    TASK_PRIORITY_HIGHEST,
+    TASK_PRIORITY_HIGH,
+    TASK_PRIORITY_NORMAL,
+    TASK_PRIORITY_LOW,
+    TASK_PRIORITY_LOWEST,
+    TASK_PRIORITY_IDLE,
+    TASK_PRIORITY_COUNT,
+};
+
 struct task {
     tid_t id;
     struct rbtree_node tid_node;
@@ -29,6 +41,8 @@ struct task {
 
     enum task_state state;
     struct linkedlist_link queue_link;
+
+    enum task_priority priority;
 
     struct wait_list join_list;
 
@@ -47,8 +61,9 @@ typedef struct taskptr {
 
 void sched_init(void);
 void schedule(void);
+void sched_on_timer(void);
 
-[[nodiscard]] taskptr_t task_create(void (*entry)(uintptr_t), uintptr_t arg);
+[[nodiscard]] taskptr_t task_create(void (*entry)(uintptr_t), uintptr_t arg, enum task_priority priority);
 void task_terminate(taskptr_t task);
 
 [[nodiscard]] taskptr_t task_from_id(tid_t id);
