@@ -9,4 +9,5 @@
 - [`opal/task.md`](opal/task.md): 태스크/스케줄러
 - [`opal/interrupt-io.md`](opal/interrupt-io.md): 인터럽트/입력/시리얼 IO 경로
 - [`libcoll/README.md`](libcoll/README.md): libcoll 자료구조 문서
+- [`libkc/README.md`](libkc/README.md): libkc 문서
 - [`tools/README.md`](tools/README.md): 도구 스크립트 문서

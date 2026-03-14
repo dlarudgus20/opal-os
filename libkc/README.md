@@ -8,6 +8,9 @@
 - 포맷 엔진(`fmt`) + `snprintf_s`/`vsnprintf_s`
 - assert/panic 매크로
 
+## 문서
+- 개요/동작 문서: [`docs/libkc/README.md`](../docs/libkc/README.md)
+
 ## 빌드
 ```bash
 make -C libkc build CONFIG=debug PLATFORM=pc-x64

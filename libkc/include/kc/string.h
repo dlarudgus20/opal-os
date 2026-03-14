@@ -18,9 +18,7 @@ char *strnchr(const char *s, int ch, size_t n);
 int strcmp(const char *lhs, const char *rhs);
 int strncmp(const char *lhs, const char *rhs, size_t n);
 char *strcpy(char *restrict dest, const char *restrict src);
-char *strncpy(char *restrict dest, const char *restrict src, size_t n);
-void strcpy_s(char *restrict dest, size_t destsz, const char *restrict src);
-void strncpy_s(char *restrict dest, size_t destsz, const char *restrict src, size_t n);
+void strncpy_sized(char *restrict dest, size_t destsz, const char *restrict src, size_t n);
 char *strcat(char *restrict dest, const char *restrict src);
 char *strncat(char *restrict dest, const char *restrict src, size_t n);
 void strcat_sized(char *restrict dest, size_t destsz, const char *restrict src);
@@ -38,7 +36,6 @@ void strcat_sized(char *restrict dest, size_t destsz, const char *restrict src);
 #define strcmp(lhs, rhs)            __builtin_strcmp(lhs, rhs)
 #define strncmp(lhs, rhs, n)        __builtin_strncmp(lhs, rhs, n)
 #define strcpy(dest, src)           __builtin_strcpy(dest, src)
-#define strncpy(dest, src, n)       __builtin_strncpy(dest, src, n)
 #define strcat(dest, src)           __builtin_strcat(dest, src)
 #define strncat(dest, src, n)       __builtin_strncat(dest, src, n)
 #endif

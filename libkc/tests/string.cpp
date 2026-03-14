@@ -101,28 +101,76 @@ TEST_F(LibkcTest, StrcpyCopiesIncludingTerminator) {
     EXPECT_STREQ(dst, "kernel");
 }
 
-TEST_F(LibkcTest, StrncpyPadsWithZerosAndCanTruncate) {
-    char dst1[8];
-    for (size_t i = 0; i < sizeof(dst1); i++) {
-        dst1[i] = '#';
+TEST_F(LibkcTest, StrncpySizedCopiesAndTerminates) {
+    char dst[8];
+    for (size_t i = 0; i < sizeof(dst); i++) {
+        dst[i] = '#';
     }
-    char *ret1 = kc.strncpy(dst1, "opal", 7);
-    EXPECT_EQ(ret1, dst1);
-    EXPECT_EQ(dst1[0], 'o');
-    EXPECT_EQ(dst1[1], 'p');
-    EXPECT_EQ(dst1[2], 'a');
-    EXPECT_EQ(dst1[3], 'l');
-    EXPECT_EQ(dst1[4], '\0');
-    EXPECT_EQ(dst1[5], '\0');
-    EXPECT_EQ(dst1[6], '\0');
 
-    char dst2[4] = {'#', '#', '#', '#'};
-    char *ret2 = kc.strncpy(dst2, "kernel", 4);
-    EXPECT_EQ(ret2, dst2);
-    EXPECT_EQ(dst2[0], 'k');
-    EXPECT_EQ(dst2[1], 'e');
-    EXPECT_EQ(dst2[2], 'r');
-    EXPECT_EQ(dst2[3], 'n');
+    kc.strncpy_sized(dst, sizeof(dst), "kernel", 3);
+    EXPECT_STREQ(dst, "ker");
+    EXPECT_EQ(dst[4], '#');
+}
+
+TEST_F(LibkcTest, StrncpySizedZeroCountWritesOnlyTerminator) {
+    char dst[8];
+    for (size_t i = 0; i < sizeof(dst); i++) {
+        dst[i] = '#';
+    }
+
+    kc.strncpy_sized(dst, sizeof(dst), "kernel", 0);
+    EXPECT_EQ(dst[0], '\0');
+    EXPECT_EQ(dst[1], '#');
+}
+
+TEST_F(LibkcTest, StrncpySizedClampsToCapacityMinusOne) {
+    char dst[5] = {'#', '#', '#', '#', '#'};
+
+    kc.strncpy_sized(dst, sizeof(dst), "opal!", 8);
+    EXPECT_STREQ(dst, "opal");
+    EXPECT_EQ(dst[4], '\0');
+}
+
+TEST_F(LibkcTest, StrncpySizedReturnsWhenDestSizeIsZero) {
+    char dst[3] = {'a', 'b', 'c'};
+
+    kc.strncpy_sized(dst, 0, "xyz", 3);
+    EXPECT_EQ(dst[0], 'a');
+    EXPECT_EQ(dst[1], 'b');
+    EXPECT_EQ(dst[2], 'c');
+}
+
+TEST_F(LibkcTest, StrncpySizedEmptySourceWithOneByteDest) {
+    char dst[1] = {'#'};
+    kc.strncpy_sized(dst, sizeof(dst), "", 8);
+    EXPECT_EQ(dst[0], '\0');
+}
+
+TEST_F(LibkcTest, StrncpySizedCopiesUntilSourceTerminatorWhenNIsLarge) {
+    char dst[16];
+    for (size_t i = 0; i < sizeof(dst); i++) {
+        dst[i] = '#';
+    }
+
+    kc.strncpy_sized(dst, sizeof(dst), "opal", 32);
+    EXPECT_STREQ(dst, "opal");
+    EXPECT_EQ(dst[5], '#');
+}
+
+TEST_F(LibkcTest, StrncpySizedAllowsExactFitOfNPlusTerminator) {
+    char dst[5] = {'#', '#', '#', '#', '#'};
+    kc.strncpy_sized(dst, sizeof(dst), "opal!", 4);
+    EXPECT_STREQ(dst, "opal");
+}
+
+TEST_F(LibkcTest, StrncpySizedTruncatesWithoutPanic) {
+    char dst[4] = {'#', '#', '#', '#'};
+
+    kc.strncpy_sized(dst, sizeof(dst), "abcde", 5);
+    EXPECT_EQ(dst[0], 'a');
+    EXPECT_EQ(dst[1], 'b');
+    EXPECT_EQ(dst[2], 'c');
+    EXPECT_EQ(dst[3], '\0');
 }
 
 TEST_F(LibkcTest, StrcatAppendsAndReturnsDest) {

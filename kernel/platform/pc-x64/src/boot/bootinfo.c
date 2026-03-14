@@ -41,15 +41,8 @@ static void parse_mb2_cmdline(const struct mb_tag_string *strtag) {
         return;
     }
 
-    size_t maxsz = strtag->tag.size - offsetof(struct mb_tag_string, string);
-    if (maxsz == 0) {
-        g_cmdline[0] = '\0';
-        return;
-    }
-    if (maxsz > sizeof(g_cmdline)) {
-        maxsz = sizeof(g_cmdline);
-    }
-    strncpy_s(g_cmdline, sizeof(g_cmdline), strtag->string, maxsz - 1);
+    const size_t maxsz = strtag->tag.size - offsetof(struct mb_tag_string, string);
+    strncpy_sized(g_cmdline, sizeof(g_cmdline), strtag->string, maxsz);
 }
 
 static void parse_mb2_module(const struct mb_tag_module *module) {
@@ -63,15 +56,8 @@ static void parse_mb2_module(const struct mb_tag_module *module) {
     out->begin = module->mod_start;
     out->end = module->mod_end;
 
-    size_t maxsz = module->tag.size - offsetof(struct mb_tag_module, cmdline);
-    if (maxsz == 0) {
-        out->name[0] = '\0';
-        return;
-    }
-    if (maxsz > sizeof(out->name)) {
-        maxsz = sizeof(out->name);
-    }
-    strncpy_s(out->name, sizeof(out->name), module->cmdline, maxsz - 1);
+    const size_t maxsz = module->tag.size - offsetof(struct mb_tag_module, cmdline);
+    strncpy_sized(out->name, sizeof(out->name), module->cmdline, maxsz);
 }
 
 static void parse_mb2_mmap(const struct mb_tag_mmap *mmap) {

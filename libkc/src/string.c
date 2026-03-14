@@ -201,64 +201,16 @@ char *strcpy(char *restrict dest, const char *restrict src) {
     return dest;
 }
 
-char *strncpy(char *restrict dest, const char *restrict src, size_t n) {
-    size_t i = 0;
+void strncpy_sized(char *restrict dest, size_t destsz, const char *restrict src, size_t n) {
+    if (destsz == 0) {
+        return;
+    }
+    if (n > destsz - 1) {
+        n = destsz - 1;
+    }
 
+    size_t i = 0;
     while (i < n && src[i] != '\0') {
-        dest[i] = src[i];
-        i++;
-    }
-
-    while (i < n) {
-        dest[i] = '\0';
-        i++;
-    }
-
-    return dest;
-}
-
-void strcpy_s(char *restrict dest, size_t destsz, const char *restrict src) {
-    assert(dest);
-    assert(src);
-    assert(destsz > 0);
-
-    const uintptr_t d = (uintptr_t)dest;
-    const uintptr_t s = (uintptr_t)src;
-
-    size_t i = 0;
-
-    while (src[i] != '\0') {
-        if (i + 1 >= destsz) {
-            panic("truncation occur");
-        }
-        if (d <= s + i && s + i < d + destsz) {
-            panic("overlap occur");
-        }
-
-        dest[i] = src[i];
-        i++;
-    }
-    dest[i] = '\0';
-}
-
-void strncpy_s(char *restrict dest, size_t destsz, const char *restrict src, size_t n) {
-    assert(dest);
-    assert(src);
-    assert(destsz > 0);
-
-    const uintptr_t d = (uintptr_t)dest;
-    const uintptr_t s = (uintptr_t)src;
-
-    size_t i = 0;
-
-    while (i < n && src[i] != '\0') {
-        if (i + 1 >= destsz) {
-            panic("truncation occur");
-        }
-        if (d <= s + i && s + i < d + destsz) {
-            panic("overlap occur");
-        }
-
         dest[i] = src[i];
         i++;
     }
