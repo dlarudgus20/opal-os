@@ -46,6 +46,9 @@ struct PACKED idt {
     unsigned reserved3:32;
 };
 
+static_assert(sizeof(union gdt) == 8);
+static_assert(sizeof(struct idt) == 16);
+
 static union gdt g_gdt[5];
 static struct idt g_idt[256];
 static struct tss g_tss_df;

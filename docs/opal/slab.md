@@ -12,6 +12,9 @@
 - `[struct slab_obj_hdr][prefix redzone][payload][suffix redzone]`
 
 특징:
+- `struct slab_obj_hdr`는 2바이트 비트필드(`is_free:1`, `next_free:15`)를 사용
+- free list는 포인터가 아니라 페이지 시작 기준 16비트 오프셋(`free_head`, `next_free`)을 사용
+- `0` 오프셋은 free list 끝(sentinel)
 - `payload`는 할당 시 0으로 초기화
 - free 상태 payload는 `SLAB_UNUSED_PATTERN`으로 채움
 - prefix/suffix redzone은 `SLAB_REDZONE_PATTERN`으로 채워 경계 오염을 탐지
@@ -39,7 +42,14 @@
 - `slab_free(struct slab *slab, void *ptr)`
 - `slab_get_object_size()`, `slab_get_inuse()`, `slab_get_total()`
 
-## 6. 테스트
+## 6. kmalloc 연계
+- `kmalloc_init()`은 슬랩 클래스를 `32, 64, 128, 256, 512, 1024` 바이트로 생성합니다.
+- `kmalloc(size)`에서 `size <= 1024`는 가장 가까운 상위 슬랩 클래스로 올림 할당됩니다.
+  - 예: `size=1..32 -> 32B slab`, `size=33..64 -> 64B slab`
+- `size > 1024`는 버디 페이지 할당 경로를 사용합니다.
+- `kmalloc/kfree` 모두 `size <= MAX_SIZE(PAGE_SIZE * 32)`를 전제로 합니다.
+
+## 7. 테스트
 - 테스트 파일: `kernel/src/mm/slab_test.c`
 - 주요 시나리오:
   - 정렬 보장

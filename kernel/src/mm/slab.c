@@ -2,30 +2,34 @@
 #include <kc/stdlib.h>
 #include <kc/string.h>
 
+#include <opal/attributes.h>
 #include <opal/mm/mm.h>
 #include <opal/mm/pfn.h>
 #include <opal/mm/buddy.h>
 #include <opal/mm/slab.h>
 #include <opal/platform/mm/defines.h>
 
-#define SLAB_REDZONE_SIZE 16
+#define SLAB_REDZONE_SIZE 2
 #define SLAB_REDZONE_PATTERN 0xfd
 #define SLAB_UNUSED_PATTERN 0xcc
 
 // page: [struct slab_page][object 1][object 2]...
 // object: [struct slab_obj_hdr][redzone][payload][redzone]
 
-struct slab_obj_hdr {
-    struct slab_obj_hdr *next_free;
-    bool is_free;
+struct PACKED slab_obj_hdr {
+    bool is_free:1;
+    unsigned next_free:15;
 };
 
 struct slab_page {
     struct linkedlist_link link;
     struct slab *owner;
     uint32_t inuse;
-    struct slab_obj_hdr *free_head;
+    uint16_t free_head;
 };
+
+static_assert(sizeof(struct slab_obj_hdr) == 2);
+static_assert(sizeof(struct slab_page) < PAGE_SIZE);
 
 static size_t max_size(size_t a, size_t b) {
     return a > b ? a : b;
@@ -37,6 +41,15 @@ static struct slab_page *page_from_link(struct linkedlist_link *link) {
 
 static struct slab_obj_hdr *slot_object(const struct slab *slab, const struct slab_page *page, uint32_t slot_idx) {
     size_t offset = slab->slot_offset + slab->slot_stride * slot_idx;
+    return (struct slab_obj_hdr *)((char *)page + offset);
+}
+
+static uint16_t hdr_to_offset(const struct slab_page *page, const struct slab_obj_hdr *hdr) {
+    size_t offset = (size_t)((const char *)hdr - (const char *)page);
+    return (uint16_t)offset;
+}
+
+static struct slab_obj_hdr *offset_to_hdr(const struct slab_page *page, uint16_t offset) {
     return (struct slab_obj_hdr *)((char *)page + offset);
 }
 
@@ -117,12 +130,15 @@ static struct slab_page *create_slab_page(struct slab *slab) {
 
     memset(page, 0, sizeof(*page));
     page->owner = slab;
+    page->free_head = 0;
 
-    for (uint32_t i = 0; i < slab->page_capacity; i++) {
-        struct slab_obj_hdr *hdr = slot_object(slab, page, i);
+    for (uint32_t i = slab->page_capacity; i > 0; i--) {
+        const uint32_t idx = i - 1;
+        struct slab_obj_hdr *hdr = slot_object(slab, page, idx);
+        const uint16_t hdr_offset = hdr_to_offset(page, hdr);
         hdr->next_free = page->free_head;
         hdr->is_free = true;
-        page->free_head = hdr;
+        page->free_head = hdr_offset;
 
         fill_redzones(slab, hdr);
         fill_unused_payload(slab, hdr);
@@ -150,7 +166,7 @@ static struct slab_page *pick_alloc_page(struct slab *slab) {
     struct linkedlist_link *head = linkedlist_head(&slab->partial_pages);
     assert(head != linkedlist_nil(&slab->partial_pages));
     struct slab_page *page = page_from_link(head);
-    assert(page->free_head != NULL, "partial slab page has no free objects");
+    assert(page->free_head != 0, "partial slab page has no free objects");
     return page;
 }
 
@@ -175,7 +191,7 @@ void slab_create(struct slab *slab, size_t object_size, size_t object_align) {
     assert(slot_stride <= UINT16_MAX, "slab object is too big");
     assert(slot_offset < PAGE_SIZE, "page is too small");
     assert(page_capacity > 0, "slab object is too big");
-    assert(page_capacity <= UINT16_MAX, "page is too small");
+    assert(page_capacity <= INT16_MAX, "page is too small");
 
     slab->payload_offset = (uint16_t)prefix_end;
     slab->slot_stride = (uint16_t)slot_stride;
@@ -206,20 +222,21 @@ void *slab_alloc(struct slab *slab) {
         return NULL;
     }
 
-    struct slab_obj_hdr *hdr = page->free_head;
-    assert(hdr, "slab page has no free objects");
+    assert(page->free_head != 0, "slab page has no free objects");
+
+    struct slab_obj_hdr *hdr = offset_to_hdr(page, page->free_head);
     assert(hdr->is_free, "slab object state is corrupted");
 
     check_redzones(slab, hdr);
     check_unused_payload(slab, hdr);
 
     page->free_head = hdr->next_free;
-    hdr->next_free = NULL;
+    hdr->next_free = 0;
     hdr->is_free = false;
     page->inuse++;
     slab->inuse_objects++;
 
-    if (page->free_head == NULL) {
+    if (page->free_head == 0) {
         linkedlist_remove(&page->link);
     }
 
@@ -248,15 +265,16 @@ void slab_free(struct slab *slab, void *ptr) {
     assert(!hdr->is_free, "double free detected");
     assert(page->inuse > 0, "slab page is corrupted");
 
-    const bool was_full = (page->free_head == NULL);
+    const bool was_full = (page->free_head == 0);
 
     check_redzones(slab, hdr);
     fill_unused_payload(slab, hdr);
     fill_redzones(slab, hdr);
 
+    const uint16_t hdr_offset = hdr_to_offset(page, hdr);
     hdr->is_free = true;
     hdr->next_free = page->free_head;
-    page->free_head = hdr;
+    page->free_head = hdr_offset;
 
     page->inuse--;
     slab->inuse_objects--;

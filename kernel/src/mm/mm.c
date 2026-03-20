@@ -16,25 +16,27 @@
 
 static struct buddy g_buddy;
 
+static void early_init(void) {
+    mm_map_init();
+
+    struct mmap_entry buffer[MAX_MMAP_ENTRIES];
+    struct tmpalloc ta;
+    tmpalloc_create(&ta, buffer, MAX_MMAP_ENTRIES, mm_get_section_map());
+
+    mm_pagetable_init(&ta);
+    mm_pfn_init(&ta);
+
+    mm_pagetable_unuse_tmpalloc();
+    mm_map_finalize_tmpalloc(&ta);
+}
+
 static void log_mm(void) {
     mm_log_map();
     mm_log_buddy();
 }
 
 void mm_init(void) {
-    mm_map_init();
-
-    {
-        struct mmap_entry buffer[MAX_MMAP_ENTRIES];
-        struct tmpalloc ta;
-        tmpalloc_create(&ta, buffer, MAX_MMAP_ENTRIES, mm_get_section_map());
-
-        mm_pagetable_init(&ta);
-        mm_pfn_init(&ta);
-
-        mm_pagetable_unuse_tmpalloc();
-        mm_map_finalize_tmpalloc(&ta);
-    }
+    early_init();
 
     buddy_create(&g_buddy, mm_get_section_map());
     mm_vmap_init();
