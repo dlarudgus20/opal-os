@@ -2,15 +2,16 @@
 build/
 **/res/gen/
 
+# qemu artifacts
+/hd[a-d].img
+qemu.log
+
 # Temporary/editor files
 *.swp
 *.swo
 *~
 .DS_Store
 /tmp/
-
-# log files
-qemu.log
 
 # Python
 __pycache__/

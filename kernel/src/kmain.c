@@ -13,10 +13,12 @@
 #include <opal/platform/boot/boot.h>
 #include <opal/platform/drivers/uart.h>
 #include <opal/platform/drivers/ps2.h>
+#include <opal/platform/drivers/pata.h>
 
 static void drivers_init(void) {
     ps2_init();
     uart_init();
+    pata_init();
 }
 
 static void run_user(void) {

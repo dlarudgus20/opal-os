@@ -11,6 +11,10 @@ INITRAMFS   := $(BUILD_DIR)/iso/boot/initramfs
 ISO_FILE    := $(BUILD_DIR)/opal-os.iso
 
 QEMU_FLAGS  += -m 128 -serial stdio -no-reboot
+QEMU_HDDS   := \
+	$(if $(wildcard hda.img), -hda hda.img) \
+	$(if $(wildcard hdb.img), -hdb hdb.img) \
+	$(if $(wildcard hdd.img), -hdd hdd.img)
 
 ifeq ($(UEFI), 1)
 UEFI_FIRMWARE ?= /usr/share/ovmf/OVMF.fd
@@ -19,7 +23,7 @@ endif
 
 SUBDIRS     := test-pch kernel libkubsan libkc libpanicimpl libcoll
 
-.PHONY: .FORCE all build iso run clean fullclean gen clean-gen build-test test clean-test unit-test clean-unit-test
+.PHONY: .FORCE all build iso run mkhdds clean fullclean gen clean-gen build-test test clean-test unit-test clean-unit-test
 .FORCE:
 
 all: build
@@ -42,7 +46,12 @@ $(INITRAMFS): .FORCE
 	cd initramfs && (find . | cpio -o -H newc > ../$(INITRAMFS))
 
 run: iso
-	qemu-system-x86_64 $(QEMU_FLAGS) -cdrom $(ISO_FILE) -D qemu.log
+	qemu-system-x86_64 $(QEMU_FLAGS) $(QEMU_HDDS) -cdrom $(ISO_FILE) -D qemu.log
+
+mkhdds:
+	qemu-img create -f qcow2 hda.img 32M
+	qemu-img create -f qcow2 hdb.img 16M
+	qemu-img create -f qcow2 hdd.img 8M
 
 clean:
 	for dir in $(SUBDIRS); do \

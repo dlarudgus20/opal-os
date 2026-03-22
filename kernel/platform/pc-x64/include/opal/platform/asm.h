@@ -50,6 +50,16 @@ ALWAYS_INLINE uint8_t in8(uint16_t port) {
     return value;
 }
 
+ALWAYS_INLINE void out16(uint16_t port, uint16_t value) {
+    __asm__ volatile ("out %1, %0" : : "a"(value), "Nd"(port));
+}
+
+ALWAYS_INLINE uint16_t in16(uint16_t port) {
+    uint16_t value;
+    __asm__ volatile ("in %0, %1" : "=a"(value) : "Nd"(port));
+    return value;
+}
+
 ALWAYS_INLINE uint64_t rflags_get(void) {
     uint64_t flags;
     __asm__ volatile ( "pushfq; pop %0" : "=r"(flags) );

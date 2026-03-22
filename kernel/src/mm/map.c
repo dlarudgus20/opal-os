@@ -280,9 +280,12 @@ STATIC_OR_TEST void init_mm_section(
 }
 
 static void get_initramfs_reserved_range(phys_addr_t *start_out, phys_addr_t *end_out) {
+    *start_out = 0;
+    *end_out = 0;
+
     const struct kargs *kargs = kargs_get();
     if (!kargs->initramfs) {
-        goto none;
+        return;
     }
 
     const phys_addr_t module_begin = kargs->initramfs->begin;
@@ -291,7 +294,7 @@ static void get_initramfs_reserved_range(phys_addr_t *start_out, phys_addr_t *en
     if (module_begin >= module_end) {
         kwarn("mm: invalid initramfs range [%#018"PRIphys", %#018"PRIphys") is ignored",
             module_begin, module_end);
-        goto none;
+        return;
     }
 
     const phys_addr_t start = align_floor_sz_p2(module_begin, PAGE_SIZE);
@@ -300,16 +303,11 @@ static void get_initramfs_reserved_range(phys_addr_t *start_out, phys_addr_t *en
     if (end < module_end || end <= start) {
         kwarn("mm: failed to align initramfs range [%#018"PRIphys", %#018"PRIphys")",
             module_begin, module_end);
-        goto none;
+        return;
     }
 
     *start_out = start;
     *end_out = end;
-    return;
-
-none:
-    *start_out = 0;
-    *end_out = 0;
 }
 
 void mm_map_init(void) {

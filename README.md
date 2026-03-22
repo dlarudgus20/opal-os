@@ -45,11 +45,6 @@ make test
 make -C kernel test
 ```
 
-LSan 환경 제약 시:
-```bash
-ASAN_OPTIONS=detect_leaks=0 make -C kernel test
-```
-
 ## 커널 유닛 테스트
 ```bash
 make unit-test

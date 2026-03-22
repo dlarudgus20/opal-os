@@ -48,10 +48,23 @@ make test
 make -C kernel test CONFIG=debug PLATFORM=pc-x64
 ```
 
+LSan 환경 제약 시:
+```bash
+ASAN_OPTIONS=detect_leaks=0 make -C kernel test
+```
+
 ### 커널 유닛테스트
 ```bash
 make unit-test
 ```
+
+유닛테스트 실행 규칙:
+- QEMU는 반드시 headless로 실행합니다. (`QEMU_FLAGS`에 `-display none` 포함)
+```bash
+make unit-test CONFIG=debug PLATFORM=pc-x64 QEMU_FLAGS='-m 128 -serial stdio -no-reboot -display none'
+```
+- 유닛테스트 로그가 끝나고 `root@opal:~$` 프롬프트가 보이면 QEMU를 자동 종료가 아닌 수동 종료해야 합니다.
+- 즉, 테스트 성공 여부 확인 후 프롬프트 상태에 남아 있는 QEMU를 반드시 종료하고 명령을 마무리합니다.
 
 ### 빌드 결과물 삭제
 ```bash
