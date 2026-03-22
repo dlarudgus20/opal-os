@@ -60,6 +60,24 @@ ALWAYS_INLINE uint16_t in16(uint16_t port) {
     return value;
 }
 
+ALWAYS_INLINE void insw(uint16_t port, void *dst, size_t words) {
+    unsigned char (*rdi)[words * 2] = dst;
+    __asm__ volatile (
+        "rep insw"
+        : "+D"(rdi), "+c"(words), "=m"(*rdi)
+        : "d"(port)
+    );
+}
+
+ALWAYS_INLINE void outsw(uint16_t port, const void *src, size_t words) {
+    const unsigned char (*rsi)[words * 2] = src;
+    __asm__ volatile (
+        "rep outsw"
+        : "+S"(rsi), "+c"(words)
+        : "d"(port), "m"(*rsi)
+    );
+}
+
 ALWAYS_INLINE uint64_t rflags_get(void) {
     uint64_t flags;
     __asm__ volatile ( "pushfq; pop %0" : "=r"(flags) );

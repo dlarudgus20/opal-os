@@ -2,6 +2,7 @@
 
 #include <opal/timer.h>
 #include <opal/task/task.h>
+#include <opal/platform/drivers/pata.h>
 #include <opal/platform/drivers/pic.h>
 #include <opal/platform/drivers/pit.h>
 
@@ -11,6 +12,7 @@ static void isr_timer(void) {
     g_tick++;
     irq_send_eoi(PIC_IRQ_TIMER);
 
+    pata_on_timer(g_tick);
     sched_on_timer();
 }
 

@@ -3,5 +3,6 @@
 
 int shell_cmd_priotest(void);
 int shell_cmd_irfdump(void);
+int shell_cmd_pata(const char *cmd);
 
 #endif

@@ -48,6 +48,8 @@ static int handle_command(const char *cmd) {
         tty0_puts("  pfns      - show pfn list\n");
         tty0_puts("  kargs     - show kernel boot argument\n");
         tty0_puts("  irfdump   - hexdump first 256 bytes of initramfs\n");
+        tty0_puts("  readsec D L C  - read C sectors from drive D at LBA L\n");
+        tty0_puts("  writesec D L C V - write C sectors to drive D at LBA L with byte V (0..255)\n");
         tty0_puts("  bootmodules - show boot module list\n");
         tty0_puts("  fbinfo    - show framebuffer info\n");
         tty0_puts("  allocinfo - show buddy allocator info\n");
@@ -129,6 +131,10 @@ static int handle_command(const char *cmd) {
 
     if (strcmp(cmd, "irfdump") == 0) {
         return shell_cmd_irfdump();
+    }
+
+    if (strncmp(cmd, "readsec", 7) == 0 || strncmp(cmd, "writesec", 8) == 0) {
+        return shell_cmd_pata(cmd);
     }
 
     if (strcmp(cmd, "bootmodules") == 0) {
