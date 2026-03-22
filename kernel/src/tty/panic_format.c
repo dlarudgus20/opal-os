@@ -36,6 +36,9 @@ static void format_panic_basic(
 }
 
 static void print_panic(struct tty* tty, const char *msg) {
+    if (tty->ops->set_panic_mode) {
+        tty->ops->set_panic_mode(tty);
+    }
     tty->ops->set_color(tty, TTY_BRIGHT_WHITE, TTY_RED);
     tty_puts(tty, msg);
     tty->ops->set_color(tty, -1, -1);

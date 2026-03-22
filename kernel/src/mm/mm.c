@@ -9,6 +9,7 @@
 #include <opal/mm/tmpalloc.h>
 #include <opal/mm/pfn.h>
 #include <opal/mm/buddy.h>
+#include <opal/mm/kmalloc.h>
 #include <opal/mm/vmap.h>
 #include <opal/locks/irqlock.h>
 #include <opal/platform/boot/bootinfo.h>
@@ -39,6 +40,7 @@ void mm_init(void) {
     early_init();
 
     buddy_create(&g_buddy, mm_get_section_map());
+    kmalloc_init();
     mm_vmap_init();
 
     log_mm();

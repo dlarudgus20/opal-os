@@ -69,6 +69,7 @@ struct uart {
     uint8_t irq_line;
     bool present;
     bool irq_mode;
+    bool tx_suppressed;
 
     uint8_t rx_buf[UART_RX_QUEUE_SIZE];
     uint8_t tx_buf[UART_TX_QUEUE_SIZE];
@@ -185,6 +186,11 @@ static void enable_tx_irq(struct uart *u, bool enabled) {
 }
 
 static void tx_pump_locked(struct uart *u) {
+    if (u->tx_suppressed) {
+        enable_tx_irq(u, false);
+        return;
+    }
+
     while (!ringbuffer_is_empty(&u->tx_queue) && can_tx(u)) {
         uint8_t c = ringbuffer_pop(&u->tx_queue, uint8_t);
         reg_write(u, UART_REG_DATA, c);
@@ -257,6 +263,7 @@ void uart_early_init(void) {
     for (int i = 0; i < UART_PORT_COUNT; i++) {
         struct uart *u = &g_uarts[i];
         u->irq_mode = false;
+        u->tx_suppressed = false;
         (void)hw_early_init(u);
     }
 
@@ -291,11 +298,29 @@ void uart_init(void) {
         }
         irq_enable(u->irq_line);
         u->irq_mode = true;
+        u->tx_suppressed = false;
     }
 
     if (g_default_uart) {
         uart_tty_enable_irqmsg();
     }
+}
+
+void uart_enter_panic_mode(void) {
+    irqlock_t lock = irqlock_acquire();
+
+    for (int i = 0; i < UART_PORT_COUNT; i++) {
+        struct uart *u = &g_uarts[i];
+        if (!u->present) {
+            continue;
+        }
+
+        reg_write(u, UART_REG_IER, 0x00);
+        u->irq_mode = false;
+        u->tx_suppressed = false;
+    }
+
+    irqlock_release(&lock);
 }
 
 uart_handle_t uart_get_default(void) {
@@ -330,6 +355,21 @@ size_t uart_rx_pending(uart_handle_t uart) {
     return count;
 }
 
+void uart_suppress_tx(uart_handle_t uart, bool suppress) {
+    if (!uart_is_available(uart) || !uart->irq_mode) {
+        return;
+    }
+
+    irqlock_t lock = irqlock_acquire();
+    uart->tx_suppressed = suppress;
+    if (suppress) {
+        enable_tx_irq(uart, false);
+    } else if (!ringbuffer_is_empty(&uart->tx_queue)) {
+        enable_tx_irq(uart, true);
+    }
+    irqlock_release(&lock);
+}
+
 [[nodiscard]] static size_t early_try_write(uart_handle_t uart, const char *buf, size_t len) {
     for (size_t i = 0; i < len; i++) {
         while (!hw_try_write(uart, (uint8_t)buf[i])) {}
@@ -357,7 +397,7 @@ size_t uart_try_write(uart_handle_t uart, const char *buf, size_t len) {
         i++;
     }
 
-    if (!ringbuffer_is_empty(&uart->tx_queue)) {
+    if (!uart->tx_suppressed && !ringbuffer_is_empty(&uart->tx_queue)) {
         enable_tx_irq(uart, true);
     }
 

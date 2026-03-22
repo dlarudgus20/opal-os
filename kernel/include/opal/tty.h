@@ -44,6 +44,11 @@ struct tty_ops {
     // if only one of color arguments is -1, it means "do not change"
     // if both arguments are -1, it means "reset"
     void (*set_color)(struct tty *tty, int fg, int bg);
+
+    // called before kernel prints panic messages.
+    // tty object should enter "panic mode" after this function is called.
+    // can be null if no operation is needed.
+    void (*set_panic_mode)(struct tty *tty);
 };
 
 struct tty {

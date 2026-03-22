@@ -1,20 +1,55 @@
 #include <stddef.h>
-
 #include <opal/irq.h>
 #include <opal/tty.h>
 #include <opal/tty/uart_tty.h>
+#include <opal/locks/irqlock.h>
 #include <opal/platform/drivers/uart.h>
 
 static struct tty_buffered g_tty;
 static bool g_registered;
 static uart_handle_t g_uart;
+static bool g_pending_lf;
 
 static size_t write_char_tty(struct tty *, const char *buf, size_t len) {
     if (!uart_is_available(g_uart)) {
         return 0;
     }
 
-    return uart_try_write(g_uart, buf, len);
+    uart_suppress_tx(g_uart, true);
+
+    if (g_pending_lf) {
+        if (uart_try_write(g_uart, "\n", 1) != 1) {
+            uart_suppress_tx(g_uart, false);
+            return 0;
+        }
+        g_pending_lf = false;
+    }
+
+    size_t consumed = 0;
+    while (consumed < len) {
+        char ch = buf[consumed];
+        if (ch != '\n') {
+            if (uart_try_write(g_uart, &ch, 1) != 1) {
+                break;
+            }
+            consumed++;
+            continue;
+        }
+
+        size_t crlf = uart_try_write(g_uart, "\r\n", 2);
+        if (crlf == 0) {
+            break;
+        }
+        consumed++;
+
+        if (crlf == 1) {
+            g_pending_lf = true;
+            break;
+        }
+    }
+
+    uart_suppress_tx(g_uart, false);
+    return consumed;
 }
 
 static size_t write_fg(char *dst, int color) {
@@ -67,9 +102,14 @@ static void set_color_tty(struct tty *, int fg, int bg) {
     tty_flush(&g_tty.tty);
 }
 
+static void set_panic_mode(struct tty *) {
+    uart_enter_panic_mode();
+}
+
 static struct tty_ops g_tty_ops = {
     .write = write_char_tty,
     .set_color = set_color_tty,
+    .set_panic_mode = set_panic_mode,
 };
 
 static void irqmsg_uart_rx(struct irqmsg msg) {
@@ -80,14 +120,17 @@ static void irqmsg_uart_rx(struct irqmsg msg) {
 
     char buf[TTY_BUFFER_SIZE];
     size_t len = uart_try_read(uart, buf, sizeof(buf));
-    if (len > 0) {
-        uart_try_write(uart, buf, len);
-    }
 
     for (size_t i = 0; i < len; i++) {
         if (buf[i] == '\r') {
             buf[i] = '\n';
         }
+    }
+
+    if (len > 0) {
+        irqlock_t lock = irqlock_acquire();
+        write_char_tty(&g_tty.tty, buf, len);
+        irqlock_release(&lock);
     }
 
     tty0_put_input(buf, len);
