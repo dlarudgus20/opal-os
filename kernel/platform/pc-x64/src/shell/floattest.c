@@ -78,7 +78,7 @@ static void floattest_task(uintptr_t argp) {
     task_exit();
 }
 
-int shell_cmd_floattest(void) {
+int shell_cmd_floattest(int, char **) {
     struct floattest_result results[FLOATTEST_TASK_COUNT] = { 0 };
     struct floattest_arg args[FLOATTEST_TASK_COUNT] = { 0 };
     taskptr_t tasks[FLOATTEST_TASK_COUNT] = { 0 };
@@ -116,5 +116,5 @@ int shell_cmd_floattest(void) {
         }
     }
 
-    return 1;
+    return ok ? 0 : 1;
 }

@@ -177,7 +177,7 @@ static void testtask_cleanup(taskptr_t *tasks, size_t count) {
     }
 }
 
-int shell_cmd_fputest(void) {
+int shell_cmd_fputest(int, char **) {
     static const size_t repeat = 32;
     struct fputest_result results[3] = { 0 };
     struct fputest_arg args[] = {
@@ -217,5 +217,5 @@ int shell_cmd_fputest(void) {
         }
     }
 
-    return 1;
+    return ok ? 0 : 1;
 }

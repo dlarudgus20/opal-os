@@ -68,7 +68,7 @@ static void testtask_cleanup(taskptr_t *tasks, size_t count) {
     }
 }
 
-int shell_cmd_priotest(void) {
+int shell_cmd_priotest(int, char **) {
     struct priotest_state state = { 0 };
     struct priotest_arg args[] = {
         { .state = &state, .tag = 'a', .repeat = 4 },
@@ -93,7 +93,8 @@ int shell_cmd_priotest(void) {
 
     size_t len = atomic_load(&state.len);
     state.log[len] = '\0';
+    bool ok = priotest_match(&state);
     tty0_printf("priotest: log=%s expected=H{4}[ab]{8}L{4}\n", state.log);
-    tty0_puts(priotest_match(&state) ? "priotest: PASS\n" : "priotest: FAIL\n");
-    return 1;
+    tty0_puts(ok ? "priotest: PASS\n" : "priotest: FAIL\n");
+    return ok ? 0 : 1;
 }

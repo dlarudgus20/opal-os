@@ -1,5 +1,6 @@
 #include <kc/string.h>
 #include <kc/inttypes.h>
+#include <kc/stdlib.h>
 
 #include <opal/tty.h>
 #include <opal/mm/kmalloc.h>
@@ -7,129 +8,59 @@
 #include <opal/shell/utils.h>
 #include <opal/platform/drivers/pata.h>
 
-static const char *skip_spaces(const char *p) {
-    p += strspn(p, " ");
-    return p;
-}
-
-static bool parse_u32_arg(const char **p_inout, uint32_t *out) {
-    const char *p = skip_spaces(*p_inout);
-    if (*p < '0' || *p > '9') {
-        return false;
-    }
-
-    uint32_t value = 0;
-    while (*p >= '0' && *p <= '9') {
-        uint32_t digit = (uint32_t)(*p - '0');
-        if (value > UINT32_MAX / 10 || (value == UINT32_MAX / 10 && digit > UINT32_MAX % 10)) {
-            return false;
-        }
-        value = value * 10 + digit;
-        p++;
-    }
-
-    *out = value;
-    *p_inout = p;
-    return true;
-}
-
-static bool parse_u32_arg_auto_base(const char **p_inout, uint32_t *out) {
-    const char *p = skip_spaces(*p_inout);
-    uint32_t base = 10;
-
-    if (*p == '0' && (p[1] == 'x' || p[1] == 'X')) {
-        base = 16;
-        p += 2;
-    }
-
-    uint32_t value = 0;
-    bool has_digit = false;
-    while (1) {
-        uint32_t digit = UINT32_MAX;
-        if (*p >= '0' && *p <= '9') {
-            digit = (uint32_t)(*p - '0');
-        } else if (base == 16 && *p >= 'a' && *p <= 'f') {
-            digit = (uint32_t)(*p - 'a' + 10);
-        } else if (base == 16 && *p >= 'A' && *p <= 'F') {
-            digit = (uint32_t)(*p - 'A' + 10);
-        }
-
-        if (digit >= base) {
-            break;
-        }
-
-        has_digit = true;
-        if (value > (UINT32_MAX - digit) / base) {
-            return false;
-        }
-        value = value * base + digit;
-        p++;
-    }
-
-    if (!has_digit) {
-        return false;
-    }
-
-    *out = value;
-    *p_inout = p;
-    return true;
-}
-
-static bool parse_cmd(const char *cmd, bool *is_write, uint32_t *drive, uint32_t *lba, uint32_t *count, uint32_t *fill) {
-    const char *p = cmd;
-    if (strncmp(p, "readsec", 7) == 0 && (p[7] == '\0' || p[7] == ' ')) {
-        *is_write = false;
-        p += 7;
-    } else if (strncmp(p, "writesec", 8) == 0 && (p[8] == '\0' || p[8] == ' ')) {
-        *is_write = true;
-        p += 8;
-    } else {
-        return false;
-    }
-
-    if (!parse_u32_arg(&p, drive) || !parse_u32_arg(&p, lba) || !parse_u32_arg(&p, count)) {
-        return false;
-    }
-
-    if (*is_write) {
-        if (!parse_u32_arg_auto_base(&p, fill)) {
-            return false;
-        }
-    }
-
-    p = skip_spaces(p);
-    return *p == '\0';
-}
-
-int shell_cmd_pata(const char *cmd) {
+int shell_cmd_rwsec(int argc, char **argv) {
     bool is_write = false;
-    uint32_t drive_u32 = 0;
-    uint32_t lba = 0;
-    uint32_t count_u32 = 0;
-    uint32_t fill_u32 = 0;
-    if (!parse_cmd(cmd, &is_write, &drive_u32, &lba, &count_u32, &fill_u32)) {
+    unsigned long drive_ul = 0;
+    unsigned long lba_ul = 0;
+    unsigned long count_ul = 0;
+    unsigned long fill_ul = 0;
+
+    if (argc > 0 && argv[0]) {
+        if (argv[0][0] == 'r') {
+            is_write = false;
+        } else if (argv[0][0] == 'w') {
+            is_write = true;
+        } else {
+            return 1;
+        }
+    }
+
+    int expected_argc = is_write ? 5 : 4;
+    if (argc != expected_argc
+        || kstrtoul_exact(argv[1], 10, ULONG_MAX, &drive_ul) != E_OK
+        || kstrtoul_exact(argv[2], 10, ULONG_MAX, &lba_ul) != E_OK
+        || kstrtoul_exact(argv[3], 10, ULONG_MAX, &count_ul) != E_OK
+        || (is_write && kstrtoul_exact(argv[4], 0, ULONG_MAX, &fill_ul) != E_OK)
+    ) {
         tty0_puts("usage: readsec [drive] [index] [count]\n");
         tty0_puts("       writesec [drive] [index] [count] [value]\n");
         return 1;
     }
 
-    if (drive_u32 >= PATA_DEVICE_COUNT) {
-        tty0_printf("%s: invalid drive %u (expected 0..3)\n", is_write ? "writesec" : "readsec", drive_u32);
+    if (drive_ul >= PATA_DEVICE_COUNT) {
+        tty0_printf("%s: invalid drive %lu (expected 0..3)\n", is_write ? "writesec" : "readsec", drive_ul);
         return 1;
     }
 
-    if (count_u32 == 0 || count_u32 > UINT8_MAX) {
-        tty0_printf("%s: invalid count %u (expected 1..255)\n", is_write ? "writesec" : "readsec", count_u32);
+    if (lba_ul >= 1 << 28) {
+        tty0_printf("%s: invalid LBA %lu\n", is_write ? "writesec" : "readsec", lba_ul);
         return 1;
     }
 
-    if (is_write && fill_u32 > UINT8_MAX) {
-        tty0_printf("writesec: invalid value %u (expected 0..255)\n", fill_u32);
+    if (count_ul == 0 || count_ul > UINT8_MAX) {
+        tty0_printf("%s: invalid count %lu (expected 1..255)\n", is_write ? "writesec" : "readsec", count_ul);
         return 1;
     }
 
-    uint8_t count = (uint8_t)count_u32;
-    uint8_t fill = (uint8_t)fill_u32;
+    if (is_write && fill_ul > UINT8_MAX) {
+        tty0_printf("writesec: invalid value %lu (expected 0..255)\n", fill_ul);
+        return 1;
+    }
+
+    enum pata_device_index drive = (enum pata_device_index)drive_ul;
+    uint32_t lba = (uint32_t)lba_ul;
+    uint8_t count = (uint8_t)count_ul;
+    uint8_t fill = (uint8_t)fill_ul;
     size_t bytes = (size_t)count * PATA_SECTOR_SIZE;
     void *buf = kmalloc(bytes);
     if (!buf) {
@@ -141,14 +72,14 @@ int shell_cmd_pata(const char *cmd) {
     enum pata_wait_result wait_result = PATA_WAIT_INVALID;
     if (is_write) {
         memset(buf, fill, bytes);
-        token = pata_write_sectors((enum pata_device_index)drive_u32, lba, buf, count);
+        token = pata_write_sectors(drive, lba_ul, buf, count);
     } else {
-        token = pata_read_sectors((enum pata_device_index)drive_u32, lba, buf, count);
+        token = pata_read_sectors(drive, lba_ul, buf, count);
     }
 
     if (token == PATA_INVALID_TOKEN) {
         tty0_printf("%s: submit failed (drive=%u lba=%u count=%u)\n",
-            is_write ? "writesec" : "readsec", drive_u32, lba, count_u32);
+            is_write ? "writesec" : "readsec", drive, lba, count);
         kfree(buf, bytes);
         return 1;
     }
@@ -166,19 +97,19 @@ int shell_cmd_pata(const char *cmd) {
     }
     if (wait_result == PATA_WAIT_IO_FAIL) {
         tty0_printf("%s: io failed (drive=%u lba=%u count=%u)\n",
-            is_write ? "writesec" : "readsec", drive_u32, lba, count_u32);
+            is_write ? "writesec" : "readsec", drive, lba, count);
         kfree(buf, bytes);
         return 1;
     }
 
     if (is_write) {
         tty0_printf("writesec: wrote %u sector(s) to drive=%u lba=%u with %#02x\n",
-            count_u32, drive_u32, lba, fill);
+            count, drive, lba, fill);
     } else {
-        tty0_printf("readsec: drive=%u lba=%u count=%u (%zu bytes)\n", drive_u32, lba, count_u32, bytes);
+        tty0_printf("readsec: drive=%u lba=%u count=%u (%zu bytes)\n", drive, lba, count, bytes);
         shell_hexdump((const unsigned char *)buf, bytes);
     }
 
     kfree(buf, bytes);
-    return 1;
+    return 0;
 }

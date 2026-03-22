@@ -8,3 +8,4 @@
 - [`interrupt-io.md`](interrupt-io.md): 인터럽트/입력/시리얼 IO 경로
 - [`pata.md`](pata.md): PATA(ATA PIO) 드라이버 구조와 요청/완료 모델
 - [`tty.md`](tty.md): `tty0`, framebuffer TTY, UART TTY, 입력 버퍼 경로
+- [`shell.md`](shell.md): 커널 shell 구현

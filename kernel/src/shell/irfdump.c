@@ -6,7 +6,7 @@
 #include <opal/platform/mm/defines.h>
 #include <opal/platform/boot/bootinfo.h>
 
-int shell_cmd_irfdump(void) {
+int shell_cmd_irfdump(int, char **) {
     const struct bootinfo_module *module = kargs_get()->initramfs;
     if (!module) {
         tty0_puts("irfdump: initramfs is not set\n");
@@ -25,5 +25,5 @@ int shell_cmd_irfdump(void) {
         module->begin, module->end, module->name, total_len);
 
     shell_hexdump(ptr, total_len);
-    return 1;
+    return 0;
 }
