@@ -13,7 +13,8 @@
 - PIT IRQ(IRQ0)에서:
   - `g_tick++`
   - `irq_send_eoi(PIC_IRQ_TIMER)`
-  - `schedule()`
+  - `pata_on_timer(g_tick)`로 PATA 요청 timeout을 검사
+  - `sched_on_timer()`로 스케줄러 tick 처리를 진행
 - `timer_get_tick()`은 atomic load로 읽기
 
 ## PS/2 입력 경로
@@ -48,10 +49,12 @@
   - COM1/COM2 IRQ 등록 후 `irq_mode=true`
   - 기본 UART가 있으면 `uart_tty_enable_irqmsg()`도 여기서 함께 호출
   - `uart_try_write()/uart_try_read()`가 ringbuffer 중심으로 동작
+  - `uart_suppress_tx()`로 TX IRQ 펌프를 임시 비활성화할 수 있다
 - TTY 연계:
   - 구현: `kernel/src/tty/uart_tty.c`
   - `uart_tty_init()`이 기본 UART를 `tty0` sub-tty로 등록
   - `uart_tty_enable_irqmsg()`가 `IRQMSG_UART_RX` 핸들러를 등록
   - UART ISR은 RX 바이트를 소프트웨어 RX 큐에 적재한 뒤 `IRQMSG_UART_RX`를 큐잉
   - bottom-half에서 `uart_try_read()`로 바이트를 가져와 `tty0` 입력 경로로 넘긴다
+  - bottom-half local echo는 `'\n'`을 `"\r\n"`로 정규화해서 출력한다
   - `irqmsg_push()` 실패 시 RX 바이트는 UART RX 큐에 남고, 다음 RX IRQ가 와야 다시 소비 기회가 생긴다

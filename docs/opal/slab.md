@@ -43,6 +43,7 @@
 - `slab_get_object_size()`, `slab_get_inuse()`, `slab_get_total()`
 
 ## 6. kmalloc 연계
+- `mm_init()`에서 `buddy_create()` 직후 `kmalloc_init()`을 호출해 슬랩 클래스를 초기화합니다.
 - `kmalloc_init()`은 슬랩 클래스를 `32, 64, 128, 256, 512, 1024` 바이트로 생성합니다.
 - `kmalloc(size)`에서 `size <= 1024`는 가장 가까운 상위 슬랩 클래스로 올림 할당됩니다.
   - 예: `size=1..32 -> 32B slab`, `size=33..64 -> 64B slab`
