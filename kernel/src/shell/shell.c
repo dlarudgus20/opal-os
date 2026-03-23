@@ -22,7 +22,7 @@
 #define UNAME_MSG "opal-os ("OPAL_PLATFORM" "OPAL_CONFIG")"
 #define SHELL_MAX_ARGV 16
 
-typedef int (*shell_handler_args_t)(char *args);
+typedef int (*shell_handler_raw_t)(char *args);
 typedef int (*shell_handler_argv_t)(int argc, char **argv);
 
 struct shell_command {
@@ -30,7 +30,7 @@ struct shell_command {
     const char *help;
     bool argv;
     union {
-        shell_handler_args_t args_handler;
+        shell_handler_raw_t raw_handler;
         shell_handler_argv_t argv_handler;
     };
 };
@@ -138,7 +138,7 @@ static int cmd_unit_test_run_heavy(int argc, char **argv);
 #endif
 
 static const struct shell_command g_commands[] = {
-#define CMD_ARGS(name, help, fn) { (name), (help), false, { .args_handler = (fn) } }
+#define CMD_RAW(name, help, fn) { (name), (help), false, { .raw_handler = (fn) } }
 #define CMD_ARGV(name, help, fn) { (name), (help), true, { .argv_handler = (fn) } }
     CMD_ARGV("help",        "show this message",                    cmd_help),
 #ifdef OPAL_UNIT_TEST
@@ -146,10 +146,10 @@ static const struct shell_command g_commands[] = {
     CMD_ARGV("uheavy",      "run heavy unit tests",                 cmd_unit_test_run_heavy),
 #endif
     CMD_ARGV("uname",       "show kernel name",                     cmd_uname),
-    CMD_ARGS("echo",        "print echo",                           cmd_echo),
+    CMD_RAW("echo",         "print echo",                           cmd_echo),
     CMD_ARGV("exit",        "logout",                               cmd_exit),
     CMD_ARGV("halt",        "halt system",                          cmd_halt),
-    CMD_ARGS("klog",        "klog (level) [message]",               cmd_klog),
+    CMD_RAW("klog",         "klog (level) [message]",               cmd_klog),
     CMD_ARGV("kmsg",        "read klogs",                           cmd_kmsg),
     CMD_ARGV("mmap",        "log memory map",                       cmd_mmap),
     CMD_ARGV("ptable",      "show pagetable",                       cmd_ptable),
@@ -164,6 +164,7 @@ static const struct shell_command g_commands[] = {
     CMD_ARGV("floattest",   "run floating-point consistency test",  shell_cmd_floattest),
     CMD_ARGV("readsec",     "read sectors: readsec D L C",          shell_cmd_rwsec),
     CMD_ARGV("writesec",    "write sectors: writesec D L C V",      shell_cmd_rwsec),
+    CMD_ARGV("testrwsec",   "test rw sectors: testrwsec D (L)",     shell_cmd_testrwsec),
 };
 
 static const struct shell_command *find_command(const char *name, size_t len) {
@@ -197,7 +198,7 @@ static int handle_command(char *line) {
     }
 
     if (!command->argv) {
-        return command->args_handler(skip_spaces(p));
+        return command->raw_handler(skip_spaces(p));
     }
 
     char *argv[SHELL_MAX_ARGV];

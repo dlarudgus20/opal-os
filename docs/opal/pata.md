@@ -23,6 +23,7 @@
 - 비동기 제출:
   - `pata_read_sectors(index, lba, buf, sectors)`
   - `pata_write_sectors(index, lba, buf, sectors)`
+  - `sectors`는 `uint32_t`이며, 단일 요청에서 256섹터를 넘길 수 있다.
   - 반환값: `pata_token_t` (`PATA_INVALID_TOKEN`이면 제출 실패)
 - 완료 대기:
   - `pata_wait(token, timeout)`
@@ -39,8 +40,9 @@
   - `PATA_PHASE_WRITE_FLUSH`
   - `PATA_PHASE_COMPLETE`
 - write 경로:
+  - 내부적으로 ATA 커맨드는 최대 256섹터 단위로 분할 발행한다 (`SECTOR_COUNT=0`은 256 의미).
   - command 발행 후 첫 sector는 `DRQ` 확인 뒤 즉시 PIO write
-  - 마지막 sector 이후 `CACHE FLUSH`를 별도 phase에서 발행
+  - write 요청 전체가 끝난 뒤 `CACHE FLUSH`를 1회 발행한다.
 
 ## IRQ / 타이머 연계
 - 채널 IRQ 핸들러는 status를 읽고 phase별 데이터 전송/완료 처리를 진행한다.

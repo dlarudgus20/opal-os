@@ -5,13 +5,11 @@
 #include <opal/mm/slab.h>
 #include <opal/mm/kmalloc.h>
 #include <opal/locks/irqlock.h>
-#include <opal/platform/mm/defines.h>
 
 #define SLAB_MIN_POW    5   // 32 to 1024
 #define SLAB_MAX_POW    10
 
 #define SLAB_ORDERS     (SLAB_MAX_POW - SLAB_MIN_POW + 1)
-#define MAX_SIZE (PAGE_SIZE * 32)
 
 static struct slab g_slabs[SLAB_ORDERS];
 
@@ -54,7 +52,7 @@ void *kmalloc(size_t size) {
         return NULL;
     }
 
-    assert(size <= MAX_SIZE, "invalid size");
+    assert(size <= KMALLOC_MAX_SIZE, "invalid size");
 
     const size_t slab_max = max_slab_size();
     if (size <= slab_max) {
@@ -83,7 +81,7 @@ void kfree(void *ptr, size_t size) {
         return;
     }
 
-    assert(size <= MAX_SIZE, "invalid size");
+    assert(size <= KMALLOC_MAX_SIZE, "invalid size");
 
     const size_t slab_max = max_slab_size();
     if (size <= slab_max) {

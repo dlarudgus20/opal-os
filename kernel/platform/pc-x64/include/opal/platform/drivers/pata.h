@@ -29,7 +29,7 @@ typedef uint32_t pata_token_t;
 struct pata_device {
     bool present;
     bool is_atapi;
-    uint8_t channel;
+    uint8_t port;
     uint8_t drive;
     uint32_t lba28_sectors;
     char serial[21];
@@ -40,8 +40,8 @@ void pata_init(void);
 void pata_on_timer(uint64_t now_tick);
 [[nodiscard]] const struct pata_device *pata_get_device(enum pata_device_index index);
 
-[[nodiscard]] pata_token_t pata_read_sectors(enum pata_device_index index, uint32_t lba, void *buf, uint8_t sectors);
-[[nodiscard]] pata_token_t pata_write_sectors(enum pata_device_index index, uint32_t lba, const void *buf, uint8_t sectors);
+[[nodiscard]] pata_token_t pata_read_sectors(enum pata_device_index index, uint32_t lba, void *buf, uint32_t sectors);
+[[nodiscard]] pata_token_t pata_write_sectors(enum pata_device_index index, uint32_t lba, const void *buf, uint32_t sectors);
 
 [[nodiscard]] enum pata_wait_result pata_wait(pata_token_t token, uint64_t timeout);
 
