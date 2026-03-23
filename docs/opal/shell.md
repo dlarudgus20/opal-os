@@ -33,7 +33,7 @@
 - `CMD_ARGV`:
   - `parse_argv()`를 통해 `argc/argv` 생성 후 핸들러 호출
   - quote/escape를 처리하는 명령에 사용
-- `CMD_ARGS`:
+- `CMD_RAW`:
   - 명령명 뒤 raw 문자열을 그대로 핸들러에 전달
   - 현재 `echo`, `klog`에 사용
 

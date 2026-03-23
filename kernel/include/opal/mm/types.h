@@ -1,7 +1,7 @@
 #ifndef OPAL_MM_TYPES_H
 #define OPAL_MM_TYPES_H
 
-#include <stddef.h>
+#include <kc/span.h>
 
 enum {
     // boot mmap should report useable memory areas as this type.
@@ -16,10 +16,5 @@ enum {
 #define PFN_INVALID VIRT_ADDR_MAX
 
 typedef virt_addr_t pfn_t;
-
-struct span {
-    void *ptr;
-    size_t size;
-};
 
 #endif

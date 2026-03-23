@@ -162,9 +162,10 @@ static const struct shell_command g_commands[] = {
     CMD_ARGV("priotest",    "run priority scheduler smoke test",    shell_cmd_priotest),
     CMD_ARGV("fputest",     "run floating-point quick test",        shell_cmd_fputest),
     CMD_ARGV("floattest",   "run floating-point consistency test",  shell_cmd_floattest),
+    CMD_ARGV("lsblk",       "list block devices",                   shell_cmd_lsblk),
     CMD_ARGV("readsec",     "read sectors: readsec D L C",          shell_cmd_rwsec),
     CMD_ARGV("writesec",    "write sectors: writesec D L C V",      shell_cmd_rwsec),
-    CMD_ARGV("testrwsec",   "test rw sectors: testrwsec D (L)",     shell_cmd_testrwsec),
+    CMD_ARGV("testrwsec",   "test rw sectors: testrwsec",           shell_cmd_testrwsec),
 };
 
 static const struct shell_command *find_command(const char *name, size_t len) {

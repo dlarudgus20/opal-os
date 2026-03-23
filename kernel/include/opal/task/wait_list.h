@@ -5,6 +5,7 @@
 
 #include <opal/timer.h>
 
+#define TIMEOUT_IMMEDIATE 0
 #define TIMEOUT_INFINITY UINT64_MAX
 
 struct wait_list {

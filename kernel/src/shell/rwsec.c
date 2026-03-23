@@ -3,20 +3,21 @@
 #include <kc/stdlib.h>
 
 #include <opal/tty.h>
+#include <opal/fs/block_device.h>
 #include <opal/mm/mm.h>
 #include <opal/mm/kmalloc.h>
 #include <opal/task/wait_list.h>
 #include <opal/shell/utils.h>
-#include <opal/platform/drivers/pata.h>
 
 enum {
+    BLOCK_SECTOR_SIZE = 512,
     TESTRWSEC_ORDER = 8,
     TESTRWSEC_SECTORS = 2000,
     TESTRWSEC_PATTERN_A = 0x5a,
     TESTRWSEC_PATTERN_B = 0xa5,
 };
 
-static_assert((TESTRWSEC_SECTORS * PATA_SECTOR_SIZE) <= (PAGE_SIZE << TESTRWSEC_ORDER));
+static_assert((TESTRWSEC_SECTORS * BLOCK_SECTOR_SIZE) <= (PAGE_SIZE << TESTRWSEC_ORDER));
 
 int shell_cmd_rwsec(int argc, char **argv) {
     bool is_write = false;
@@ -24,7 +25,6 @@ int shell_cmd_rwsec(int argc, char **argv) {
     unsigned long lba_ul = 0;
     unsigned long count_ul = 0;
     unsigned long fill_ul = 0;
-    const size_t max_count = KMALLOC_MAX_SIZE / PATA_SECTOR_SIZE;
 
     if (argc > 0 && argv[0]) {
         if (argv[0][0] == 'r') {
@@ -48,12 +48,21 @@ int shell_cmd_rwsec(int argc, char **argv) {
         return 1;
     }
 
-    if (drive_ul >= PATA_DEVICE_COUNT) {
-        tty0_printf("%s: invalid drive %lu (expected 0..3)\n", is_write ? "writesec" : "readsec", drive_ul);
+    struct block_device *dev = block_device_get((size_t)drive_ul);
+    if (!dev) {
+        size_t count = block_device_count();
+        tty0_printf("%s: invalid device %lu (expected 0..%zu)\n",
+            is_write ? "writesec" : "readsec", drive_ul, count ? count - 1 : 0);
         return 1;
     }
 
-    if (lba_ul >= 1 << 28) {
+    if (dev->sector_size == 0) {
+        tty0_printf("%s: invalid sector size for dev=%lu\n", is_write ? "writesec" : "readsec", drive_ul);
+        return 1;
+    }
+    const size_t max_count = KMALLOC_MAX_SIZE / dev->sector_size;
+
+    if (lba_ul > UINT32_MAX) {
         tty0_printf("%s: invalid LBA %lu\n", is_write ? "writesec" : "readsec", lba_ul);
         return 1;
     }
@@ -69,56 +78,55 @@ int shell_cmd_rwsec(int argc, char **argv) {
         return 1;
     }
 
-    enum pata_device_index drive = (enum pata_device_index)drive_ul;
     uint32_t lba = (uint32_t)lba_ul;
     uint32_t count = (uint32_t)count_ul;
     uint8_t fill = (uint8_t)fill_ul;
-    size_t bytes = (size_t)count * PATA_SECTOR_SIZE;
+    if ((uint64_t)lba + (uint64_t)count > dev->sector_count) {
+        tty0_printf("%s: range out of bounds (dev=%lu lba=%u count=%u sectors=%zu)\n",
+            is_write ? "writesec" : "readsec", drive_ul, lba, count, dev->sector_count);
+        return 1;
+    }
+
+    size_t bytes = (size_t)count * dev->sector_size;
     void *buf = kmalloc(bytes);
     if (!buf) {
         tty0_printf("%s: allocation failed (%zu bytes)\n", is_write ? "writesec" : "readsec", bytes);
         return 1;
     }
 
-    pata_token_t token = PATA_INVALID_TOKEN;
-    enum pata_wait_result wait_result = PATA_WAIT_INVALID;
+    struct block_request *req;
+    fs_status_t io_result = FS_OK;
     if (is_write) {
         memset(buf, fill, bytes);
-        token = pata_write_sectors(drive, lba, buf, count);
+        req = block_device_write(dev, lba, count, buf);
     } else {
-        token = pata_read_sectors(drive, lba, buf, count);
+        req = block_device_read(dev, lba, count, buf);
     }
 
-    if (token == PATA_INVALID_TOKEN) {
-        tty0_printf("%s: submit failed (drive=%u lba=%u count=%u)\n",
-            is_write ? "writesec" : "readsec", drive, lba, count);
+    if (!req) {
+        tty0_printf("%s: submit failed (dev=%lu lba=%u count=%u)\n",
+            is_write ? "writesec" : "readsec", drive_ul, lba, count);
         kfree(buf, bytes);
         return 1;
     }
 
-    wait_result = pata_wait(token, TIMEOUT_INFINITY);
-    if (wait_result == PATA_WAIT_TIMEOUT) {
+    if (!block_device_wait_request(dev, req, TIMEOUT_INFINITY, &io_result)) {
         tty0_printf("%s: timeout\n", is_write ? "writesec" : "readsec");
         kfree(buf, bytes);
         return 1;
     }
-    if (wait_result == PATA_WAIT_INVALID) {
-        tty0_printf("%s: invalid token\n", is_write ? "writesec" : "readsec");
-        kfree(buf, bytes);
-        return 1;
-    }
-    if (wait_result == PATA_WAIT_IO_FAIL) {
-        tty0_printf("%s: io failed (drive=%u lba=%u count=%u)\n",
-            is_write ? "writesec" : "readsec", drive, lba, count);
+    if (io_result != FS_OK) {
+        tty0_printf("%s: io failed (dev=%lu lba=%u count=%u status=%d)\n",
+            is_write ? "writesec" : "readsec", drive_ul, lba, count, io_result);
         kfree(buf, bytes);
         return 1;
     }
 
     if (is_write) {
-        tty0_printf("writesec: wrote %u sector(s) to drive=%u lba=%u with %#02x\n",
-            count, drive, lba, fill);
+        tty0_printf("writesec: wrote %u sector(s) to dev=%lu lba=%u with %#02x\n",
+            count, drive_ul, lba, fill);
     } else {
-        tty0_printf("readsec: drive=%u lba=%u count=%u (%zu bytes)\n", drive, lba, count, bytes);
+        tty0_printf("readsec: dev=%lu lba=%u count=%u (%zu bytes)\n", drive_ul, lba, count, bytes);
         shell_hexdump((const unsigned char *)buf, bytes);
     }
 
@@ -130,32 +138,29 @@ static int submit_and_wait(
     const char *cmd_name,
     const char *phase,
     bool is_write,
-    enum pata_device_index drive,
+    struct block_device *dev,
+    unsigned long dev_index,
     uint32_t lba,
     void *buf,
     uint32_t count
 ) {
-    pata_token_t token = is_write
-        ? pata_write_sectors(drive, lba, buf, count)
-        : pata_read_sectors(drive, lba, buf, count);
-    if (token == PATA_INVALID_TOKEN) {
-        tty0_printf("%s: %s submit failed (drive=%u lba=%u count=%u)\n",
-            cmd_name, phase, drive, lba, count);
+    struct block_request *req = is_write
+        ? block_device_write(dev, lba, count, buf)
+        : block_device_read(dev, lba, count, buf);
+    if (!req) {
+        tty0_printf("%s: %s submit failed (dev=%lu lba=%u count=%u)\n",
+            cmd_name, phase, dev_index, lba, count);
         return 1;
     }
 
-    enum pata_wait_result wait_result = pata_wait(token, TIMEOUT_INFINITY);
-    if (wait_result == PATA_WAIT_TIMEOUT) {
+    fs_status_t io_result = FS_OK;
+    if (!block_device_wait_request(dev, req, TIMEOUT_INFINITY, &io_result)) {
         tty0_printf("%s: %s timeout\n", cmd_name, phase);
         return 1;
     }
-    if (wait_result == PATA_WAIT_INVALID) {
-        tty0_printf("%s: %s invalid token\n", cmd_name, phase);
-        return 1;
-    }
-    if (wait_result == PATA_WAIT_IO_FAIL) {
-        tty0_printf("%s: %s io failed (drive=%u lba=%u count=%u)\n",
-            cmd_name, phase, drive, lba, count);
+    if (io_result != FS_OK) {
+        tty0_printf("%s: %s io failed (dev=%lu lba=%u count=%u status=%d)\n",
+            cmd_name, phase, dev_index, lba, count, io_result);
         return 1;
     }
 
@@ -180,43 +185,45 @@ static int submit_and_wait(
 int shell_cmd_testrwsec(int argc, char **argv) {
     unsigned long drive_ul = 0;
     unsigned long lba_ul = 0;
-
     if (argc != 2 && argc != 3) {
-        tty0_puts("usage: testrwsec [drive] [lba]\n");
+        tty0_puts("usage: testrwsec [drive] (lba)\n");
         return 1;
     }
 
-    if (kstrtoul_exact(argv[1], 10, ULONG_MAX, &drive_ul) != E_OK || drive_ul >= PATA_DEVICE_COUNT) {
-        tty0_printf("testrwsec: invalid drive %lu (expected 0..3)\n", drive_ul);
+    if (kstrtoul_exact(argv[1], 10, ULONG_MAX, &drive_ul) != E_OK) {
+        tty0_printf("testrwsec: invalid drive\n");
         return 1;
     }
     if (argc == 3 && kstrtoul_exact(argv[2], 10, ULONG_MAX, &lba_ul) != E_OK) {
-        tty0_printf("testrwsec: invalid LBA %lu\n", lba_ul);
-        return 1;
-    }
-    if (lba_ul >= (1UL << 28)) {
-        tty0_printf("testrwsec: invalid LBA %lu\n", lba_ul);
+        tty0_printf("testrwsec: invalid LBA\n");
         return 1;
     }
 
-    enum pata_device_index drive = (enum pata_device_index)drive_ul;
-    uint32_t lba = (uint32_t)lba_ul;
-
-    const struct pata_device *dev = pata_get_device(drive);
+    struct block_device *dev = block_device_get((size_t)drive_ul);
     if (!dev) {
-        tty0_printf("testrwsec: drive=%u is not present\n", drive);
+        size_t count = block_device_count();
+        tty0_printf("testrwsec: invalid device %lu (expected 0..%zu)\n",
+            drive_ul, count ? count - 1 : 0);
         return 1;
     }
-    if (dev->is_atapi) {
-        tty0_printf("testrwsec: drive=%u is atapi (not supported)\n", drive);
+    if (lba_ul >= dev->sector_count) {
+        tty0_printf("testrwsec: invalid LBA %lu\n", lba_ul);
         return 1;
     }
+
+    if (dev->sector_size != BLOCK_SECTOR_SIZE) {
+        tty0_printf("testrwsec: unsupported sector size %zu (expected %u)\n",
+            dev->sector_size, (unsigned)BLOCK_SECTOR_SIZE);
+        return 1;
+    }
+
+    uint32_t lba = (uint32_t)lba_ul;
 
     const uint32_t count = TESTRWSEC_SECTORS;
     uint64_t end = (uint64_t)lba + (uint64_t)count;
-    if (end > dev->lba28_sectors) {
-        tty0_printf("testrwsec: range out of bounds (drive=%u lba=%u count=%u sectors=%u)\n",
-            drive, lba, count, dev->lba28_sectors);
+    if (end > dev->sector_count) {
+        tty0_printf("testrwsec: range out of bounds (dev=%lu lba=%u count=%u sectors=%zu)\n",
+            drive_ul, lba, count, dev->sector_count);
         return 1;
     }
 
@@ -227,17 +234,17 @@ int shell_cmd_testrwsec(int argc, char **argv) {
     }
 
     unsigned char *buf = (unsigned char *)mm_pfn_to_ptr(pfn);
-    size_t bytes = (size_t)count * PATA_SECTOR_SIZE;
+    size_t bytes = (size_t)count * BLOCK_SECTOR_SIZE;
     int ret = 1;
 
-    tty0_printf("testrwsec: drive=%u lba=%u count=%u bytes=%zu\n", drive, lba, count, bytes);
+    tty0_printf("testrwsec: dev=%lu lba=%u count=%u bytes=%zu\n", drive_ul, lba, count, bytes);
 
     memset(buf, TESTRWSEC_PATTERN_A, bytes);
-    if (submit_and_wait("testrwsec", "write pattern A", true, drive, lba, buf, count) != 0) {
+    if (submit_and_wait("testrwsec", "write pattern A", true, dev, drive_ul, lba, buf, count) != 0) {
         goto exit;
     }
     memset(buf, 0, bytes);
-    if (submit_and_wait("testrwsec", "read pattern A", false, drive, lba, buf, count) != 0) {
+    if (submit_and_wait("testrwsec", "read pattern A", false, dev, drive_ul, lba, buf, count) != 0) {
         goto exit;
     }
     size_t bad_idx = 0;
@@ -249,11 +256,11 @@ int shell_cmd_testrwsec(int argc, char **argv) {
     }
 
     memset(buf, TESTRWSEC_PATTERN_B, bytes);
-    if (submit_and_wait("testrwsec", "write pattern B", true, drive, lba, buf, count) != 0) {
+    if (submit_and_wait("testrwsec", "write pattern B", true, dev, drive_ul, lba, buf, count) != 0) {
         goto exit;
     }
     memset(buf, 0, bytes);
-    if (submit_and_wait("testrwsec", "read pattern B", false, drive, lba, buf, count) != 0) {
+    if (submit_and_wait("testrwsec", "read pattern B", false, dev, drive_ul, lba, buf, count) != 0) {
         goto exit;
     }
     if (!verify_pattern(buf, bytes, TESTRWSEC_PATTERN_B, &bad_idx, &bad_val)) {
@@ -262,7 +269,7 @@ int shell_cmd_testrwsec(int argc, char **argv) {
         goto exit;
     }
 
-    tty0_printf("testrwsec: PASS (2 patterns, %d sectors)\n", TESTRWSEC_SECTORS);
+    tty0_printf("testrwsec: PASS (2 patterns, %u sectors)\n", TESTRWSEC_SECTORS);
     ret = 0;
 
 exit:

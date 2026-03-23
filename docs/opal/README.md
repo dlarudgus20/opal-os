@@ -6,6 +6,7 @@
 - [`slab.md`](slab.md): 슬랩 오브젝트 할당기
 - [`task.md`](task.md): 태스크/스케줄러
 - [`interrupt-io.md`](interrupt-io.md): 인터럽트/입력/시리얼 IO 경로
+- [`fs/block_device.md`](fs/block_device.md): block device 공통 계층과 요청 큐 모델
 - [`pata.md`](pata.md): PATA(ATA PIO) 드라이버 구조와 요청/완료 모델
 - [`tty.md`](tty.md): `tty0`, framebuffer TTY, UART TTY, 입력 버퍼 경로
 - [`shell.md`](shell.md): 커널 shell 구현
