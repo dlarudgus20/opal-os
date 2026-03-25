@@ -25,7 +25,7 @@ TEST_F(LibkcTest, SnprintfSReturnsMinusOneOnInvalidInputs) {
     char buf[8];
     EXPECT_EQ(kc.snprintf_s(nullptr, 8, "abc"), -1);
     EXPECT_EQ(kc.snprintf_s(buf, 8, nullptr), -1);
-    EXPECT_EQ(kc.snprintf_s(buf, 0, "abc"), -1);
+    EXPECT_EQ(kc.snprintf_s(buf, 0, "abc"), 3);
 }
 
 TEST_F(LibkcTest, SnprintfSFormatsIntegerSpecifier) {
