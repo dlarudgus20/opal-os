@@ -44,12 +44,16 @@
 
 ## 6. kmalloc 연계
 - `mm_init()`에서 `buddy_create()` 직후 `kmalloc_init()`을 호출해 슬랩 클래스를 초기화합니다.
-- `kmalloc_init()`은 슬랩 클래스를 `32, 64, 128, 256, 512, 1024` 바이트로 생성합니다.
-- `kzalloc(size)`에서 `size <= 1024`는 가장 가까운 상위 슬랩 클래스로 올림 할당됩니다.
-  - 예: `size=1..32 -> 32B slab`, `size=33..64 -> 64B slab`
-  - 할당된 메모리는 `slab_alloc`에 의해 자동으로 zero-fill 됩니다.
-- `size > 1024`는 버디 페이지 할당 경로를 사용합니다.
-- `kzalloc/kfree` 모두 `size <= MAX_SIZE(PAGE_SIZE * 32)`를 전제로 합니다.
+- `kmalloc_init()`은 슬랩 메타데이터(`slab_metadata.h`) 기반 클래스를 사용합니다.
+  - 기본 후보: `32, 48, 64, 80, 96, 128, 160, 192, 256, 384, 512, 768, 1024`
+  - 실제 payload는 각 후보를 `SLOT_EXTEND(...)`로 보정한 값입니다.
+- `kzalloc(size)`, `kzalloc_span(size)`는 가장 가까운 상위 슬랩 클래스로 올림 할당됩니다.
+  - `kzalloc_span(size)`는 실제로 할당된 메모리의 크기 정보까지 포함해 `struct span`으로 반환합니다.
+- `kfree(ptr, size)`, `kfree_span(span)`은 할당된 메모리를 해제합니다.
+- _span 유무는 인터페이스만 다를 뿐 해제/할당 경로는 동일해서, 포인터를 어느 쪽으로 받았든 크기 정보만 맞으면
+  `kzalloc`/`kfree`와 `kzalloc_span`/`kfree_span`을 교차해 사용해도 동작은 같습니다.
+- 최대 슬랩 클래스보다 큰 `size` 할당에는 버디 페이지 할당 경로를 사용합니다.
+- `kzalloc`/`kfree`는 `size > KMALLOC_MAX_SIZE` 요청을 유효하지 않은 입력으로 보고 거부합니다.
 
 ## 7. 테스트
 - 테스트 파일: `kernel/src/mm/slab_test.c`

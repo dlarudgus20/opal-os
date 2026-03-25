@@ -4,6 +4,7 @@
 - [`boot.md`](boot.md): 부팅 초기화 순서와 부트 인자 파싱
 - [`buddy.md`](buddy.md): 버디 페이지 할당기
 - [`slab.md`](slab.md): 슬랩 오브젝트 할당기
+- [`dynarray.md`](dynarray.md): 커널 동적 배열 버퍼(kmalloc 기반)
 - [`task/task.md`](task/task.md): 태스크/스케줄러
 - [`task/coroutine.md`](task/coroutine.md): 코루틴 워커 큐와 핸들러 상태 전이 계약
 - [`interrupt-io.md`](interrupt-io.md): 인터럽트/입력/시리얼 IO 경로

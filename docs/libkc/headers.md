@@ -48,26 +48,26 @@
   - `static inline bool isdigit(char ch)`
   - `static inline bool isspace(char ch)`
 
-## `errno.h`
+## `kerrno.h`
 - 목적:
   - 표준 C `errno` 전역 변수 대신, 함수 반환형으로 사용할 최소 에러 코드 집합 제공
 - 타입:
-  - `typedef enum errno errno_t;`
+  - `typedef enum kerrno kerrno_t;`
 - 현재 에러 코드:
-  - `E_OK = 0`: 성공
-  - `EINVAL`: 인자/형식 오류
-  - `ERANGE`: 값 범위 초과
+  - `KE_OK = 0`: 성공
+  - `KEINVAL`: 인자/형식 오류
+  - `KERANGE`: 값 범위 초과
 
 ## 파싱 함수 규약 (`kstrtoul*`)
 - `kstrtoul`:
   - 선행 공백을 건너뛴다.
-  - `+` 부호는 허용, `-` 부호는 `EINVAL`.
+  - `+` 부호는 허용, `-` 부호는 `KEINVAL`.
   - `base=0`이면 접두사/선행 0에 따라 진법을 자동 선택한다.
-  - 유효 숫자가 하나도 없으면 `EINVAL`.
-  - overflow 시 `ERANGE`.
-  - 성공 시 `E_OK`.
+  - 유효 숫자가 하나도 없으면 `KEINVAL`.
+  - overflow 시 `KERANGE`.
+  - 성공 시 `KE_OK`.
 - `kstrtoul_exact`:
   - 내부적으로 `kstrtoul`을 호출한다.
-  - 파싱 이후 trailing 문자가 있으면 `EINVAL`.
-  - 파싱 결과가 `max`보다 크면 `ERANGE`.
-  - 정상 완료 시 `E_OK`.
+  - 파싱 이후 trailing 문자가 있으면 `KEINVAL`.
+  - 파싱 결과가 `max`보다 크면 `KERANGE`.
+  - 정상 완료 시 `KE_OK`.

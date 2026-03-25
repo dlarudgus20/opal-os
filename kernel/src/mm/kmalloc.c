@@ -1,4 +1,5 @@
 #include <kc/assert.h>
+#include <kc/string.h>
 
 #include <opal/mm/mm.h>
 #include <opal/mm/pfn.h>
@@ -81,7 +82,14 @@ struct span kzalloc_span(size_t size) {
     const uint8_t order = page_order_for_size(size);
     assert(order < PFN_VALID_BIT_WIDTH, "invalid size");
 
-    return SPAN(mm_alloc_page_ptr(order), PAGE_SIZE << order);
+    void *ptr = mm_alloc_page_ptr(order);
+    if (!ptr) {
+        return SPAN_NULL;
+    }
+
+    size_t alloc_size = PAGE_SIZE << order;
+    memset(ptr, 0, alloc_size);
+    return SPAN(ptr, alloc_size);
 }
 
 void *kzalloc(size_t size) {

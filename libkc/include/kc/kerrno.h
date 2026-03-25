@@ -1,5 +1,5 @@
-#ifndef KC_ERRNO_H
-#define KC_ERRNO_H
+#ifndef KC_KERRNO_H
+#define KC_KERRNO_H
 
 enum kerrno {
     KE_OK = 0,

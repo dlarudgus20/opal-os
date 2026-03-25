@@ -4,7 +4,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include <kc/errno.h>
+#include <kc/kerrno.h>
 
 static inline uint32_t align_ceil_u32_p2(uint32_t x, uint32_t align) {
     const uint32_t mask = align - 1;
