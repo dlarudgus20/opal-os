@@ -3,21 +3,21 @@
 #include <kc/stdlib.h>
 
 #include <opal/tty.h>
-#include <opal/fs/block_device.h>
+#include <opal/fs/disk.h>
 #include <opal/mm/mm.h>
 #include <opal/mm/kmalloc.h>
 #include <opal/task/wait_list.h>
 #include <opal/shell/utils.h>
 
 enum {
-    BLOCK_SECTOR_SIZE = 512,
+    SECTOR_SIZE = 512,
     TESTRWSEC_ORDER = 8,
     TESTRWSEC_SECTORS = 2000,
     TESTRWSEC_PATTERN_A = 0x5a,
     TESTRWSEC_PATTERN_B = 0xa5,
 };
 
-static_assert((TESTRWSEC_SECTORS * BLOCK_SECTOR_SIZE) <= (PAGE_SIZE << TESTRWSEC_ORDER));
+static_assert((TESTRWSEC_SECTORS * SECTOR_SIZE) <= (PAGE_SIZE << TESTRWSEC_ORDER));
 
 int shell_cmd_rwsec(int argc, char **argv) {
     bool is_write = false;
@@ -48,9 +48,9 @@ int shell_cmd_rwsec(int argc, char **argv) {
         return 1;
     }
 
-    struct block_device *dev = block_device_get((size_t)drive_ul);
+    struct disk *dev = disk_get((size_t)drive_ul);
     if (!dev) {
-        size_t count = block_device_count();
+        size_t count = disk_count();
         tty0_printf("%s: invalid device %lu (expected 0..%zu)\n",
             is_write ? "writesec" : "readsec", drive_ul, count ? count - 1 : 0);
         return 1;
@@ -94,13 +94,13 @@ int shell_cmd_rwsec(int argc, char **argv) {
         return 1;
     }
 
-    struct block_request *req;
+    struct disk_request *req;
     fs_status_t io_result = FS_OK;
     if (is_write) {
         memset(buf, fill, bytes);
-        req = block_device_write(dev, lba, count, buf);
+        req = disk_write(dev, lba, count, buf);
     } else {
-        req = block_device_read(dev, lba, count, buf);
+        req = disk_read(dev, lba, count, buf);
     }
 
     if (!req) {
@@ -110,7 +110,7 @@ int shell_cmd_rwsec(int argc, char **argv) {
         return 1;
     }
 
-    if (!block_device_wait_request(dev, req, TIMEOUT_INFINITY, &io_result)) {
+    if (!disk_wait_request(dev, req, TIMEOUT_INFINITY, &io_result)) {
         tty0_printf("%s: timeout\n", is_write ? "writesec" : "readsec");
         kfree(buf, bytes);
         return 1;
@@ -138,15 +138,15 @@ static int submit_and_wait(
     const char *cmd_name,
     const char *phase,
     bool is_write,
-    struct block_device *dev,
+    struct disk *dev,
     unsigned long dev_index,
     uint32_t lba,
     void *buf,
     uint32_t count
 ) {
-    struct block_request *req = is_write
-        ? block_device_write(dev, lba, count, buf)
-        : block_device_read(dev, lba, count, buf);
+    struct disk_request *req = is_write
+        ? disk_write(dev, lba, count, buf)
+        : disk_read(dev, lba, count, buf);
     if (!req) {
         tty0_printf("%s: %s submit failed (dev=%lu lba=%u count=%u)\n",
             cmd_name, phase, dev_index, lba, count);
@@ -154,7 +154,7 @@ static int submit_and_wait(
     }
 
     fs_status_t io_result = FS_OK;
-    if (!block_device_wait_request(dev, req, TIMEOUT_INFINITY, &io_result)) {
+    if (!disk_wait_request(dev, req, TIMEOUT_INFINITY, &io_result)) {
         tty0_printf("%s: %s timeout\n", cmd_name, phase);
         return 1;
     }
@@ -199,9 +199,9 @@ int shell_cmd_testrwsec(int argc, char **argv) {
         return 1;
     }
 
-    struct block_device *dev = block_device_get((size_t)drive_ul);
+    struct disk *dev = disk_get((size_t)drive_ul);
     if (!dev) {
-        size_t count = block_device_count();
+        size_t count = disk_count();
         tty0_printf("testrwsec: invalid device %lu (expected 0..%zu)\n",
             drive_ul, count ? count - 1 : 0);
         return 1;
@@ -211,9 +211,9 @@ int shell_cmd_testrwsec(int argc, char **argv) {
         return 1;
     }
 
-    if (dev->sector_size != BLOCK_SECTOR_SIZE) {
+    if (dev->sector_size != SECTOR_SIZE) {
         tty0_printf("testrwsec: unsupported sector size %zu (expected %u)\n",
-            dev->sector_size, (unsigned)BLOCK_SECTOR_SIZE);
+            dev->sector_size, (unsigned)SECTOR_SIZE);
         return 1;
     }
 
@@ -234,7 +234,7 @@ int shell_cmd_testrwsec(int argc, char **argv) {
     }
 
     unsigned char *buf = (unsigned char *)mm_pfn_to_ptr(pfn);
-    size_t bytes = (size_t)count * BLOCK_SECTOR_SIZE;
+    size_t bytes = (size_t)count * SECTOR_SIZE;
     int ret = 1;
 
     tty0_printf("testrwsec: dev=%lu lba=%u count=%u bytes=%zu\n", drive_ul, lba, count, bytes);

@@ -4,7 +4,7 @@
 
 #include <opal/klog.h>
 #include <opal/timer.h>
-#include <opal/fs/block_device.h>
+#include <opal/fs/disk.h>
 #include <opal/locks/irqlock.h>
 #include <opal/platform/asm.h>
 #include <opal/platform/irq_device.h>
@@ -97,8 +97,8 @@ union pata_identify {
 
 static_assert(sizeof(union pata_identify) == 512);
 
-struct pata_device {
-    struct block_device dev;
+struct pata_disk {
+    struct disk disk;
 
     bool present;
     bool is_atapi;
@@ -114,11 +114,11 @@ struct pata_port {
     uint8_t irq_line;
 
     bool active;
-    struct block_req_queue req_queue;
-    struct block_request req_buffer[REQ_SLOTS];
+    struct disk_req_queue req_queue;
+    struct disk_request req_buffer[REQ_SLOTS];
 
-    struct pata_device *active_dev;
-    struct block_request *active_req;
+    struct pata_disk *active_disk;
+    struct disk_request *active_req;
     enum pata_port_phase phase;
     uint16_t next_sector;
     uint16_t cmd_sectors;
@@ -139,7 +139,7 @@ static struct pata_port g_ports[PATA_PORT_COUNT] = {
     },
 };
 
-static struct pata_device g_devices[PATA_DEVICE_COUNT];
+static struct pata_disk g_devices[PATA_DEVICE_COUNT];
 
 [[nodiscard]] static uint8_t io_read8(const struct pata_port *port, uint8_t reg) {
     return in8(port->io_base + reg);
@@ -226,7 +226,7 @@ static void words_to_chars(char *out, const uint16_t *id_words, int len) {
     }
 }
 
-[[nodiscard]] static bool identify_device(uint8_t portidx, uint8_t drive, struct pata_device *out) {
+[[nodiscard]] static bool identify_device(uint8_t portidx, uint8_t drive, struct pata_disk *out) {
     struct pata_port *port = &g_ports[portidx];
 
     ata_select_drive(port, drive, 0);
@@ -275,19 +275,19 @@ static void words_to_chars(char *out, const uint16_t *id_words, int len) {
     out->is_atapi = false;
     out->port = portidx;
     out->drive = drive;
-    out->dev.sector_count = (uint32_t)id.total_lba28[0] | ((uint32_t)id.total_lba28[1] << 16);
+    out->disk.sector_count = (uint32_t)id.total_lba28[0] | ((uint32_t)id.total_lba28[1] << 16);
     words_to_chars(out->serial, id.serial, 10);
     words_to_chars(out->model, id.model, 20);
     return true;
 }
 
-[[nodiscard]] static bool range_valid(const struct pata_device *dev, fs_size_t lba, fs_size_t sector_count) {
-    if (sector_count == 0 || dev->dev.sector_count == 0) {
+[[nodiscard]] static bool range_valid(const struct pata_disk *disk, fs_size_t lba, fs_size_t sector_count) {
+    if (sector_count == 0 || disk->disk.sector_count == 0) {
         return false;
     }
 
     fs_size_t end = (fs_size_t)lba + (fs_size_t)sector_count;
-    return end <= dev->dev.sector_count;
+    return end <= disk->disk.sector_count;
 }
 
 [[nodiscard]] static bool issue_rw_command(
@@ -320,13 +320,13 @@ static void words_to_chars(char *out, const uint16_t *id_words, int len) {
 
 static void complete_request(struct pata_port *port, bool success) {
     assert(port->active_req);
-    assert(port->active_dev);
+    assert(port->active_disk);
 
     port->active_req->result = success ? FS_OK : FS_ERR_IO;
-    block_req_queue_pop_fetched(&port->req_queue);
+    disk_req_queue_pop_fetched(&port->req_queue);
 
     port->active_req = NULL;
-    port->active_dev = NULL;
+    port->active_disk = NULL;
     port->phase = PATA_PHASE_IDLE;
     port->next_sector = 0;
     port->cmd_sectors = 0;
@@ -334,7 +334,7 @@ static void complete_request(struct pata_port *port, bool success) {
     port->deadline_tick = 0;
 }
 
-static bool write_first_sector(struct pata_port *port, struct block_request *req) {
+static bool write_first_sector(struct pata_port *port, struct disk_request *req) {
     uint8_t status = 0;
 
     if (!wait_drq_or_error(port, &status)) {
@@ -357,14 +357,14 @@ static bool write_first_sector(struct pata_port *port, struct block_request *req
     return true;
 }
 
-[[nodiscard]] static bool start_command(struct pata_port *port, struct block_request *req, const struct pata_device *dev) {
+[[nodiscard]] static bool start_command(struct pata_port *port, struct disk_request *req, const struct pata_disk *disk) {
     if (req->info.lba > UINT32_MAX || req->info.sectors > UINT32_MAX) {
         return false;
     }
 
     uint32_t req_lba = (uint32_t)req->info.lba;
     uint32_t req_sectors = (uint32_t)req->info.sectors;
-    if (!range_valid(dev, req_lba, req_sectors)) {
+    if (!range_valid(disk, req_lba, req_sectors)) {
         return false;
     }
 
@@ -374,12 +374,12 @@ static bool write_first_sector(struct pata_port *port, struct block_request *req
     uint16_t cmd_sectors = remaining > 256 ? 256 : (uint16_t)remaining;
     uint32_t cmd_lba = req_lba + port->done_sectors;
 
-    bool is_write = req->info.type == BLOCK_REQUEST_WRITE;
-    if (!is_write && req->info.type != BLOCK_REQUEST_READ) {
+    bool is_write = req->info.type == DISK_REQUEST_WRITE;
+    if (!is_write && req->info.type != DISK_REQUEST_READ) {
         return false;
     }
 
-    if (!issue_rw_command(port, dev->drive, is_write, cmd_lba, cmd_sectors)) {
+    if (!issue_rw_command(port, disk->drive, is_write, cmd_lba, cmd_sectors)) {
         return false;
     }
 
@@ -387,7 +387,7 @@ static bool write_first_sector(struct pata_port *port, struct block_request *req
     port->next_sector = 0;
     port->deadline_tick = timer_get_tick() + ticks_from_ms(ATA_TIMEOUT_MS);
 
-    if (req->info.type == BLOCK_REQUEST_READ) {
+    if (req->info.type == DISK_REQUEST_READ) {
         port->phase = PATA_PHASE_READ_DATA;
         return true;
     }
@@ -397,19 +397,19 @@ static bool write_first_sector(struct pata_port *port, struct block_request *req
 
 static void start_next_request(struct pata_port *port) {
     while (port->active_req == NULL) {
-        struct block_request *req = block_req_queue_fetch(&port->req_queue);
+        struct disk_request *req = disk_req_queue_fetch(&port->req_queue);
         if (!req) {
             return;
         }
 
-        struct pata_device *dev = container_of(req->device, struct pata_device, dev);
-        port->active_dev = dev;
+        struct pata_disk *disk = container_of(req->disk, struct pata_disk, disk);
+        port->active_disk = disk;
         port->active_req = req;
         port->next_sector = 0;
         port->cmd_sectors = 0;
         port->done_sectors = 0;
 
-        if (!start_command(port, req, dev)) {
+        if (!start_command(port, req, disk)) {
             complete_request(port, false);
             continue;
         }
@@ -427,8 +427,8 @@ static void handle_irq(struct pata_port *port, uint8_t status) {
         return;
     }
 
-    struct block_request *req = port->active_req;
-    struct pata_device *dev = port->active_dev;
+    struct disk_request *req = port->active_req;
+    struct pata_disk *disk = port->active_disk;
 
     if (status & (ATA_STATUS_ERR | ATA_STATUS_DF)) {
         complete_and_start_next(port, false);
@@ -459,7 +459,7 @@ static void handle_irq(struct pata_port *port, uint8_t status) {
             port->done_sectors += port->cmd_sectors;
             if (port->done_sectors >= req_sectors) {
                 complete_and_start_next(port, true);
-            } else if (!start_command(port, req, dev)) {
+            } else if (!start_command(port, req, disk)) {
                 complete_and_start_next(port, false);
             }
         }
@@ -489,7 +489,7 @@ static void handle_irq(struct pata_port *port, uint8_t status) {
             return;
         }
 
-        if (!start_command(port, req, dev)) {
+        if (!start_command(port, req, disk)) {
             complete_and_start_next(port, false);
         }
         return;
@@ -520,9 +520,9 @@ static void isr_pata_secondary(void) {
     isr_pata(PATA_PORT_SECONDARY);
 }
 
-static void block_device_on_request(struct block_device *bdev, struct block_request *) {
-    struct pata_device *dev = container_of(bdev, struct pata_device, dev);
-    struct pata_port *port = &g_ports[dev->port];
+static void on_request(struct disk *disk, struct disk_request *) {
+    struct pata_disk *pdisk = container_of(disk, struct pata_disk, disk);
+    struct pata_port *port = &g_ports[pdisk->port];
     irqlock_t irqlock = irqlock_acquire();
     if (port->active_req == NULL) {
         start_next_request(port);
@@ -530,8 +530,8 @@ static void block_device_on_request(struct block_device *bdev, struct block_requ
     irqlock_release(&irqlock);
 }
 
-static const struct block_device_ops g_device_ops = {
-    .on_request = block_device_on_request,
+static const struct disk_device_ops g_device_ops = {
+    .on_request = on_request,
 };
 
 void pata_init(void) {
@@ -547,8 +547,8 @@ void pata_init(void) {
     for (uint8_t portidx = 0; portidx < PATA_PORT_COUNT; portidx++) {
         struct pata_port *port = &g_ports[portidx];
         port->active = false;
-        block_req_queue_init(&port->req_queue, port->req_buffer, REQ_SLOTS);
-        port->active_dev = NULL;
+        disk_req_queue_init(&port->req_queue, port->req_buffer, REQ_SLOTS);
+        port->active_disk = NULL;
         port->active_req = NULL;
         port->phase = PATA_PHASE_IDLE;
         port->next_sector = 0;
@@ -566,31 +566,31 @@ void pata_init(void) {
 
         for (uint8_t drive = 0; drive < 2; drive++) {
             uint8_t devidx = portidx * 2 + drive;
-            struct pata_device *dev = &g_devices[devidx];
-            if (!identify_device(portidx, drive, dev)) {
+            struct pata_disk *disk = &g_devices[devidx];
+            if (!identify_device(portidx, drive, disk)) {
                 continue;
             }
 
             ctrl_write(port, 0);
             io_delay_400ns(port);
 
-            port->active |= dev->present;
+            port->active |= disk->present;
 
-            if (dev->is_atapi) {
+            if (disk->is_atapi) {
                 kinfo("pata: ch=%u drv=%u atapi detected", portidx, drive);
                 continue;
             }
 
-            block_device_init(&dev->dev, &g_device_ops);
-            dev->dev.req_queue = &port->req_queue;
-            dev->dev.sector_size = PATA_SECTOR_SIZE;
-            dev->dev.name = dev_names[devidx];
+            disk_init(&disk->disk, &g_device_ops);
+            disk->disk.req_queue = &port->req_queue;
+            disk->disk.sector_size = PATA_SECTOR_SIZE;
+            disk->disk.name = dev_names[devidx];
 
             kinfo("pata: ch=%u drv=%u model='%s' serial='%s' sectors=%zu",
-                portidx, drive, dev->model, dev->serial, dev->dev.sector_count);
+                portidx, drive, disk->model, disk->serial, disk->disk.sector_count);
 
-            if (!block_device_register(&dev->dev)) {
-                kwarn("pata: failed to register block device ch=%u drv=%u", portidx, drive);
+            if (!disk_register(&disk->disk)) {
+                kwarn("pata: failed to register disk ch=%u drv=%u", portidx, drive);
             }
         }
     }
