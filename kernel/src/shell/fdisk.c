@@ -10,7 +10,7 @@ int shell_cmd_diskreset(int argc, char **argv) {
     unsigned long disk_ul = 0;
     char answer[16];
 
-    if (argc != 2 || kstrtoul_exact(argv[1], 10, ULONG_MAX, &disk_ul) != E_OK) {
+    if (argc != 2 || kstrtoul_exact(argv[1], 10, ULONG_MAX, &disk_ul) != KE_OK) {
         tty0_puts("usage: diskreset [disk]\n");
         return 1;
     }

@@ -303,7 +303,7 @@ static int cmd_klog(char *args) {
 
     unsigned long parsed = 0;
     char *endptr = NULL;
-    if (kstrtoul(args, 10, &endptr, &parsed) == E_OK && parsed <= UINT16_MAX) {
+    if (kstrtoul(args, 10, &endptr, &parsed) == KE_OK && parsed <= UINT16_MAX) {
         level = (uint16_t)parsed;
         msg = skip_spaces(endptr);
     }

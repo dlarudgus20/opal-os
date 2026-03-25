@@ -16,12 +16,12 @@ static int digit_value(char ch) {
     return -1;
 }
 
-errno_t kstrtoul(const char *str, int base, char **endptr, unsigned long *result) {
+kerrno_t kstrtoul(const char *str, int base, char **endptr, unsigned long *result) {
     if (!str || !result || (base != 0 && (base < 2 || base > 36))) {
         if (endptr) {
             *endptr = (char *)str;
         }
-        return EINVAL;
+        return KEINVAL;
     }
 
     const char *s = str;
@@ -34,7 +34,7 @@ errno_t kstrtoul(const char *str, int base, char **endptr, unsigned long *result
             if (endptr) {
                 *endptr = (char *)s;
             }
-            return EINVAL;
+            return KEINVAL;
         }
         s++;
     }
@@ -80,7 +80,7 @@ errno_t kstrtoul(const char *str, int base, char **endptr, unsigned long *result
         if (endptr) {
             *endptr = (char *)str;
         }
-        return EINVAL;
+        return KEINVAL;
     }
 
     if (endptr) {
@@ -88,22 +88,22 @@ errno_t kstrtoul(const char *str, int base, char **endptr, unsigned long *result
     }
 
     if (overflow) {
-        return ERANGE;
+        return KERANGE;
     }
 
     *result = value;
-    return E_OK;
+    return KE_OK;
 }
 
-errno_t kstrtoul_exact(const char *str, int base, unsigned long max, unsigned long *result) {
+kerrno_t kstrtoul_exact(const char *str, int base, unsigned long max, unsigned long *result) {
     char *endptr;
-    errno_t err = kstrtoul(str, base, &endptr, result);
-    if (err == E_OK) {
+    kerrno_t err = kstrtoul(str, base, &endptr, result);
+    if (err == KE_OK) {
         if (*endptr != '\0') {
-            return EINVAL;
+            return KEINVAL;
         }
         if (*result > max) {
-            return ERANGE;
+            return KERANGE;
         }
     }
     return err;

@@ -27,8 +27,8 @@ static inline bool ispower2(size_t value) {
 
 void sort(void* ptr, size_t count, size_t size, int (*comp)(const void*, const void*));
 
-errno_t kstrtoul(const char *str, int base, char **endptr, unsigned long *result);
-errno_t kstrtoul_exact(const char *str, int base, unsigned long max, unsigned long *result);
+kerrno_t kstrtoul(const char *str, int base, char **endptr, unsigned long *result);
+kerrno_t kstrtoul_exact(const char *str, int base, unsigned long max, unsigned long *result);
 
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
 #define MIN(a, b) ((a) < (b) ? (a) : (b))

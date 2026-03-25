@@ -1,12 +1,12 @@
 #ifndef KC_ERRNO_H
 #define KC_ERRNO_H
 
-enum errno {
-    E_OK = 0,
-    ERANGE,
-    EINVAL,
+enum kerrno {
+    KE_OK = 0,
+    KERANGE,
+    KEINVAL,
 };
 
-typedef enum errno errno_t;
+typedef enum kerrno kerrno_t;
 
 #endif

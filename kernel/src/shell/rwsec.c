@@ -25,6 +25,7 @@ int shell_cmd_rwsec(int argc, char **argv) {
     unsigned long lba_ul = 0;
     unsigned long count_ul = 0;
     unsigned long fill_ul = 0;
+    int ret = 1;
 
     if (argc > 0 && argv[0]) {
         if (argv[0][0] == 'r') {
@@ -38,10 +39,10 @@ int shell_cmd_rwsec(int argc, char **argv) {
 
     int expected_argc = is_write ? 5 : 4;
     if (argc != expected_argc
-        || kstrtoul_exact(argv[1], 10, ULONG_MAX, &drive_ul) != E_OK
-        || kstrtoul_exact(argv[2], 10, ULONG_MAX, &lba_ul) != E_OK
-        || kstrtoul_exact(argv[3], 10, ULONG_MAX, &count_ul) != E_OK
-        || (is_write && kstrtoul_exact(argv[4], 0, ULONG_MAX, &fill_ul) != E_OK)
+        || kstrtoul_exact(argv[1], 10, ULONG_MAX, &drive_ul) != KE_OK
+        || kstrtoul_exact(argv[2], 10, ULONG_MAX, &lba_ul) != KE_OK
+        || kstrtoul_exact(argv[3], 10, ULONG_MAX, &count_ul) != KE_OK
+        || (is_write && kstrtoul_exact(argv[4], 0, ULONG_MAX, &fill_ul) != KE_OK)
     ) {
         tty0_puts("usage: readsec [drive] [index] [count]\n");
         tty0_puts("       writesec [drive] [index] [count] [value]\n");
@@ -58,24 +59,24 @@ int shell_cmd_rwsec(int argc, char **argv) {
 
     if (dev->sectors == 0) {
         tty0_printf("%s: invalid sector size for dev=%lu\n", is_write ? "writesec" : "readsec", drive_ul);
-        return 1;
+        goto err_dev;
     }
     const size_t max_count = KMALLOC_MAX_SIZE / DISK_SECTOR_SIZE;
 
     if (lba_ul > UINT32_MAX) {
         tty0_printf("%s: invalid LBA %lu\n", is_write ? "writesec" : "readsec", lba_ul);
-        return 1;
+        goto err_dev;
     }
 
     if (count_ul == 0 || count_ul > max_count) {
         tty0_printf("%s: invalid count %lu (expected 1..%zu)\n",
             is_write ? "writesec" : "readsec", count_ul, max_count);
-        return 1;
+        goto err_dev;
     }
 
     if (is_write && fill_ul > UINT8_MAX) {
         tty0_printf("writesec: invalid value %lu (expected 0..255)\n", fill_ul);
-        return 1;
+        goto err_dev;
     }
 
     uint32_t lba = (uint32_t)lba_ul;
@@ -84,14 +85,14 @@ int shell_cmd_rwsec(int argc, char **argv) {
     if ((uint64_t)lba + (uint64_t)count > dev->sectors) {
         tty0_printf("%s: range out of bounds (dev=%lu lba=%u count=%u sectors=%zu)\n",
             is_write ? "writesec" : "readsec", drive_ul, lba, count, dev->sectors);
-        return 1;
+        goto err_dev;
     }
 
     size_t bytes = (size_t)count * DISK_SECTOR_SIZE;
     void *buf = kzalloc(bytes);
     if (!buf) {
         tty0_printf("%s: allocation failed (%zu bytes)\n", is_write ? "writesec" : "readsec", bytes);
-        return 1;
+        goto err_dev;
     }
 
     struct disk_request *req;
@@ -106,20 +107,17 @@ int shell_cmd_rwsec(int argc, char **argv) {
     if (!req) {
         tty0_printf("%s: submit failed (dev=%lu lba=%u count=%u)\n",
             is_write ? "writesec" : "readsec", drive_ul, lba, count);
-        kfree(buf, bytes);
-        return 1;
+        goto err_buf;
     }
 
     if (!disk_request_wait(req, TIMEOUT_INFINITY, &io_result)) {
         tty0_printf("%s: timeout\n", is_write ? "writesec" : "readsec");
-        kfree(buf, bytes);
-        return 1;
+        goto err_buf;
     }
     if (io_result != FS_OK) {
         tty0_printf("%s: io failed (dev=%lu lba=%u count=%u status=%d)\n",
             is_write ? "writesec" : "readsec", drive_ul, lba, count, io_result);
-        kfree(buf, bytes);
-        return 1;
+        goto err_buf;
     }
 
     if (is_write) {
@@ -130,8 +128,12 @@ int shell_cmd_rwsec(int argc, char **argv) {
         shell_hexdump((const unsigned char *)buf, bytes);
     }
 
+    ret = 0;
+
+err_buf:
     kfree(buf, bytes);
-    return 0;
+err_dev:
+    return ret;
 }
 
 static int submit_and_wait(
@@ -185,16 +187,18 @@ static int submit_and_wait(
 int shell_cmd_testrwsec(int argc, char **argv) {
     unsigned long drive_ul = 0;
     unsigned long lba_ul = 0;
+    int ret = 1;
+
     if (argc != 2 && argc != 3) {
         tty0_puts("usage: testrwsec [drive] (lba)\n");
         return 1;
     }
 
-    if (kstrtoul_exact(argv[1], 10, ULONG_MAX, &drive_ul) != E_OK) {
+    if (kstrtoul_exact(argv[1], 10, ULONG_MAX, &drive_ul) != KE_OK) {
         tty0_printf("testrwsec: invalid drive\n");
         return 1;
     }
-    if (argc == 3 && kstrtoul_exact(argv[2], 10, ULONG_MAX, &lba_ul) != E_OK) {
+    if (argc == 3 && kstrtoul_exact(argv[2], 10, ULONG_MAX, &lba_ul) != KE_OK) {
         tty0_printf("testrwsec: invalid LBA\n");
         return 1;
     }
@@ -208,7 +212,7 @@ int shell_cmd_testrwsec(int argc, char **argv) {
     }
     if (lba_ul >= dev->sectors) {
         tty0_printf("testrwsec: invalid LBA %lu\n", lba_ul);
-        return 1;
+        goto err_dev;
     }
 
     uint32_t lba = (uint32_t)lba_ul;
@@ -218,54 +222,55 @@ int shell_cmd_testrwsec(int argc, char **argv) {
     if (end > dev->sectors) {
         tty0_printf("testrwsec: range out of bounds (dev=%lu lba=%u count=%u sectors=%zu)\n",
             drive_ul, lba, count, dev->sectors);
-        return 1;
+        goto err_dev;
     }
 
     unsigned char *buf = mm_alloc_page_ptr(TESTRWSEC_ORDER);
     if (!buf) {
         tty0_puts("testrwsec: buffer alloc failed\n");
-        return 1;
+        goto err_dev;
     }
 
     size_t bytes = (size_t)count * DISK_SECTOR_SIZE;
-    int ret = 1;
 
     tty0_printf("testrwsec: dev=%lu lba=%u count=%u bytes=%zu\n", drive_ul, lba, count, bytes);
 
     memset(buf, TESTRWSEC_PATTERN_A, bytes);
     if (submit_and_wait("testrwsec", "write pattern A", true, dev, drive_ul, lba, buf, count) != 0) {
-        goto exit;
+        goto err_buf;
     }
     memset(buf, 0, bytes);
     if (submit_and_wait("testrwsec", "read pattern A", false, dev, drive_ul, lba, buf, count) != 0) {
-        goto exit;
+        goto err_buf;
     }
     size_t bad_idx = 0;
     uint8_t bad_val = 0;
     if (!verify_pattern(buf, bytes, TESTRWSEC_PATTERN_A, &bad_idx, &bad_val)) {
         tty0_printf("testrwsec: verify pattern A failed at offset=%zu (got=%#02x expected=%#02x)\n",
             bad_idx, bad_val, TESTRWSEC_PATTERN_A);
-        goto exit;
+        goto err_buf;
     }
 
     memset(buf, TESTRWSEC_PATTERN_B, bytes);
     if (submit_and_wait("testrwsec", "write pattern B", true, dev, drive_ul, lba, buf, count) != 0) {
-        goto exit;
+        goto err_buf;
     }
     memset(buf, 0, bytes);
     if (submit_and_wait("testrwsec", "read pattern B", false, dev, drive_ul, lba, buf, count) != 0) {
-        goto exit;
+        goto err_buf;
     }
     if (!verify_pattern(buf, bytes, TESTRWSEC_PATTERN_B, &bad_idx, &bad_val)) {
         tty0_printf("testrwsec: verify pattern B failed at offset=%zu (got=%#02x expected=%#02x)\n",
             bad_idx, bad_val, TESTRWSEC_PATTERN_B);
-        goto exit;
+        goto err_buf;
     }
 
     tty0_printf("testrwsec: PASS (2 patterns, %u sectors)\n", TESTRWSEC_SECTORS);
+
     ret = 0;
 
-exit:
+err_buf:
     mm_free_page_ptr(buf, TESTRWSEC_ORDER);
+err_dev:
     return ret;
 }
