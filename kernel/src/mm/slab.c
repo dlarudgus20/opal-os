@@ -2,34 +2,12 @@
 #include <kc/stdlib.h>
 #include <kc/string.h>
 
-#include <opal/attributes.h>
 #include <opal/mm/mm.h>
 #include <opal/mm/pfn.h>
 #include <opal/mm/buddy.h>
 #include <opal/mm/slab.h>
+#include <opal/mm/slab_metadata.h>
 #include <opal/platform/mm/defines.h>
-
-#define SLAB_REDZONE_SIZE 2
-#define SLAB_REDZONE_PATTERN 0xfd
-#define SLAB_UNUSED_PATTERN 0xcc
-
-// page: [struct slab_page][object 1][object 2]...
-// object: [struct slab_obj_hdr][redzone][payload][redzone]
-
-struct PACKED slab_obj_hdr {
-    bool is_free:1;
-    unsigned next_free:15;
-};
-
-struct slab_page {
-    struct linkedlist_link link;
-    struct slab *owner;
-    uint32_t inuse;
-    uint16_t free_head;
-};
-
-static_assert(sizeof(struct slab_obj_hdr) == 2);
-static_assert(sizeof(struct slab_page) < PAGE_SIZE);
 
 static size_t max_size(size_t a, size_t b) {
     return a > b ? a : b;

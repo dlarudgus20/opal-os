@@ -3,32 +3,44 @@
 #include <opal/mm/mm.h>
 #include <opal/mm/pfn.h>
 #include <opal/mm/slab.h>
+#include <opal/mm/slab_metadata.h>
 #include <opal/mm/kmalloc.h>
 #include <opal/locks/irqlock.h>
 
-#define SLAB_MIN_POW    5   // 32 to 1024
-#define SLAB_MAX_POW    10
+#define KMALLOC_ALIGN 8
 
-#define SLAB_ORDERS     (SLAB_MAX_POW - SLAB_MIN_POW + 1)
+static const uint16_t g_slab_sizes[] = {
+    SLOT_EXTEND(32, KMALLOC_ALIGN),
+    SLOT_EXTEND(48, KMALLOC_ALIGN),
+    SLOT_EXTEND(64, KMALLOC_ALIGN),
+    SLOT_EXTEND(80, KMALLOC_ALIGN),
+    SLOT_EXTEND(96, KMALLOC_ALIGN),
+    SLOT_EXTEND(128, KMALLOC_ALIGN),
+    SLOT_EXTEND(160, KMALLOC_ALIGN),
+    SLOT_EXTEND(192, KMALLOC_ALIGN),
+    SLOT_EXTEND(256, KMALLOC_ALIGN),
+    SLOT_EXTEND(384, KMALLOC_ALIGN),
+    SLOT_EXTEND(512, KMALLOC_ALIGN),
+    SLOT_EXTEND(768, KMALLOC_ALIGN),
+    SLOT_EXTEND(1024, KMALLOC_ALIGN),
+};
 
-static struct slab g_slabs[SLAB_ORDERS];
+#define KMALLOC_SLABS (sizeof(g_slab_sizes) / sizeof(g_slab_sizes[0]))
 
-static size_t slab_size_for_index(uint8_t idx) {
-    return (size_t)(1 << SLAB_MIN_POW) << idx;
-}
+static struct kmalloc_slab_list g_slab_list = {
+    .sizes = g_slab_sizes,
+    .count = KMALLOC_SLABS,
+};
 
-static size_t max_slab_size(void) {
-    return slab_size_for_index(SLAB_ORDERS - 1);
-}
+static struct slab g_slabs[KMALLOC_SLABS];
 
-static uint8_t slab_index_for_size(size_t size) {
-    uint8_t idx = 0;
-    size_t slab_size = slab_size_for_index(0);
-    while (idx + 1 < SLAB_ORDERS && slab_size < size) {
-        idx++;
-        slab_size <<= 1;
+static int slab_index_for_size(size_t size) {
+    for (uint8_t i = 0; i < KMALLOC_SLABS; i++) {
+        if (size <= g_slab_sizes[i]) {
+            return i;
+        }
     }
-    return idx;
+    return -1;
 }
 
 static uint8_t page_order_for_size(size_t size) {
@@ -42,33 +54,42 @@ static uint8_t page_order_for_size(size_t size) {
 }
 
 void kmalloc_init(void) {
-    for (uint8_t i = 0; i < SLAB_ORDERS; i++) {
-        slab_create(&g_slabs[i], slab_size_for_index(i), 8);
+    for (uint8_t i = 0; i < KMALLOC_SLABS; i++) {
+        slab_create(&g_slabs[i], g_slab_sizes[i], KMALLOC_ALIGN);
     }
 }
 
-void *kzalloc(size_t size) {
+const struct kmalloc_slab_list *kmalloc_get_slab_list(void) {
+    return &g_slab_list;
+}
+
+struct span kzalloc_span(size_t size) {
     if (size == 0) {
-        return NULL;
+        return SPAN_NULL;
     }
 
     assert(size <= KMALLOC_MAX_SIZE, "invalid size");
 
-    const size_t slab_max = max_slab_size();
-    if (size <= slab_max) {
-        const uint8_t idx = slab_index_for_size(size);
-
+    int idx = slab_index_for_size(size);
+    if (idx >= 0) {
         irqlock_t irqlock = irqlock_acquire();
         void *ptr = slab_alloc(&g_slabs[idx]);
         irqlock_release(&irqlock);
-
-        return ptr;
+        return SPAN(ptr, g_slab_sizes[idx]);
     }
 
     const uint8_t order = page_order_for_size(size);
     assert(order < PFN_VALID_BIT_WIDTH, "invalid size");
 
-    return mm_alloc_page_ptr(order);
+    return SPAN(mm_alloc_page_ptr(order), PAGE_SIZE << order);
+}
+
+void *kzalloc(size_t size) {
+    return kzalloc_span(size).ptr;
+}
+
+void kfree_span(struct span span) {
+    kfree(span.ptr, span.size);
 }
 
 void kfree(void *ptr, size_t size) {
@@ -78,14 +99,11 @@ void kfree(void *ptr, size_t size) {
 
     assert(size <= KMALLOC_MAX_SIZE, "invalid size");
 
-    const size_t slab_max = max_slab_size();
-    if (size <= slab_max) {
-        const uint8_t idx = slab_index_for_size(size);
-
+    int idx = slab_index_for_size(size);
+    if (idx >= 0) {
         irqlock_t irqlock = irqlock_acquire();
         slab_free(&g_slabs[idx], ptr);
         irqlock_release(&irqlock);
-
         return;
     }
 
