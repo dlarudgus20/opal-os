@@ -8,6 +8,7 @@
 #include <opal/timer.h>
 #include <opal/task/task.h>
 #include <opal/task/wait_list.h>
+#include <opal/task/coroutine.h>
 #include <opal/mm/mm.h>
 #include <opal/mm/slab.h>
 #include <opal/locks/irqlock.h>
@@ -151,6 +152,7 @@ void sched_init(void) {
     set_ready(&g_idle);
 
     fpu_init();
+    coroutine_worker_init();
 
     irqmsg_register(IRQMSG_SCHED_TIMEOUT, irqmsg_timeout);
 }
@@ -263,8 +265,8 @@ taskptr_t task_create(void (*entry)(uintptr_t), uintptr_t arg, enum task_priorit
         return (taskptr_t){ .ptr = NULL };
     }
 
-    pfn_t stack_page = mm_alloc_page(0);
-    if (stack_page == PFN_INVALID) {
+    void *stack = mm_alloc_page_ptr(0);
+    if (!stack) {
         slab_free(&g_sched.task_slab, task);
         irqlock_release(&irqlock);
         return (taskptr_t){ .ptr = NULL };
@@ -274,8 +276,8 @@ taskptr_t task_create(void (*entry)(uintptr_t), uintptr_t arg, enum task_priorit
     task->priority = priority;
     set_ready(task);
 
-    task->stack = mm_pfn_to_ptr(stack_page);
-    context_init(&task->ctx, (uintptr_t)entry, task->stack, PAGE_SIZE, arg);
+    task->stack = stack;
+    context_init(&task->ctx, (uintptr_t)entry, stack, PAGE_SIZE, arg);
 
     irqlock_release(&irqlock);
     return (taskptr_t){ .ptr = task };
@@ -283,7 +285,7 @@ taskptr_t task_create(void (*entry)(uintptr_t), uintptr_t arg, enum task_priorit
 
 static void task_free_stack(struct task *task) {
     if (task->stack) {
-        pfn_t stack_page = mm_ptr_to_pfn(task->stack);
+        pfn_t stack_page = direct_ptr_to_pfn(task->stack);
         mm_free_page(stack_page, 0);
         task->stack = NULL;
     }

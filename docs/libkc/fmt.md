@@ -44,18 +44,31 @@
 - `fmt_vsprintf`를 버퍼 모드로 감싼 래퍼 API입니다.
 - 입력 버퍼 크기(`bufsz`)를 검사하고, 오류 시 `-1`을 반환합니다.
 - 포맷 실패 시 `buffer[0] = '\0'`로 정리합니다.
+- `buffer == NULL && bufsz == 0` 조합을 허용하며, 이때는 counting 모드로 동작해 필요한 출력 길이만 계산할 수 있습니다.
 
 ## 입력 검증과 반환 규칙
 - `snprintf_s`/`vsnprintf_s`:
-  - `buffer == NULL`: `-1`
-  - `bufsz == 0` 또는 `bufsz > INT_MAX`: `-1`
-  - `format == NULL`: `buffer[0] = '\0'` 후 `-1`
-  - `fmt_vsprintf`가 음수 반환: `buffer[0] = '\0'` 후 음수 반환
+  - `buffer == NULL && bufsz > 0`: `-1`
+  - `buffer != NULL && bufsz > INT_MAX`: `-1`
+  - `buffer == NULL && bufsz == 0`: 허용 (counting 모드)
+  - `buffer != NULL && bufsz == 0`: 허용 (counting 모드)
+  - `format == NULL`: `buffer && bufsz > 0`이면 `buffer[0] = '\0'` 후 `-1`
+  - `fmt_vsprintf`가 음수 반환: `buffer && bufsz > 0`이면 `buffer[0] = '\0'` 후 음수 반환
 - `fmt_vsprintf`:
   - `fmt == NULL`: `-1`
   - `fmt->size > INT_MAX`: `-1`
   - `format == NULL`: 버퍼 모드면 `*fmt->buffer = '\0'` 후 `-1`
 - 정상 종료 시 반환값은 `count`(전체 문자 수, NUL 제외)입니다.
+
+### 길이 계산 패턴
+```c
+int len = snprintf_s(NULL, 0, "%s:%d", name, idx);
+if (len < 0) {
+    // format 오류 처리
+}
+```
+
+- 위 패턴은 출력 버퍼 없이 필요한 길이를 먼저 계산할 때 사용합니다.
 
 ## 버퍼 초과 시 동작
 - 버퍼 모드(`size > 0`)에서 출력 길이가 `size - 1`을 넘기기 시작하면:

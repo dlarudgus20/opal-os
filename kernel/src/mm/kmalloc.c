@@ -47,7 +47,7 @@ void kmalloc_init(void) {
     }
 }
 
-void *kmalloc(size_t size) {
+void *kzalloc(size_t size) {
     if (size == 0) {
         return NULL;
     }
@@ -68,12 +68,7 @@ void *kmalloc(size_t size) {
     const uint8_t order = page_order_for_size(size);
     assert(order < PFN_VALID_BIT_WIDTH, "invalid size");
 
-    pfn_t pfn = mm_alloc_page(order);
-    if (pfn == PFN_INVALID) {
-        return NULL;
-    }
-
-    return mm_pfn_to_ptr(pfn);
+    return mm_alloc_page_ptr(order);
 }
 
 void kfree(void *ptr, size_t size) {
@@ -97,5 +92,5 @@ void kfree(void *ptr, size_t size) {
     const uint8_t order = page_order_for_size(size);
     assert(order < PFN_VALID_BIT_WIDTH, "invalid size");
 
-    mm_free_page(mm_ptr_to_pfn(ptr), order);
+    mm_free_page_ptr(ptr, order);
 }

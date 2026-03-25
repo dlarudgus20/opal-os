@@ -4,8 +4,10 @@
 - [`boot.md`](boot.md): 부팅 초기화 순서와 부트 인자 파싱
 - [`buddy.md`](buddy.md): 버디 페이지 할당기
 - [`slab.md`](slab.md): 슬랩 오브젝트 할당기
-- [`task.md`](task.md): 태스크/스케줄러
+- [`task/task.md`](task/task.md): 태스크/스케줄러
+- [`task/coroutine.md`](task/coroutine.md): 코루틴 워커 큐와 핸들러 상태 전이 계약
 - [`interrupt-io.md`](interrupt-io.md): 인터럽트/입력/시리얼 IO 경로
+- [`fs/disk.md`](fs/disk.md): 물리 disk 계층, 요청 큐/완료 모델, 파티션 스캔/리셋
 - [`fs/block_device.md`](fs/block_device.md): block device 공통 계층과 요청 큐 모델
 - [`pata.md`](pata.md): PATA(ATA PIO) 드라이버 구조와 요청/완료 모델
 - [`tty.md`](tty.md): `tty0`, framebuffer TTY, UART TTY, 입력 버퍼 경로

@@ -4,6 +4,7 @@
 - 구현 위치: `kernel/src/task/task.c`
 - 목표: 단일 CPU 기준의 최소 태스크 스케줄링, wait-list 대기/깨우기, 타임아웃 처리
 - 동기화: 스케줄러 공유 상태는 `irqlock` 보호 구역에서만 수정
+- 코루틴 워커 모델은 [`coroutine.md`](coroutine.md) 참고
 
 ## 핵심 상태
 - `TASK_READY`: ready queue에 올라가 스케줄 대상인 상태
@@ -21,6 +22,7 @@
 - `sched_init()`이 커널/idle 태스크를 생성
 - 공통 초기화는 `task_init()`이 담당
 - idle 태스크는 `context_init()` 후 ready queue에 진입
+- coroutine 워커는 `coroutine_worker_init()`로 함께 시작
 - timeout 처리 메시지 핸들러로 `IRQMSG_SCHED_TIMEOUT`를 등록
 
 ## 상태 전이 헬퍼

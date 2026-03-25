@@ -1,4 +1,4 @@
-#include <opal/fs/disk.h>
+#include <opal/fs/block_device.h>
 #include <opal/tty.h>
 
 int shell_cmd_lsblk(int argc, char **argv) {
@@ -9,18 +9,17 @@ int shell_cmd_lsblk(int argc, char **argv) {
         return 1;
     }
 
-    size_t count = disk_count();
-    tty0_printf("%-5s %-8s %-12s %s\n", "index", "name", "sector_size", "sector_count");
+    size_t count = bdev_list_count();
+    tty0_printf("%-5s %-8s %s\n", "index", "name", "sectors");
 
     for (size_t i = 0; i < count; i++) {
-        const struct disk *dev = disk_get(i);
+        const struct block_device *dev = bdev_list_get(i);
         if (!dev) {
             continue;
         }
         const char *name = dev->name ? dev->name : "-";
 
-        tty0_printf("%-5zu %-8s %-12zu %zu\n",
-            i, name, dev->sector_size, dev->sector_count);
+        tty0_printf("%-5zu %-8s %zu\n", i, name, dev->sectors);
     }
 
     return 0;

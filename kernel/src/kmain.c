@@ -8,6 +8,7 @@
 #include <opal/fb/fb.h>
 #include <opal/hid/hid.h>
 #include <opal/task/task.h>
+#include <opal/fs/disk.h>
 #include <opal/shell/shell.h>
 #include <opal/platform/asm.h>
 #include <opal/platform/boot/boot.h>
@@ -28,6 +29,13 @@ static void run_user(void) {
     shell_start();
 }
 
+static void all_disks_register_bdev(void) {
+    size_t count = disk_list_count();
+    for (size_t i = 0; i < count; i++) {
+        disk_register_bdev(disk_list_get(i));
+    }
+}
+
 void kmain(void) {
     tty0_init();
     uart_early_init();
@@ -45,6 +53,7 @@ void kmain(void) {
     sched_init();
 
     drivers_init();
+    all_disks_register_bdev();
 
     irq_enable_intr();
     interrupts_enable();

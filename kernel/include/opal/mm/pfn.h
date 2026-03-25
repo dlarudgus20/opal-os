@@ -6,20 +6,20 @@
 struct tmpalloc;
 struct page;
 
-void mm_pfn_init(struct tmpalloc *ta);
+void pfn_init(struct tmpalloc *ta);
 
-[[nodiscard]] pfn_t mm_get_pfn_end(void);
-[[nodiscard]] bool mm_pfn_is_valid(pfn_t pfn);
+[[nodiscard]] pfn_t pfn_get_end(void);
+[[nodiscard]] bool pfn_is_valid(pfn_t pfn);
 
-[[nodiscard]] phys_addr_t mm_pfn_to_phys(pfn_t pfn);
-[[nodiscard]] pfn_t mm_phys_to_pfn(phys_addr_t pa);
+[[nodiscard]] phys_addr_t pfn_to_phys(pfn_t pfn);
+[[nodiscard]] pfn_t phys_to_pfn(phys_addr_t pa);
 
-[[nodiscard]] struct page *mm_pfn_to_page(pfn_t pfn);
-[[nodiscard]] pfn_t mm_page_to_pfn(struct page *page);
+[[nodiscard]] struct page *pfn_to_page(pfn_t pfn);
+[[nodiscard]] pfn_t page_to_pfn(struct page *page);
 
-[[nodiscard]] void *mm_pfn_to_ptr(pfn_t pfn);
-[[nodiscard]] pfn_t mm_ptr_to_pfn(void *ptr);
+[[nodiscard]] void *pfn_to_direct_ptr(pfn_t pfn);
+[[nodiscard]] pfn_t direct_ptr_to_pfn(void *ptr);
 
-void mm_pfn_print_all(void);
+void pfn_print_all(void);
 
 #endif

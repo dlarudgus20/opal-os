@@ -49,7 +49,7 @@ virtual range                                physical range              size   
 3. 이후 단계
    - `mm_init()` 내부에서 `tmpalloc`을 임시 생성해 초기 메모리 메타데이터 구축에 사용
    - `mm_pagetable_init(&ta)`는 tmpalloc에서 페이지를 받아 새 페이지테이블을 구성하고 direct map을 확장
-   - `mm_pfn_init(&ta)`는 `PAGES_START_VIRT + pfn * sizeof(struct page)` 형태 메타데이터 배열을 구성
+   - `pfn_init(&ta)`는 `PAGES_START_VIRT + pfn * sizeof(struct page)` 형태 메타데이터 배열을 구성
    - `tmpalloc_alloc_pages()`는 `MM_SEC_ENTRY_USABLE` 앞부분을 소비해 `MM_SEC_ENTRY_METADATA`를 동적으로 삽입/병합
    - 메타데이터 구축 후 `mm_pagetable_unuse_tmpalloc()`, `mm_map_finalize_tmpalloc(&ta)`로 tmpalloc을 버리고 section map을 확정
 

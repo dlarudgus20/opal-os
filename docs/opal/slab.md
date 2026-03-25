@@ -45,10 +45,11 @@
 ## 6. kmalloc 연계
 - `mm_init()`에서 `buddy_create()` 직후 `kmalloc_init()`을 호출해 슬랩 클래스를 초기화합니다.
 - `kmalloc_init()`은 슬랩 클래스를 `32, 64, 128, 256, 512, 1024` 바이트로 생성합니다.
-- `kmalloc(size)`에서 `size <= 1024`는 가장 가까운 상위 슬랩 클래스로 올림 할당됩니다.
+- `kzalloc(size)`에서 `size <= 1024`는 가장 가까운 상위 슬랩 클래스로 올림 할당됩니다.
   - 예: `size=1..32 -> 32B slab`, `size=33..64 -> 64B slab`
+  - 할당된 메모리는 `slab_alloc`에 의해 자동으로 zero-fill 됩니다.
 - `size > 1024`는 버디 페이지 할당 경로를 사용합니다.
-- `kmalloc/kfree` 모두 `size <= MAX_SIZE(PAGE_SIZE * 32)`를 전제로 합니다.
+- `kzalloc/kfree` 모두 `size <= MAX_SIZE(PAGE_SIZE * 32)`를 전제로 합니다.
 
 ## 7. 테스트
 - 테스트 파일: `kernel/src/mm/slab_test.c`

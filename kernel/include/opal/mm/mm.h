@@ -10,6 +10,10 @@ void mm_init(void);
 
 [[nodiscard]] pfn_t mm_alloc_page(uint8_t order);
 void mm_free_page(pfn_t pfn, uint8_t order);
+
+[[nodiscard]] void *mm_alloc_page_ptr(uint8_t order);
+void mm_free_page_ptr(void *direct_ptr, uint8_t order);
+
 struct buddy *mm_get_buddy(void);
 
 void mm_log_map(void);

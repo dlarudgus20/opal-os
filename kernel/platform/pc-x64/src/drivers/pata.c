@@ -43,7 +43,6 @@
 #define ATA_TIMEOUT_MS          3000
 #define ATA_POLL_SPIN           100000
 
-#define PATA_SECTOR_SIZE        512
 #define REQ_SLOTS 64
 
 enum {
@@ -275,24 +274,24 @@ static void words_to_chars(char *out, const uint16_t *id_words, int len) {
     out->is_atapi = false;
     out->port = portidx;
     out->drive = drive;
-    out->disk.sector_count = (uint32_t)id.total_lba28[0] | ((uint32_t)id.total_lba28[1] << 16);
+    out->disk.sectors = (uint32_t)id.total_lba28[0] | ((uint32_t)id.total_lba28[1] << 16);
     words_to_chars(out->serial, id.serial, 10);
     words_to_chars(out->model, id.model, 20);
     return true;
 }
 
-[[nodiscard]] static bool range_valid(const struct pata_disk *disk, fs_size_t lba, fs_size_t sector_count) {
-    if (sector_count == 0 || disk->disk.sector_count == 0) {
+[[nodiscard]] static bool range_valid(const struct pata_disk *disk, fs_size_t lba, fs_size_t sectors) {
+    if (sectors == 0 || disk->disk.sectors == 0) {
         return false;
     }
 
-    fs_size_t end = (fs_size_t)lba + (fs_size_t)sector_count;
-    return end <= disk->disk.sector_count;
+    fs_size_t end = (fs_size_t)lba + (fs_size_t)sectors;
+    return end <= disk->disk.sectors;
 }
 
 [[nodiscard]] static bool issue_rw_command(
     const struct pata_port *port,
-    uint8_t drive, bool is_write, uint32_t lba, uint16_t sector_count
+    uint8_t drive, bool is_write, uint32_t lba, uint16_t sectors
 ) {
     uint8_t status;
 
@@ -310,7 +309,7 @@ static void words_to_chars(char *out, const uint16_t *id_words, int len) {
     }
 
     io_write8(port, ATA_REG_FEATURES, 0);
-    io_write8(port, ATA_REG_SECTOR_COUNT, sector_count == 256 ? 0 : (uint8_t)sector_count);
+    io_write8(port, ATA_REG_SECTOR_COUNT, sectors == 256 ? 0 : (uint8_t)sectors);
     io_write8(port, ATA_REG_LBA0, (uint8_t)lba);
     io_write8(port, ATA_REG_LBA1, (uint8_t)(lba >> 8));
     io_write8(port, ATA_REG_LBA2, (uint8_t)(lba >> 16));
@@ -322,8 +321,7 @@ static void complete_request(struct pata_port *port, bool success) {
     assert(port->active_req);
     assert(port->active_disk);
 
-    port->active_req->result = success ? FS_OK : FS_ERR_IO;
-    disk_req_queue_pop_fetched(&port->req_queue);
+    disk_req_queue_pop_fetched(&port->req_queue, success ? FS_OK : FS_ERR_IO);
 
     port->active_req = NULL;
     port->active_disk = NULL;
@@ -348,8 +346,8 @@ static bool write_first_sector(struct pata_port *port, struct disk_request *req)
 
     const unsigned char *bytes = req->info.buffer;
     size_t sector_index = (size_t)port->done_sectors + (size_t)port->next_sector;
-    const void *sector_ptr = bytes + sector_index * PATA_SECTOR_SIZE;
-    pio_write_words(port, sector_ptr, PATA_SECTOR_SIZE / 2);
+    const void *sector_ptr = bytes + sector_index * DISK_SECTOR_SIZE;
+    pio_write_words(port, sector_ptr, DISK_SECTOR_SIZE / 2);
 
     port->next_sector = 1;
     port->deadline_tick = timer_get_tick() + ticks_from_ms(ATA_TIMEOUT_MS);
@@ -441,7 +439,7 @@ static void handle_irq(struct pata_port *port, uint8_t status) {
 
     unsigned char *bytes = (unsigned char *)req->info.buffer;
     size_t sector_index = (size_t)port->done_sectors + (size_t)port->next_sector;
-    void *sector_ptr = bytes + sector_index * PATA_SECTOR_SIZE;
+    void *sector_ptr = bytes + sector_index * DISK_SECTOR_SIZE;
     fs_size_t req_sectors = req->info.sectors;
 
     switch (port->phase) {
@@ -451,7 +449,7 @@ static void handle_irq(struct pata_port *port, uint8_t status) {
             return;
         }
 
-        pio_read_words(port, sector_ptr, PATA_SECTOR_SIZE / 2);
+        pio_read_words(port, sector_ptr, DISK_SECTOR_SIZE / 2);
         port->next_sector++;
         port->deadline_tick = timer_get_tick() + ticks_from_ms(ATA_TIMEOUT_MS);
 
@@ -471,7 +469,7 @@ static void handle_irq(struct pata_port *port, uint8_t status) {
             return;
         }
 
-        pio_write_words(port, sector_ptr, PATA_SECTOR_SIZE / 2);
+        pio_write_words(port, sector_ptr, DISK_SECTOR_SIZE / 2);
         port->next_sector++;
         port->deadline_tick = timer_get_tick() + ticks_from_ms(ATA_TIMEOUT_MS);
 
@@ -581,13 +579,10 @@ void pata_init(void) {
                 continue;
             }
 
-            disk_init(&disk->disk, &g_device_ops);
-            disk->disk.req_queue = &port->req_queue;
-            disk->disk.sector_size = PATA_SECTOR_SIZE;
-            disk->disk.name = dev_names[devidx];
+            disk_init(&disk->disk, &g_device_ops, dev_names[devidx], &port->req_queue, disk->disk.sectors);
 
             kinfo("pata: ch=%u drv=%u model='%s' serial='%s' sectors=%zu",
-                portidx, drive, disk->model, disk->serial, disk->disk.sector_count);
+                portidx, drive, disk->model, disk->serial, disk->disk.sectors);
 
             if (!disk_register(&disk->disk)) {
                 kwarn("pata: failed to register disk ch=%u drv=%u", portidx, drive);

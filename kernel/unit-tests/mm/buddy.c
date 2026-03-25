@@ -47,7 +47,7 @@ DEFINE_UNIT_TEST(buddy_alloc_returns_valid_aligned_pfn) {
     uint8_t order = buddy_get_max_order(buddy) >= 2 ? 2 : 0;
     pfn_t pfn = buddy_alloc(buddy, order);
     TEST_ASSERT_FALSE(pfn == PFN_INVALID);
-    TEST_EXPECT_TRUE(mm_pfn_is_valid(pfn));
+    TEST_EXPECT_TRUE(pfn_is_valid(pfn));
     TEST_EXPECT_EQ(0, pfn & (((pfn_t)1 << order) - 1));
     buddy_free(buddy, pfn, order);
 }

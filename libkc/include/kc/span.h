@@ -8,4 +8,7 @@ struct span {
     size_t size;
 };
 
+#define SPAN(ptr_, size_) ((struct span){ .ptr = (ptr_), .size = (size_) })
+#define SPAN_NULL SPAN(NULL, 0)
+
 #endif

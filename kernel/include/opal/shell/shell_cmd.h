@@ -6,5 +6,6 @@ int shell_cmd_irfdump(int argc, char **argv);
 int shell_cmd_rwsec(int argc, char **argv);
 int shell_cmd_testrwsec(int argc, char **argv);
 int shell_cmd_lsblk(int argc, char **argv);
+int shell_cmd_diskreset(int argc, char **argv);
 
 #endif

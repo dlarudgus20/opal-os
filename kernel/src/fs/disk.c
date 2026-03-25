@@ -1,28 +1,36 @@
 #include <kc/assert.h>
 
 #include <opal/fs/disk.h>
+#include <opal/fs/block_device.h>
 #include <opal/locks/irqlock.h>
 
-#define MAX_DEVICES 64
+#define MAX_DISKS 64
 
-static struct disk *g_disks[MAX_DEVICES];
+static struct disk *g_disks[MAX_DISKS];
 static size_t g_disks_count = 0;
 
 [[nodiscard]] static struct disk_request *submit_request(struct disk *disk, const struct disk_request_info *reqinfo);
 
-void disk_init(struct disk *disk, const struct disk_device_ops *ops) {
+void disk_init(
+    struct disk *disk, const struct disk_device_ops *ops,
+    const char *name, struct disk_req_queue *queue, fs_size_t sectors
+) {
     disk->ops = ops;
+    disk->partition_table = SPAN_NULL;
+    disk->name = name;
+    disk->req_queue = queue;
+    disk->sectors = sectors;
 }
 
 bool disk_register(struct disk *disk) {
     irqlock_t irqlock = irqlock_acquire();
 
-    if (g_disks_count >= MAX_DEVICES) {
+    if (g_disks_count >= MAX_DISKS) {
         irqlock_release(&irqlock);
         return false;
     }
-
     g_disks[g_disks_count++] = disk;
+
     irqlock_release(&irqlock);
     return true;
 }
@@ -47,14 +55,14 @@ struct disk_request *disk_write(struct disk *disk, fs_size_t lba, fs_size_t sect
     return submit_request(disk, &info);
 }
 
-size_t disk_count(void) {
+size_t disk_list_count(void) {
     irqlock_t irqlock = irqlock_acquire();
     size_t count = g_disks_count;
     irqlock_release(&irqlock);
     return count;
 }
 
-struct disk *disk_get(size_t index) {
+struct disk *disk_list_get(size_t index) {
     irqlock_t irqlock = irqlock_acquire();
 
     if (index >= g_disks_count) {
@@ -91,8 +99,7 @@ static struct disk_request *submit_request(struct disk *disk, const struct disk_
     new->disk = disk;
     new->info = *reqinfo;
     new->state = DISK_REQSTATE_QUEUED;
-    new->result = FS_OK;
-    completion_init(&new->completion);
+    fs_completion_init(&new->completion);
 
     queue->wpos = (queue->wpos + 1) % queue->capacity;
     queue->count_doing++;
@@ -119,7 +126,7 @@ struct disk_request *disk_req_queue_fetch(struct disk_req_queue *queue) {
     return req;
 }
 
-void disk_req_queue_pop_fetched(struct disk_req_queue *queue) {
+void disk_req_queue_pop_fetched(struct disk_req_queue *queue, fs_status_t result) {
     irqlock_t irqlock = irqlock_acquire();
 
     assert(queue->count_doing > 0);
@@ -127,7 +134,7 @@ void disk_req_queue_pop_fetched(struct disk_req_queue *queue) {
     struct disk_request *req = &queue->buffer[queue->fpos];
     assert(req->state == DISK_REQSTATE_INFLIGHT);
     req->state = DISK_REQSTATE_DONE;
-    completion_signal(&req->completion);
+    fs_completion_signal(&req->completion, result);
 
     queue->fpos = (queue->fpos + 1) % queue->capacity;
     queue->count_doing--;
@@ -136,13 +143,11 @@ void disk_req_queue_pop_fetched(struct disk_req_queue *queue) {
     irqlock_release(&irqlock);
 }
 
-fs_status_t disk_release_request(struct disk *disk, struct disk_request *req) {
+fs_status_t disk_request_release(struct disk_request *req) {
     irqlock_t irqlock = irqlock_acquire();
 
-    struct disk_req_queue *queue = disk->req_queue;
-    fs_status_t result = req->result;
+    struct disk_req_queue *queue = req->disk->req_queue;
 
-    assert(req->disk == disk);
     assert(queue->count_done > 0);
     assert(req->state == DISK_REQSTATE_DONE);
 
@@ -177,15 +182,18 @@ fs_status_t disk_release_request(struct disk *disk, struct disk_request *req) {
 
     assert(found, "invalid request to release");
 
+    fs_status_t result = req->completion.result;
     irqlock_release(&irqlock);
     return result;
 }
 
-bool disk_wait_request(struct disk *disk, struct disk_request *req, uint64_t timeout, fs_status_t *result) {
-    completion_wait(&req->completion, timeout);
+bool disk_request_wait(struct disk_request *req, uint64_t timeout, fs_status_t *result) {
+    if (!fs_completion_wait(&req->completion, timeout)) {
+        return false;
+    }
 
     irqlock_t irqlock = irqlock_acquire();
-    assert(req->disk == disk);
+
     bool done = req->state == DISK_REQSTATE_DONE;
     irqlock_release(&irqlock);
 
@@ -193,10 +201,9 @@ bool disk_wait_request(struct disk *disk, struct disk_request *req, uint64_t tim
         return false;
     }
 
+    fs_status_t r = disk_request_release(req);
     if (result) {
-        *result = disk_release_request(disk, req);
-    } else {
-        (void)disk_release_request(disk, req);
+        *result = r;
     }
 
     return true;

@@ -3,6 +3,7 @@
 #include <kc/stdlib.h>
 
 #include <opal/tty.h>
+#include <opal/fs/block_device.h>
 #include <opal/fs/disk.h>
 #include <opal/mm/mm.h>
 #include <opal/mm/kmalloc.h>
@@ -10,14 +11,13 @@
 #include <opal/shell/utils.h>
 
 enum {
-    SECTOR_SIZE = 512,
     TESTRWSEC_ORDER = 8,
     TESTRWSEC_SECTORS = 2000,
     TESTRWSEC_PATTERN_A = 0x5a,
     TESTRWSEC_PATTERN_B = 0xa5,
 };
 
-static_assert((TESTRWSEC_SECTORS * SECTOR_SIZE) <= (PAGE_SIZE << TESTRWSEC_ORDER));
+static_assert((TESTRWSEC_SECTORS * DISK_SECTOR_SIZE) <= (PAGE_SIZE << TESTRWSEC_ORDER));
 
 int shell_cmd_rwsec(int argc, char **argv) {
     bool is_write = false;
@@ -48,19 +48,19 @@ int shell_cmd_rwsec(int argc, char **argv) {
         return 1;
     }
 
-    struct disk *dev = disk_get((size_t)drive_ul);
+    struct block_device *dev = bdev_list_get((size_t)drive_ul);
     if (!dev) {
-        size_t count = disk_count();
+        size_t count = bdev_list_count();
         tty0_printf("%s: invalid device %lu (expected 0..%zu)\n",
             is_write ? "writesec" : "readsec", drive_ul, count ? count - 1 : 0);
         return 1;
     }
 
-    if (dev->sector_size == 0) {
+    if (dev->sectors == 0) {
         tty0_printf("%s: invalid sector size for dev=%lu\n", is_write ? "writesec" : "readsec", drive_ul);
         return 1;
     }
-    const size_t max_count = KMALLOC_MAX_SIZE / dev->sector_size;
+    const size_t max_count = KMALLOC_MAX_SIZE / DISK_SECTOR_SIZE;
 
     if (lba_ul > UINT32_MAX) {
         tty0_printf("%s: invalid LBA %lu\n", is_write ? "writesec" : "readsec", lba_ul);
@@ -81,14 +81,14 @@ int shell_cmd_rwsec(int argc, char **argv) {
     uint32_t lba = (uint32_t)lba_ul;
     uint32_t count = (uint32_t)count_ul;
     uint8_t fill = (uint8_t)fill_ul;
-    if ((uint64_t)lba + (uint64_t)count > dev->sector_count) {
+    if ((uint64_t)lba + (uint64_t)count > dev->sectors) {
         tty0_printf("%s: range out of bounds (dev=%lu lba=%u count=%u sectors=%zu)\n",
-            is_write ? "writesec" : "readsec", drive_ul, lba, count, dev->sector_count);
+            is_write ? "writesec" : "readsec", drive_ul, lba, count, dev->sectors);
         return 1;
     }
 
-    size_t bytes = (size_t)count * dev->sector_size;
-    void *buf = kmalloc(bytes);
+    size_t bytes = (size_t)count * DISK_SECTOR_SIZE;
+    void *buf = kzalloc(bytes);
     if (!buf) {
         tty0_printf("%s: allocation failed (%zu bytes)\n", is_write ? "writesec" : "readsec", bytes);
         return 1;
@@ -98,9 +98,9 @@ int shell_cmd_rwsec(int argc, char **argv) {
     fs_status_t io_result = FS_OK;
     if (is_write) {
         memset(buf, fill, bytes);
-        req = disk_write(dev, lba, count, buf);
+        req = block_device_write(dev, lba, count, buf);
     } else {
-        req = disk_read(dev, lba, count, buf);
+        req = block_device_read(dev, lba, count, buf);
     }
 
     if (!req) {
@@ -110,7 +110,7 @@ int shell_cmd_rwsec(int argc, char **argv) {
         return 1;
     }
 
-    if (!disk_wait_request(dev, req, TIMEOUT_INFINITY, &io_result)) {
+    if (!disk_request_wait(req, TIMEOUT_INFINITY, &io_result)) {
         tty0_printf("%s: timeout\n", is_write ? "writesec" : "readsec");
         kfree(buf, bytes);
         return 1;
@@ -138,15 +138,15 @@ static int submit_and_wait(
     const char *cmd_name,
     const char *phase,
     bool is_write,
-    struct disk *dev,
+    struct block_device *dev,
     unsigned long dev_index,
     uint32_t lba,
     void *buf,
     uint32_t count
 ) {
     struct disk_request *req = is_write
-        ? disk_write(dev, lba, count, buf)
-        : disk_read(dev, lba, count, buf);
+        ? block_device_write(dev, lba, count, buf)
+        : block_device_read(dev, lba, count, buf);
     if (!req) {
         tty0_printf("%s: %s submit failed (dev=%lu lba=%u count=%u)\n",
             cmd_name, phase, dev_index, lba, count);
@@ -154,7 +154,7 @@ static int submit_and_wait(
     }
 
     fs_status_t io_result = FS_OK;
-    if (!disk_wait_request(dev, req, TIMEOUT_INFINITY, &io_result)) {
+    if (!disk_request_wait(req, TIMEOUT_INFINITY, &io_result)) {
         tty0_printf("%s: %s timeout\n", cmd_name, phase);
         return 1;
     }
@@ -199,21 +199,15 @@ int shell_cmd_testrwsec(int argc, char **argv) {
         return 1;
     }
 
-    struct disk *dev = disk_get((size_t)drive_ul);
+    struct block_device *dev = bdev_list_get((size_t)drive_ul);
     if (!dev) {
-        size_t count = disk_count();
+        size_t count = bdev_list_count();
         tty0_printf("testrwsec: invalid device %lu (expected 0..%zu)\n",
             drive_ul, count ? count - 1 : 0);
         return 1;
     }
-    if (lba_ul >= dev->sector_count) {
+    if (lba_ul >= dev->sectors) {
         tty0_printf("testrwsec: invalid LBA %lu\n", lba_ul);
-        return 1;
-    }
-
-    if (dev->sector_size != SECTOR_SIZE) {
-        tty0_printf("testrwsec: unsupported sector size %zu (expected %u)\n",
-            dev->sector_size, (unsigned)SECTOR_SIZE);
         return 1;
     }
 
@@ -221,20 +215,19 @@ int shell_cmd_testrwsec(int argc, char **argv) {
 
     const uint32_t count = TESTRWSEC_SECTORS;
     uint64_t end = (uint64_t)lba + (uint64_t)count;
-    if (end > dev->sector_count) {
+    if (end > dev->sectors) {
         tty0_printf("testrwsec: range out of bounds (dev=%lu lba=%u count=%u sectors=%zu)\n",
-            drive_ul, lba, count, dev->sector_count);
+            drive_ul, lba, count, dev->sectors);
         return 1;
     }
 
-    pfn_t pfn = mm_alloc_page(TESTRWSEC_ORDER);
-    if (pfn == PFN_INVALID) {
+    unsigned char *buf = mm_alloc_page_ptr(TESTRWSEC_ORDER);
+    if (!buf) {
         tty0_puts("testrwsec: buffer alloc failed\n");
         return 1;
     }
 
-    unsigned char *buf = (unsigned char *)mm_pfn_to_ptr(pfn);
-    size_t bytes = (size_t)count * SECTOR_SIZE;
+    size_t bytes = (size_t)count * DISK_SECTOR_SIZE;
     int ret = 1;
 
     tty0_printf("testrwsec: dev=%lu lba=%u count=%u bytes=%zu\n", drive_ul, lba, count, bytes);
@@ -273,6 +266,6 @@ int shell_cmd_testrwsec(int argc, char **argv) {
     ret = 0;
 
 exit:
-    mm_free_page(pfn, TESTRWSEC_ORDER);
+    mm_free_page_ptr(buf, TESTRWSEC_ORDER);
     return ret;
 }

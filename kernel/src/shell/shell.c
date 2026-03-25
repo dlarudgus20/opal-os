@@ -163,6 +163,7 @@ static const struct shell_command g_commands[] = {
     CMD_ARGV("fputest",     "run floating-point quick test",        shell_cmd_fputest),
     CMD_ARGV("floattest",   "run floating-point consistency test",  shell_cmd_floattest),
     CMD_ARGV("lsblk",       "list block devices",                   shell_cmd_lsblk),
+    CMD_ARGV("diskreset",   "reset partition table: diskreset N",   shell_cmd_diskreset),
     CMD_ARGV("readsec",     "read sectors: readsec D L C",          shell_cmd_rwsec),
     CMD_ARGV("writesec",    "write sectors: writesec D L C V",      shell_cmd_rwsec),
     CMD_ARGV("testrwsec",   "test rw sectors: testrwsec",           shell_cmd_testrwsec),
@@ -327,7 +328,7 @@ static int cmd_ptable(int, char **) {
 }
 
 static int cmd_pfns(int, char **) {
-    mm_pfn_print_all();
+    pfn_print_all();
     return 0;
 }
 

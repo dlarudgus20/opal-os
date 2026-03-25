@@ -12,25 +12,28 @@ int snprintf_s(char *restrict buffer, size_t bufsz, const char *restrict format,
 }
 
 int vsnprintf_s(char *restrict buffer, size_t bufsz, const char *restrict format, va_list arg) {
-    if (!buffer) {
+    if (buffer && bufsz > INT_MAX) {
         return -1;
     }
-    if (bufsz == 0 || bufsz > INT_MAX) {
+    if (!buffer && bufsz > 0) {
         return -1;
     }
+
     if (!format) {
-        buffer[0] = '\0';
+        if (buffer && bufsz > 0) {
+            buffer[0] = '\0';
+        }
         return -1;
     }
 
     struct fmt fmt = {
-        .buffer = buffer,
+        .buffer = bufsz > 0 ? buffer : NULL,
         .size = (unsigned)bufsz,
         .count = 0,
         .error = false
     };
     int result = fmt_vsprintf(&fmt, format, arg);
-    if (result < 0) {
+    if (result < 0 && buffer && bufsz > 0) {
         buffer[0] = '\0';
     }
     return result;

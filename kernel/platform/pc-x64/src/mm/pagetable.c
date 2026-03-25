@@ -51,7 +51,7 @@ static phys_addr_t allocate_page(void) {
         if (pfn == PFN_INVALID) {
             panic("cannot allocate more page table");
         }
-        return mm_pfn_to_phys(pfn);
+        return pfn_to_phys(pfn);
     }
 }
 

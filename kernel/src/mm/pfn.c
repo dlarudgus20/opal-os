@@ -132,16 +132,16 @@ static pfn_t get_pfn_end(void) {
     return ranges.pfn_end;
 }
 
-void mm_pfn_init(struct tmpalloc *ta) {
+void pfn_init(struct tmpalloc *ta) {
     build_metadata_run(ta);
     g_pfn_end = get_pfn_end();
 }
 
-pfn_t mm_get_pfn_end(void) {
+pfn_t pfn_get_end(void) {
     return g_pfn_end;
 }
 
-bool mm_pfn_is_valid(pfn_t pfn) {
+bool pfn_is_valid(pfn_t pfn) {
     const struct mmap *section_map = mm_get_section_map();
 
     for (uint32_t i = 0; i < section_map->length; i++) {
@@ -158,20 +158,20 @@ bool mm_pfn_is_valid(pfn_t pfn) {
     return false;
 }
 
-phys_addr_t mm_pfn_to_phys(pfn_t pfn) {
+phys_addr_t pfn_to_phys(pfn_t pfn) {
     return pfn * PAGE_SIZE;
 }
 
-pfn_t mm_phys_to_pfn(phys_addr_t pa) {
+pfn_t phys_to_pfn(phys_addr_t pa) {
     return pa / PAGE_SIZE;
 }
 
-struct page *mm_pfn_to_page(pfn_t pfn) {
+struct page *pfn_to_page(pfn_t pfn) {
     assert(pfn < g_pfn_end);
     return (struct page *)PAGES_START_VIRT + pfn;
 }
 
-pfn_t mm_page_to_pfn(struct page *page) {
+pfn_t page_to_pfn(struct page *page) {
     virt_addr_t va = (virt_addr_t)page;
     assert(va >= PAGES_START_VIRT);
     pfn_t pfn = (va - PAGES_START_VIRT) / sizeof(struct page);
@@ -179,12 +179,12 @@ pfn_t mm_page_to_pfn(struct page *page) {
     return pfn;
 }
 
-void *mm_pfn_to_ptr(pfn_t pfn) {
+void *pfn_to_direct_ptr(pfn_t pfn) {
     assert(pfn < g_pfn_end);
     return (void *)(DIRECT_MAP_START_VIRT + pfn * PAGE_SIZE);
 }
 
-pfn_t mm_ptr_to_pfn(void *ptr) {
+pfn_t direct_ptr_to_pfn(void *ptr) {
     virt_addr_t va = (virt_addr_t)ptr;
     assert(DIRECT_MAP_START_VIRT <= va && va < DIRECT_MAP_END_VIRT);
     return (va - DIRECT_MAP_START_VIRT) / PAGE_SIZE;
@@ -197,7 +197,7 @@ static void print_pfns(pfn_t pfn_start, pfn_t pfn_end, uint16_t flags) {
         pfn_start, pfn_end, flags & PAGE_FLAG_METADATA ? " (metadata)" : "");
 }
 
-void mm_pfn_print_all(void) {
+void pfn_print_all(void) {
     const struct mmap *section_map = mm_get_section_map();
     if (section_map->length == 0) {
         return;
@@ -212,7 +212,7 @@ void mm_pfn_print_all(void) {
         const struct meta_ranges ranges = meta_ranges_for_entry(entry);
 
         for (pfn_t pfn = ranges.pfn_start; pfn < ranges.pfn_end; pfn++) {
-            struct page *page = mm_pfn_to_page(pfn);
+            struct page *page = pfn_to_page(pfn);
             if (!prev) {
                 prev = page;
                 run_start = pfn;

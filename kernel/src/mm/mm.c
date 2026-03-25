@@ -25,7 +25,7 @@ static void early_init(void) {
     tmpalloc_create(&ta, buffer, MAX_MMAP_ENTRIES, mm_get_section_map());
 
     mm_pagetable_init(&ta);
-    mm_pfn_init(&ta);
+    pfn_init(&ta);
 
     mm_pagetable_unuse_tmpalloc();
     mm_map_finalize_tmpalloc(&ta);
@@ -55,6 +55,24 @@ pfn_t mm_alloc_page(uint8_t order) {
 
 void mm_free_page(pfn_t pfn, uint8_t order) {
     irqlock_t irqlock = irqlock_acquire();
+    buddy_free(&g_buddy, pfn, order);
+    irqlock_release(&irqlock);
+}
+
+void *mm_alloc_page_ptr(uint8_t order) {
+    irqlock_t irqlock = irqlock_acquire();
+    pfn_t pfn = buddy_alloc(&g_buddy, order);
+    void *direct_ptr = NULL;
+    if (pfn != PFN_INVALID) {
+        direct_ptr = pfn_to_direct_ptr(pfn);
+    }
+    irqlock_release(&irqlock);
+    return direct_ptr;
+}
+
+void mm_free_page_ptr(void *direct_ptr, uint8_t order) {
+    irqlock_t irqlock = irqlock_acquire();
+    pfn_t pfn = direct_ptr_to_pfn(direct_ptr);
     buddy_free(&g_buddy, pfn, order);
     irqlock_release(&irqlock);
 }
