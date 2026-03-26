@@ -1,5 +1,6 @@
 #include <kc/assert.h>
 
+#include <opal/klog.h>
 #include <opal/fs/disk.h>
 #include <opal/fs/block_device.h>
 #include <opal/locks/irqlock.h>
@@ -16,10 +17,12 @@ void disk_init(
     const char *name, struct disk_req_queue *queue, fs_size_t sectors
 ) {
     disk->ops = ops;
-    disk->partition_table = SPAN_NULL;
+    disk->bdev = NULL;
+    disk->part_table_sectors = SPAN_NULL;
     disk->name = name;
     disk->req_queue = queue;
     disk->sectors = sectors;
+    dynarray_init(&disk->partitions);
 }
 
 bool disk_register(struct disk *disk) {
@@ -33,6 +36,23 @@ bool disk_register(struct disk *disk) {
 
     irqlock_release(&irqlock);
     return true;
+}
+
+void disk_register_bdev(struct disk *disk) {
+    irqlock_t irqlock = irqlock_acquire();
+
+    assert(!disk->bdev);
+
+    disk->bdev = block_device_create(disk, disk->name, 0, disk->sectors);
+    if (!disk->bdev) {
+        kerror("disk_register_bdev: cannot register block device %s", disk->name);
+        irqlock_release(&irqlock);
+        return;
+    }
+
+    irqlock_release(&irqlock);
+
+    disk_rescan_partition(disk, NULL);
 }
 
 struct disk_request *disk_read(struct disk *disk, fs_size_t lba, fs_size_t sectors, void *buffer) {
@@ -85,12 +105,16 @@ void disk_req_queue_init(struct disk_req_queue *queue, struct disk_request *buff
     queue->rpos = 0;
 }
 
+bool disk_req_queue_is_full_unlocked(struct disk_req_queue *queue) {
+    return queue->count_doing + queue->count_done >= queue->capacity;
+}
+
 static struct disk_request *submit_request(struct disk *disk, const struct disk_request_info *reqinfo) {
     irqlock_t irqlock = irqlock_acquire();
 
     struct disk_req_queue *queue = disk->req_queue;
 
-    if (queue->count_doing + queue->count_done >= queue->capacity) {
+    if (disk_req_queue_is_full_unlocked(queue)) {
         irqlock_release(&irqlock);
         return NULL;
     }

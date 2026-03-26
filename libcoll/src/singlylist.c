@@ -1,10 +1,6 @@
 #include <kc/assert.h>
 #include "collections/singlylist.h"
 
-void singlylist_init(struct singlylist* list) {
-    list->dummy.next = NULL;
-}
-
 struct singlylist_link* singlylist_head(struct singlylist* list) {
     return list->dummy.next;
 }

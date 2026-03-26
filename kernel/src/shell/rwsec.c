@@ -49,8 +49,8 @@ int shell_cmd_rwsec(int argc, char **argv) {
         return 1;
     }
 
-    struct block_device *dev = bdev_list_get((size_t)drive_ul);
-    if (!dev) {
+    struct block_device *dev;
+    if (bdev_list_get((size_t)drive_ul, &dev) != FS_OK) {
         size_t count = bdev_list_count();
         tty0_printf("%s: invalid device %lu (expected 0..%zu)\n",
             is_write ? "writesec" : "readsec", drive_ul, count ? count - 1 : 0);
@@ -133,6 +133,7 @@ int shell_cmd_rwsec(int argc, char **argv) {
 err_buf:
     kfree(buf, bytes);
 err_dev:
+    block_device_release(dev);
     return ret;
 }
 
@@ -203,8 +204,8 @@ int shell_cmd_testrwsec(int argc, char **argv) {
         return 1;
     }
 
-    struct block_device *dev = bdev_list_get((size_t)drive_ul);
-    if (!dev) {
+    struct block_device *dev;
+    if (bdev_list_get((size_t)drive_ul, &dev) != FS_OK) {
         size_t count = bdev_list_count();
         tty0_printf("testrwsec: invalid device %lu (expected 0..%zu)\n",
             drive_ul, count ? count - 1 : 0);
@@ -272,5 +273,6 @@ int shell_cmd_testrwsec(int argc, char **argv) {
 err_buf:
     mm_free_page_ptr(buf, TESTRWSEC_ORDER);
 err_dev:
+    block_device_release(dev);
     return ret;
 }

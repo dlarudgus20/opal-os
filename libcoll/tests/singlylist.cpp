@@ -22,7 +22,7 @@ struct test_node {
 class singlylist_test : public ::testing::Test {
 protected:
     void SetUp() override {
-        singlylist_init(&list);
+        list = SINGLYLIST_EMPTY;
         nodes.clear();
     }
 
@@ -412,8 +412,7 @@ TEST_F(singlylist_test, list_reversal_using_foreach_2) {
     }
 
     // 새로운 리스트에 역순으로 이동
-    struct singlylist reversed_list;
-    singlylist_init(&reversed_list);
+    struct singlylist reversed_list = SINGLYLIST_EMPTY;
 
     singlylist_foreach_2(before, ptr, &list) {
         // 현재 노드를 제거하고 새 리스트의 앞에 삽입

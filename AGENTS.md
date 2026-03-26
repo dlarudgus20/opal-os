@@ -105,6 +105,12 @@ ASAN_OPTIONS=detect_leaks=0 make -C kernel test CONFIG=debug PLATFORM=pc-x64
 `libkc`의 libc 유사 심볼 노출로 테스트 링크 충돌 가능성이 있습니다.
 - 테스트 링크 플래그에서 `--exclude-libs=libkc` 적용 여부를 확인합니다.
 
+### 3) C23 `constexpr` compound literal 관련 오탐 방지
+- 이 저장소는 C 소스에서 C23 `constexpr` compound literal 사용을 허용합니다.
+- 예: `((constexpr struct singlylist){ { NULL } })`
+- 해당 문법은 현재 툴체인에서 유효하므로, "C++ 전용 문법"으로 자동 판단하지 않습니다.
+- 문법 이슈를 제기하려면 최소 1회 실제 컴파일 실패 로그를 첨부합니다.
+
 ## 커널 유닛테스트 작성 가이드
 - 테스트 등록: `DEFINE_UNIT_TEST(name)`
 - 검증 매크로: `TEST_EXPECT_*`, `TEST_ASSERT_*`

@@ -11,7 +11,12 @@ struct singlylist {
     struct singlylist_link dummy;
 };
 
-void singlylist_init(struct singlylist* list);
+#ifndef __cplusplus
+#define SINGLYLIST_EMPTY ((constexpr struct singlylist){ { NULL } })
+#else
+#define SINGLYLIST_EMPTY (singlylist { { NULL } })
+#endif
+
 struct singlylist_link* singlylist_head(struct singlylist* list);
 struct singlylist_link* singlylist_before_head(struct singlylist* list);
 

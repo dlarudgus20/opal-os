@@ -33,7 +33,6 @@
 - 이 구현에서는 `CO_DONE`이 되면 핸들러를 한 번 더 호출한다.
   - 패턴: `if (co->state == CO_DONE) { cleanup; return CO_DONE; }`
 - 즉, 핸들러는 일반 실행 경로와 종료(cleanup) 경로를 모두 처리해야 한다.
-- 대표 사용 예시는 `kernel/src/fs/partition.c`의 `co_rescan_handler`, `co_reset_handler`.
 
 ## 동기화/컨텍스트
 - 작업 큐 조작은 `irqlock`으로 보호된다.
@@ -43,3 +42,6 @@
 ## 주의점
 - `coroutine_set_ready`는 같은 객체를 중복 enqueue하지 않도록 호출자가 상태를 관리해야 한다.
 - 핸들러가 참조하는 컨텍스트(버퍼/completion 등)의 수명은 `CO_DONE` cleanup 호출까지 보장해야 한다.
+
+## 사용 예시
+- `kernel/src/fs/partition.c`

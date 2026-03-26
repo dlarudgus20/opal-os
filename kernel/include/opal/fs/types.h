@@ -14,6 +14,10 @@ enum fs_status {
     FS_ERR_IO = -1,
     FS_ERR_NOMEM = -2,
     FS_ERR_BUSY = -3,
+    FS_ERR_NOENT = -4,
+    FS_ERR_EXIST = -5,
+    FS_ERR_RANGE = -6,
+    FS_ERR_INVAL = -7,
     FS_ERR_UNKNOWN = -1000,
 };
 

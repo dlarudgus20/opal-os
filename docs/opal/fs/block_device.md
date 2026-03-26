@@ -17,13 +17,15 @@
 - 요청 타입은 disk 계층(`struct disk_request`)을 그대로 사용
 
 ## 공개 API
-- 디바이스 등록/삭제:
-  - `block_device_register(disk, name, offset, sectors)`
-  - `block_device_unregister(dev)`
-  - `block_device_unregister_partitions(disk)`
+- 디바이스 생성/삭제:
+  - `block_device_create(disk, name, offset, sectors)`
+  - `block_device_destroy(dev)`
 - 디바이스 조회:
   - `bdev_list_count()`
-  - `bdev_list_get(index)`
+  - `bdev_list_get(index, &dev_out)`
+- 참조 카운트:
+  - 공유 참조: `block_device_retain(dev)`, `block_device_release(dev)`
+  - 배타 잠금: `block_device_retain_exclusive(dev)`, `block_device_release_exclusive(dev)`
 - I/O 제출:
   - `block_device_read(dev, lba, sectors, buffer)`
   - `block_device_write(dev, lba, sectors, buffer)`
@@ -35,14 +37,14 @@
   - 결과: `FS_OK`, `FS_ERR_IO`, `FS_ERR_BUSY`, `FS_ERR_NOMEM` 등
 
 ## 동기화/상태 규약
-- 등록/삭제/조회(`block_device_register`, `block_device_unregister`, `bdev_list_count`, `bdev_list_get`)는 내부 `irqlock`으로 보호된다.
-- `block_device_unregister_partitions(disk)`는 `offset > 0`인 엔트리만 제거한다.
-  - 즉, 전체 디스크 엔트리(`offset == 0`)는 유지하고 파티션 엔트리만 재생성하는 데 사용한다.
+- 생성/삭제/조회와 refcount 갱신은 내부 `irqlock`으로 보호된다.
+- `refcount` 의미:
+  - `>= 0`: 공유 참조 개수
+  - `-1`: 배타 잠금 상태
+- `block_device_destroy(dev)`는 `refcount == -1`일 때만 성공한다.
+- `bdev_list_get`은 `FS_OK` 시 내부적으로 retain된 포인터를 반환하며, 호출자는 `block_device_release`로 반납해야 한다.
 
 ## 호출자 계약
 - 버퍼 수명:
   - `disk_request.info.buffer`는 요청 완료 전까지 유효해야 한다.
   - 즉, `disk_request_wait(...)=true`로 완료가 확인되기 전에는 버퍼 해제/재사용을 하면 안 된다.
-- 이름 수명:
-  - 파티션 이름은 동적으로 할당되어 `block_device_unregister*`에서 해제된다.
-  - 전체 디스크 이름은 정적 문자열을 사용한다.

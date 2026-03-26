@@ -13,7 +13,8 @@
   - `name`: 물리 디스크 이름 (예: `hda`)
   - `sectors`: 총 섹터 수
   - `req_queue`: 요청 큐
-  - `partition_table`: 메모리에 보관한 MBR 1섹터 버퍼
+  - `part_table_sectors`: 메모리에 보관한 MBR 1섹터 버퍼
+  - `partitions`: `struct partition_entry` 동적 배열 (`index`, `bdev`)
 - `struct disk_request`
   - `info`: `lba`, `sectors`, `buffer`, `type(READ/WRITE)`
   - `state`: `QUEUED/INFLIGHT/DONE/RELEASED`
@@ -36,6 +37,8 @@
   - `disk_register_bdev(disk)`
   - `disk_rescan_partition(disk, completion)`
   - `disk_reset_partition(disk, completion)`
+  - `disk_create_partition(disk, index, lba, sectors, type, completion)`
+  - `disk_remove_partition(disk, index, completion)`
 
 ## 요청 상태 전이
 - submit: `QUEUED`
@@ -58,14 +61,21 @@
 - done request는 release 순서가 엇갈릴 수 있다.
   - `disk_request_release()`는 `rpos` head부터 `RELEASED` 연속 구간을 정리해 큐 공간을 회수한다.
 
-## 파티션 스캔/리셋 모델
+## 파티션 동작
+- 파티션 이름 수명 `struct block_device::name`
+  - disk 전체 block device의 이름은 `struct disk::name`을 그대로 사용한다.
+  - 파티션 별 block device의 이름은 kmalloc으로 할당된다. disk 계층에서 할당 해제 책임을 맡는다.
 - `disk_rescan_partition`:
   - 디스크 LBA0(MBR)를 읽고 파티션 엔트리를 파싱
-  - 기존 파티션 block device를 제거 후 새 파티션 block device를 등록
+  - 기존 파티션 block device를 제거 후 `disk->partitions`를 재구성
 - `disk_reset_partition`:
   - 0으로 채운 MBR 버퍼를 LBA0에 기록
-  - 기존 파티션 block device를 제거하고 `partition_table` 버퍼를 교체
-- 두 API는 coroutine 워커에서 비동기로 진행되며, `fs_completion`으로 완료를 통지한다.
+  - 기존 파티션 block device를 제거하고 `part_table_sectors` 버퍼를 교체
+- `disk_create_partition` / `disk_remove_partition`:
+  - MBR 엔트리 수정 후 디스크에 write
+  - write 성공 시 `disk->partitions`를 수정(create/remove)
+- 위 파티션 관리 API들은 coroutine 워커에서 비동기로 진행되며, `fs_completion`으로 완료를 통지한다.
+- rescan, create 동작 중 `NOMEM` 오류 등의 이유로 on-disk 파티션 중 일부가 커널 메모리(`partitions`, block device)에 올라오지 않을 수 있으며 `diskrescan`으로 정합성을 회복한다.
 
 ## 호출자 계약
 - 요청 버퍼(`disk_request.info.buffer`)는 완료 전까지 유효해야 한다.
