@@ -216,15 +216,6 @@ bool disk_request_wait(struct disk_request *req, uint64_t timeout, fs_status_t *
         return false;
     }
 
-    irqlock_t irqlock = irqlock_acquire();
-
-    bool done = req->state == DISK_REQSTATE_DONE;
-    irqlock_release(&irqlock);
-
-    if (!done) {
-        return false;
-    }
-
     fs_status_t r = disk_request_release(req);
     if (result) {
         *result = r;

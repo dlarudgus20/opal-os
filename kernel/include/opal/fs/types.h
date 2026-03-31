@@ -7,6 +7,7 @@
 #include <opal/task/completion.h>
 
 typedef int64_t fs_off_t;
+typedef int64_t fs_ssize_t;
 typedef uint64_t fs_size_t;
 
 enum fs_status {
