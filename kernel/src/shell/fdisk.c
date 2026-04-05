@@ -63,7 +63,7 @@ int shell_cmd_diskreset(int argc, char **argv) {
         tty0_puts("diskreset: done\n");
         return 0;
     } else {
-        tty0_printf("diskreset: error %d\n", comp.result);
+        tty0_printf("diskreset: error %s (%d)\n", fs_status_str(comp.result), comp.result);
         return 1;
     }
 }
@@ -90,7 +90,7 @@ int shell_cmd_diskrescan(int argc, char **argv) {
         return 0;
     }
 
-    tty0_printf("diskrescan: error %d\n", comp.result);
+    tty0_printf("diskrescan: error %s (%d)\n", fs_status_str(comp.result), comp.result);
     return 1;
 }
 
@@ -223,7 +223,7 @@ int shell_cmd_mkpart(int argc, char **argv) {
     disk_create_partition(disk, (size_t)part_ul, lba_ul, sectors_ul, (uint8_t)type_ul, &comp);
     fs_completion_wait(&comp, TIMEOUT_INFINITY);
     if (comp.result != FS_OK) {
-        tty0_printf("mkpart: error %d\n", comp.result);
+        tty0_printf("mkpart: error %s (%d)\n", fs_status_str(comp.result), comp.result);
         return 1;
     }
 
@@ -251,7 +251,7 @@ int shell_cmd_rmpart(int argc, char **argv) {
     disk_remove_partition(disk, (size_t)part_ul, &comp);
     fs_completion_wait(&comp, TIMEOUT_INFINITY);
     if (comp.result != FS_OK) {
-        tty0_printf("rmpart: error %d\n", comp.result);
+        tty0_printf("rmpart: error %s (%d)\n", fs_status_str(comp.result), comp.result);
         return 1;
     }
 

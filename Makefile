@@ -10,7 +10,7 @@ ISO_DIR     := $(BUILD_DIR)/iso
 INITRAMFS   := $(BUILD_DIR)/iso/boot/initramfs
 ISO_FILE    := $(BUILD_DIR)/opal-os.iso
 
-QEMU_FLAGS  += -m 128 -serial stdio -no-reboot
+QEMU_FLAGS  += -m 128 -serial stdio -no-reboot -boot order=dc
 QEMU_HDDS   := \
 	$(if $(wildcard hda.img), -hda hda.img) \
 	$(if $(wildcard hdb.img), -hdb hdb.img) \

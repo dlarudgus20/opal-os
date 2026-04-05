@@ -51,7 +51,7 @@ err:
 bool block_device_destroy(struct block_device *dev) {
     irqlock_t irqlock = irqlock_acquire();
 
-    if (dev->refcount != -1) {
+    if (dev->refcount != 1) {
         irqlock_release(&irqlock);
         return false;
     }
@@ -71,10 +71,6 @@ bool block_device_destroy(struct block_device *dev) {
 
 bool block_device_retain(struct block_device *dev) {
     irqlock_t irqlock = irqlock_acquire();
-    if (dev->refcount < 0) {
-        irqlock_release(&irqlock);
-        return false;
-    }
     assert(dev->refcount < MAX_REFC);
     dev->refcount++;
     irqlock_release(&irqlock);
@@ -85,24 +81,6 @@ void block_device_release(struct block_device *dev) {
     irqlock_t irqlock = irqlock_acquire();
     assert(dev->refcount > 0);
     dev->refcount--;
-    irqlock_release(&irqlock);
-}
-
-bool block_device_retain_exclusive(struct block_device *dev) {
-    irqlock_t irqlock = irqlock_acquire();
-    if (dev->refcount != 0) {
-        irqlock_release(&irqlock);
-        return false;
-    }
-    dev->refcount = -1;
-    irqlock_release(&irqlock);
-    return true;
-}
-
-void block_device_release_exclusive(struct block_device *dev) {
-    irqlock_t irqlock = irqlock_acquire();
-    assert(dev->refcount == -1);
-    dev->refcount = 0;
     irqlock_release(&irqlock);
 }
 
@@ -129,11 +107,6 @@ fs_status_t bdev_list_get(size_t index, struct block_device **dev_out) {
         }
 
         struct block_device *dev = container_of(ptr, struct block_device, link);
-        if (dev->refcount < 0) {
-            irqlock_release(&irqlock);
-            return FS_ERR_BUSY;
-        }
-
         assert(dev->refcount < MAX_REFC);
         dev->refcount++;
         irqlock_release(&irqlock);

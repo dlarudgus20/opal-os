@@ -11,6 +11,7 @@ qemu.log
 *.swo
 *~
 .DS_Store
+.codex
 /tmp/
 
 # Python

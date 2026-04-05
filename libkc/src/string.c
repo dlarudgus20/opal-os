@@ -131,6 +131,27 @@ size_t strspn(const char *s, const char *accept) {
     return i;
 }
 
+size_t strcspn(const char *s, const char *reject) {
+    size_t i;
+    size_t j;
+    int matched;
+
+    for (i = 0; s[i] != '\0'; i++) {
+        matched = 0;
+        for (j = 0; reject[j] != '\0'; j++) {
+            if (s[i] == reject[j]) {
+                matched = 1;
+                break;
+            }
+        }
+        if (matched) {
+            return i;
+        }
+    }
+
+    return i;
+}
+
 char *strchr(const char *s, int ch) {
     unsigned char c = (unsigned char) ch;
 
@@ -146,6 +167,24 @@ char *strchr(const char *s, int ch) {
     }
 
     return 0;
+}
+
+char *strrchr(const char *s, int ch) {
+    unsigned char c = (unsigned char) ch;
+    char *found = 0;
+
+    while (*s != '\0') {
+        if ((unsigned char) *s == c) {
+            found = (char *) s;
+        }
+        s++;
+    }
+
+    if (c == '\0') {
+        return (char *) s;
+    }
+
+    return found;
 }
 
 char *strnchr(const char *s, int ch, size_t n) {
@@ -199,6 +238,19 @@ char *strcpy(char *restrict dest, const char *restrict src) {
     dest[i] = '\0';
 
     return dest;
+}
+
+void strcpy_sized(char *restrict dest, size_t destsz, const char *restrict src) {
+    if (destsz == 0) {
+        return;
+    }
+
+    size_t i = 0;
+    while (i < destsz - 1 && src[i] != '\0') {
+        dest[i] = src[i];
+        i++;
+    }
+    dest[i] = '\0';
 }
 
 void strncpy_sized(char *restrict dest, size_t destsz, const char *restrict src, size_t n) {

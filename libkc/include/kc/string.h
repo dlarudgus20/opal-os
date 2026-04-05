@@ -13,11 +13,14 @@ void* memchr_not(const void* ptr, int ch, size_t count);
 size_t strlen(const char *s);
 size_t strnlen_s(const char *s, size_t strsz);
 size_t strspn(const char *s, const char *accept);
+size_t strcspn(const char *s, const char *reject);
 char *strchr(const char *s, int ch);
+char *strrchr(const char *s, int ch);
 char *strnchr(const char *s, int ch, size_t n);
 int strcmp(const char *lhs, const char *rhs);
 int strncmp(const char *lhs, const char *rhs, size_t n);
 char *strcpy(char *restrict dest, const char *restrict src);
+void strcpy_sized(char *restrict dest, size_t destsz, const char *restrict src);
 void strncpy_sized(char *restrict dest, size_t destsz, const char *restrict src, size_t n);
 char *strcat(char *restrict dest, const char *restrict src);
 char *strncat(char *restrict dest, const char *restrict src, size_t n);
@@ -32,7 +35,9 @@ void strcat_sized(char *restrict dest, size_t destsz, const char *restrict src);
 
 #define strlen(s)                   __builtin_strlen(s)
 #define strspn(s, accept)           __builtin_strspn(s, accept)
+#define strcspn(s, reject)          __builtin_strcspn(s, reject)
 #define strchr(s, ch)               __builtin_strchr(s, ch)
+#define strrchr(s, ch)              __builtin_strrchr(s, ch)
 #define strcmp(lhs, rhs)            __builtin_strcmp(lhs, rhs)
 #define strncmp(lhs, rhs, n)        __builtin_strncmp(lhs, rhs, n)
 #define strcpy(dest, src)           __builtin_strcpy(dest, src)

@@ -115,8 +115,8 @@ int shell_cmd_rwsec(int argc, char **argv) {
         goto err_buf;
     }
     if (io_result != FS_OK) {
-        tty0_printf("%s: io failed (dev=%lu lba=%u count=%u status=%d)\n",
-            is_write ? "writesec" : "readsec", drive_ul, lba, count, io_result);
+        tty0_printf("%s: io failed (dev=%lu lba=%u count=%u status=%s (%d))\n",
+            is_write ? "writesec" : "readsec", drive_ul, lba, count, fs_status_str(io_result), io_result);
         goto err_buf;
     }
 
@@ -162,8 +162,8 @@ static int submit_and_wait(
         return 1;
     }
     if (io_result != FS_OK) {
-        tty0_printf("%s: %s io failed (dev=%lu lba=%u count=%u status=%d)\n",
-            cmd_name, phase, dev_index, lba, count, io_result);
+        tty0_printf("%s: %s io failed (dev=%lu lba=%u count=%u status=%s (%d))\n",
+            cmd_name, phase, dev_index, lba, count, fs_status_str(io_result), io_result);
         return 1;
     }
 

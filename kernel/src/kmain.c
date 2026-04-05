@@ -9,6 +9,7 @@
 #include <opal/hid/hid.h>
 #include <opal/task/task.h>
 #include <opal/fs/disk.h>
+#include <opal/fs/vfs.h>
 #include <opal/shell/shell.h>
 #include <opal/platform/asm.h>
 #include <opal/platform/boot/boot.h>
@@ -52,6 +53,7 @@ void kmain(void) {
     timer_init();
     sched_init();
 
+    vfs_init();
     drivers_init();
     all_disks_register_bdev();
 

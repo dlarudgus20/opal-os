@@ -46,11 +46,14 @@ void LibkcApi::load_api() {
     memcmp = load_symbol<decltype(memcmp)>(handle, "memcmp");
     strlen = load_symbol<decltype(strlen)>(handle, "strlen");
     strspn = load_symbol<decltype(strspn)>(handle, "strspn");
+    strcspn = load_symbol<decltype(strcspn)>(handle, "strcspn");
     strchr = load_symbol<decltype(strchr)>(handle, "strchr");
+    strrchr = load_symbol<decltype(strrchr)>(handle, "strrchr");
     strnchr = load_symbol<decltype(strnchr)>(handle, "strnchr");
     strcmp = load_symbol<decltype(strcmp)>(handle, "strcmp");
     strncmp = load_symbol<decltype(strncmp)>(handle, "strncmp");
     strcpy = load_symbol<decltype(strcpy)>(handle, "strcpy");
+    strcpy_sized = load_symbol<decltype(strcpy_sized)>(handle, "strcpy_sized");
     strncpy_sized = load_symbol<decltype(strncpy_sized)>(handle, "strncpy_sized");
     strcat = load_symbol<decltype(strcat)>(handle, "strcat");
     strncat = load_symbol<decltype(strncat)>(handle, "strncat");

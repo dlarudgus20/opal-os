@@ -6,6 +6,10 @@
 
 #include <opal/task/completion.h>
 
+#define FS_OFF_MAX      INT64_MAX
+#define FS_SSIZE_MAX    INT64_MAX
+#define FS_SIZE_MAX     UINT64_MAX
+
 typedef int64_t fs_off_t;
 typedef int64_t fs_ssize_t;
 typedef uint64_t fs_size_t;
@@ -19,10 +23,27 @@ enum fs_status {
     FS_ERR_EXIST = -5,
     FS_ERR_RANGE = -6,
     FS_ERR_INVAL = -7,
+    FS_ERR_ISDIR = -8,
+    FS_ERR_NOTDIR = -9,
+    FS_ERR_TOOBIG = -10,
+    FS_ERR_NOTSUPP = -11,
+    FS_ERR_NOSPC = -12,
     FS_ERR_UNKNOWN = -1000,
 };
 
 typedef enum fs_status fs_status_t;
+
+enum fs_seek : uint8_t {
+    FS_SEEK_SET,
+    FS_SEEK_END,
+};
+
+static inline fs_size_t align_ceil_fsz_p2(fs_size_t x, fs_size_t align) {
+    const fs_size_t mask = align - 1;
+    return (x + mask) & ~mask;
+}
+
+const char *fs_status_str(fs_status_t status);
 
 struct fs_completion {
     struct completion comp;

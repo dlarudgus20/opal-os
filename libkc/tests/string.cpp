@@ -54,6 +54,13 @@ TEST_F(LibkcTest, StrspnMatchesPrefixSet) {
     EXPECT_EQ(kc.strspn("xyz", "abc"), static_cast<size_t>(0));
 }
 
+TEST_F(LibkcTest, StrcspnStopsAtFirstRejectCharacter) {
+    EXPECT_EQ(kc.strcspn("kernel", "xyz"), static_cast<size_t>(6));
+    EXPECT_EQ(kc.strcspn("kernel", "rn"), static_cast<size_t>(2));
+    EXPECT_EQ(kc.strcspn("banana", "ab"), static_cast<size_t>(0));
+    EXPECT_EQ(kc.strcspn("1234abcd", "ab"), static_cast<size_t>(4));
+}
+
 TEST_F(LibkcTest, StrchrFindsFirstOccurrenceAndNullTerminator) {
     const char *s = "banana";
 
@@ -66,6 +73,20 @@ TEST_F(LibkcTest, StrchrFindsFirstOccurrenceAndNullTerminator) {
     EXPECT_EQ(end - s, 6);
 
     EXPECT_EQ(kc.strchr(s, 'x'), nullptr);
+}
+
+TEST_F(LibkcTest, StrrchrFindsLastOccurrenceAndNullTerminator) {
+    const char *s = "banana";
+
+    char *found = kc.strrchr(s, 'a');
+    ASSERT_NE(found, nullptr);
+    EXPECT_EQ(found - s, 5);
+
+    char *end = kc.strrchr(s, '\0');
+    ASSERT_NE(end, nullptr);
+    EXPECT_EQ(end - s, 6);
+
+    EXPECT_EQ(kc.strrchr(s, 'x'), nullptr);
 }
 
 TEST_F(LibkcTest, StrnchrRespectsLimit) {
@@ -99,6 +120,30 @@ TEST_F(LibkcTest, StrcpyCopiesIncludingTerminator) {
 
     EXPECT_EQ(ret, dst);
     EXPECT_STREQ(dst, "kernel");
+}
+
+TEST_F(LibkcTest, StrcpySizedCopiesAndTerminates) {
+    char dst[8] = {'#', '#', '#', '#', '#', '#', '#', '#'};
+    kc.strcpy_sized(dst, sizeof(dst), "opal");
+    EXPECT_STREQ(dst, "opal");
+    EXPECT_EQ(dst[5], '#');
+}
+
+TEST_F(LibkcTest, StrcpySizedTruncatesToDestCapacity) {
+    char dst[4] = {'#', '#', '#', '#'};
+    kc.strcpy_sized(dst, sizeof(dst), "kernel");
+    EXPECT_EQ(dst[0], 'k');
+    EXPECT_EQ(dst[1], 'e');
+    EXPECT_EQ(dst[2], 'r');
+    EXPECT_EQ(dst[3], '\0');
+}
+
+TEST_F(LibkcTest, StrcpySizedNoopWhenDestSizeIsZero) {
+    char dst[3] = {'a', 'b', 'c'};
+    kc.strcpy_sized(dst, 0, "xyz");
+    EXPECT_EQ(dst[0], 'a');
+    EXPECT_EQ(dst[1], 'b');
+    EXPECT_EQ(dst[2], 'c');
 }
 
 TEST_F(LibkcTest, StrncpySizedCopiesAndTerminates) {

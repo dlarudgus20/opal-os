@@ -6,12 +6,6 @@
 
 #include <opal/attributes.h>
 
-#if __has_attribute(always_inline)
-#define ALWAYS_INLINE [[gnu::always_inline]] static inline
-#else
-#define ALWAYS_INLINE static inline
-#endif
-
 #define RFLAGS_CARRY    (1 << 0)
 #define RFLAGS_PARITY   (1 << 1)
 #define RFLAGS_AUXCARRY (1 << 4)

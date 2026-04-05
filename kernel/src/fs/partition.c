@@ -36,7 +36,7 @@ static void complete_not_null(struct fs_completion *comp, fs_status_t result) {
     struct partition_entry *end = begin + dynarray_len(&disk->partitions, typeof(*end));
     struct partition_entry *entry = begin;
     for (; entry < end; entry++) {
-        if (!block_device_retain_exclusive(entry->bdev)) {
+        if (!block_device_retain(entry->bdev)) {
             goto undo;
         }
     }
@@ -44,7 +44,7 @@ static void complete_not_null(struct fs_completion *comp, fs_status_t result) {
 
 undo:
     for (struct partition_entry *p = begin; p < entry; p++) {
-        block_device_release_exclusive(p->bdev);
+        block_device_release(p->bdev);
     }
     return false;
 }
@@ -52,7 +52,7 @@ undo:
 
 static void unlock_partitions(struct disk *disk) {
     dynarray_foreach(struct partition_entry *, entry, &disk->partitions) {
-        block_device_release_exclusive(entry->bdev);
+        block_device_release(entry->bdev);
     }
 }
 
@@ -86,6 +86,9 @@ static void build_part_table(struct disk *disk) {
         return;
     }
 
+    mbr[510] = 0x55;
+    mbr[511] = 0xaa;
+
     struct mbr_part_entry table[4];
     memcpy(table, &mbr[PARTITION_TABLE_OFFSET], sizeof(table));
 
@@ -97,7 +100,7 @@ static void build_part_table(struct disk *disk) {
         }
 
         uint32_t end = table[i].lba + table[i].sectors;
-        if (end <= table[i].lba || end > disk->sectors) {
+        if (table[i].lba == 0 || end <= table[i].lba || end > disk->sectors) {
             knotice("disk_rescan_partition: broken partition %s:%zu", disk->name, i);
             continue;
         }
@@ -138,6 +141,9 @@ static void build_part_table(struct disk *disk) {
 ) {
     fs_size_t end = lba + sectors;
 
+    if (lba == 0) {
+        return FS_ERR_RANGE;
+    }
     if (end > disk->sectors) {
         return FS_ERR_RANGE;
     }
@@ -184,6 +190,11 @@ static void reset_partition(struct disk *disk, struct fs_completion *completion,
     unsigned char *mbr = kzalloc(DISK_SECTOR_SIZE);
     if (!mbr) {
         goto err_mbr;
+    }
+
+    if (!rescan) {
+        mbr[510] = 0x55;
+        mbr[511] = 0xaa;
     }
 
     struct co_part_reset *ctx = kzalloc(sizeof(*ctx));
@@ -346,7 +357,7 @@ static void modify_partition(
         result = FS_ERR_BUSY;
         goto err_name;
     }
-    if (ctx->entry && !block_device_retain_exclusive(ctx->entry->bdev)) {
+    if (ctx->entry && !block_device_retain(ctx->entry->bdev)) {
         result = FS_ERR_BUSY;
         goto err_name;
     }
@@ -459,7 +470,7 @@ err_io:
 
 err:
     if (ctx->entry) {
-        block_device_release_exclusive(ctx->entry->bdev);
+        block_device_release(ctx->entry->bdev);
     }
     if (ctx->partname.ptr) {
         kfree_span(ctx->partname);
