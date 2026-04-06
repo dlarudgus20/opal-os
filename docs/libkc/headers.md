@@ -45,8 +45,14 @@
 - 목적:
   - 최소 문자 분류 유틸리티 제공
 - 현재 제공 함수:
-  - `static inline bool isdigit(char ch)`
-  - `static inline bool isspace(char ch)`
+  - `isdigit`
+  - `isupper`
+  - `islower`
+  - `isalpha`
+  - `isalnum`
+  - `toupper`
+  - `tolower`
+  - `isspace`
 
 ## `kerrno.h`
 - 목적:

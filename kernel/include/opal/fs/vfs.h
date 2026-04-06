@@ -4,8 +4,9 @@
 #include <collections/linkedlist.h>
 
 #include <opal/fs/types.h>
+#include <opal/fs/hstr.h>
 
-#define VFS_MAX_NAME 255
+#define VFS_MAX_NAME UINT16_MAX
 
 enum inode_flags {
     FS_INODE_DIR = 0x10,
@@ -22,7 +23,9 @@ struct path_entry {
 
     struct linkedlist children;
     struct linkedlist_link link;
-    char name[VFS_MAX_NAME + 1];
+    struct hstr name;
+
+    unsigned refcount;
 };
 
 struct superblock_ops {
@@ -38,10 +41,7 @@ struct inode_ops {
     void (*close)(struct inode *inode);
     fs_status_t (*open)(struct inode *inode, struct file **file_out);
     fs_status_t (*lookup)(struct inode *inode, struct path_entry *pe);
-    fs_status_t (*create)(
-        struct inode *inode, struct path_entry *pe,
-        enum inode_flags flags, const char *filename, struct path_entry **child_out
-    );
+    fs_status_t (*create)(struct inode *inode, struct path_entry *pe, enum inode_flags flags);
 };
 
 struct inode {
@@ -65,15 +65,15 @@ struct file {
 
 void vfs_init(void);
 fs_status_t vfs_mount_root(struct superblock *sb);
-fs_status_t vfs_lookup_path(const char *path, struct path_entry **found, const char **unresolved_path);
-fs_status_t vfs_create_path(const char *path, enum inode_flags flags, bool truncate, struct file **file_out);
-fs_status_t vfs_open_path(const char *path, struct file **file_out);
+fs_status_t vfs_lookup_path(struct path_entry *pe, const char *path, struct path_entry **found, const char **unresolved_path);
+fs_status_t vfs_create_path(struct path_entry *pe, const char *path, enum inode_flags flags, bool truncate, struct file **file_out);
+fs_status_t vfs_open_path(struct path_entry *pe, const char *path, struct file **file_out);
 
-bool path_entry_init(struct path_entry *restrict pe, struct path_entry *restrict parent, struct inode *inode);
-bool path_entry_remove(struct path_entry *pe);
-fs_status_t path_entry_lookup(struct path_entry *pe, const char *path, struct path_entry **found, const char **unresolved_path);
-fs_status_t path_entry_create(struct path_entry *pe, const char *path, enum inode_flags flags, bool truncate, struct file **file_out);
-fs_status_t path_entry_open(struct path_entry *pe, const char *path, struct file **file_out);
+void path_entry_retain(struct path_entry *pe);
+void path_entry_release(struct path_entry *pe);
+fs_status_t path_entry_add(struct path_entry *parent, struct inode *inode, struct hstr *name, struct path_entry **out);
+fs_status_t path_entry_lookup(struct path_entry *pe, const char *name, size_t len, struct path_entry **found);
+fs_status_t path_entry_create(struct path_entry *pe, enum inode_flags flags, bool truncate, struct file **file_out);
 
 void superblock_init(struct superblock *sb, const struct superblock_ops *ops);
 

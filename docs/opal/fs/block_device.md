@@ -24,8 +24,7 @@
   - `bdev_list_count()`
   - `bdev_list_get(index, &dev_out)`
 - 참조 카운트:
-  - 공유 참조: `block_device_retain(dev)`, `block_device_release(dev)`
-  - 배타 잠금: `block_device_retain_exclusive(dev)`, `block_device_release_exclusive(dev)`
+  - `block_device_retain(dev)`, `block_device_release(dev)`
 - I/O 제출:
   - `block_device_read(dev, lba, sectors, buffer)`
   - `block_device_write(dev, lba, sectors, buffer)`
@@ -39,9 +38,8 @@
 ## 동기화/상태 규약
 - 생성/삭제/조회와 refcount 갱신은 내부 `irqlock`으로 보호된다.
 - `refcount` 의미:
-  - `>= 0`: 공유 참조 개수
-  - `-1`: 배타 잠금 상태
-- `block_device_destroy(dev)`는 `refcount == -1`일 때만 성공한다.
+  - active 참조 개수
+- `block_device_destroy(dev)`는 `refcount == 1`일 때만 성공한다.
 - `bdev_list_get`은 `FS_OK` 시 내부적으로 retain된 포인터를 반환하며, 호출자는 `block_device_release`로 반납해야 한다.
 
 ## 호출자 계약

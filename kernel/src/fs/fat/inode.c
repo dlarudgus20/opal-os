@@ -32,7 +32,7 @@ static void dentry_set_first_cluster(struct fat_dentry *dentry, uint8_t bits, ui
     }
 }
 
-static void extract_filename(const char name[11], struct path_entry *pe) {
+static void extract_filename(const char name[11], char out[13]) {
     int ext_begin = 8;
     int name_end = ext_begin;
     while (name_end > 0 && name[name_end - 1] == ' ') {
@@ -46,58 +46,64 @@ static void extract_filename(const char name[11], struct path_entry *pe) {
 
     int nidx = 0;
     for (; nidx < VFS_MAX_NAME && nidx < name_end; nidx++) {
-        pe->name[nidx] = name[nidx];
+        out[nidx] = name[nidx];
     }
 
     if (ext_begin == ext_end || nidx >= VFS_MAX_NAME) {
-        pe->name[nidx] = '\0';
+        out[nidx] = '\0';
         return;
     }
-    pe->name[nidx++] = '.';
+    out[nidx++] = '.';
 
     int eidx = 0;
     for (; nidx + eidx < VFS_MAX_NAME && ext_begin + eidx < ext_end; eidx++) {
-        pe->name[nidx + eidx] = name[ext_begin + eidx];
+        out[nidx + eidx] = name[ext_begin + eidx];
     }
-    pe->name[nidx + eidx] = 0;
+    out[nidx + eidx] = 0;
 }
 
-static bool pack_filename(const char *filename, char name[11]) {
-    const char *special = "!#$%&'()-@^_`{}~";
-    memset(name, ' ', 11);
+static struct hstr extract_filename_hs(const char name[11]) {
+    char out[13];
+    extract_filename(name, out);
+    return hstrdup(out);
+}
 
-    if (filename[0] == '\0') {
+static bool pack_filename(const char *filename, size_t len, char out[11]) {
+    const char *special = "!#$%&'()-@^_`{}~";
+    memset(out, ' ', 11);
+
+    if (len == 0) {
         return false;
     }
 
-    int i = 0;
-    for (; i < 8; i++) {
+    size_t i = 0;
+    for (; i < len && i < 8; i++) {
         char ch = filename[i];
-        if (ch == '.' || ch == '\0') {
+        if (ch == '.') {
             break;
         }
-        if (!(isalpha(ch) || isdigit(ch) || strchr(special, ch))) {
+        if (!(isupper(ch) || isdigit(ch) || strchr(special, ch))) {
             return false;
         }
-        name[i] = toupper(ch);
+        out[i] = toupper(ch);
     }
-    if (filename[i] == '\0') {
+    if (i == len) {
         return true;
     }
 
-    int j = 0;
-    for (; j < 3; j++) {
+    size_t j = 0;
+    for (; i + 1 + j < len && j < 3; j++) {
         char ch = filename[i + 1 + j];
         if (ch == '\0') {
             break;
         }
-        if (!(isalpha(ch) || isdigit(ch) || strchr(special, ch))) {
+        if (!(isupper(ch) || isdigit(ch) || strchr(special, ch))) {
             return false;
         }
-        name[8 + j] = toupper(ch);
+        out[8 + j] = toupper(ch);
     }
 
-    return filename[i + 1 + j] == '\0';
+    return i + 1 + j == len;
 }
 
 static fs_status_t dentry_lookup(struct fat_sb *sb, struct fat_dentry *dentries, uint32_t count, struct path_entry *pe) {
@@ -119,9 +125,22 @@ static fs_status_t dentry_lookup(struct fat_sb *sb, struct fat_dentry *dentries,
         fat_inode_init(child, sb, parent, idx, dentry_get_first_cluster(dentry, sb->layout.bits));
         child->parent = parent;
 
-        extract_filename(dentry->name, &child->pe);
-        if (!path_entry_init(&child->pe, pe, &child->inode)) {
+        struct hstr hs = extract_filename_hs(dentry->name);
+        if (hstr_is_null(&hs)) {
             inode_release(&child->inode);
+            return FS_ERR_NOMEM;
+        }
+
+        struct path_entry *out;
+        fs_status_t result = path_entry_add(pe, &child->inode, &hs, &out);
+        if (result != FS_OK) {
+            hstr_free(&hs);
+            inode_release(&child->inode);
+            if (result != FS_ERR_EXIST) {
+                return result;
+            }
+        } else {
+            path_entry_release(out);
         }
     }
     return FS_OK;
@@ -199,10 +218,7 @@ static fs_status_t root_inode_lookup(struct inode *base, struct path_entry *pe) 
     return dentry_lookup(inode->sb, inode->buffer, inode->entries, pe);
 }
 
-static fs_status_t fat_inode_create(
-    struct inode *base, struct path_entry *pe,
-    enum inode_flags flags, const char *filename, struct path_entry **child_out
-) {
+static fs_status_t fat_inode_create(struct inode *base, struct path_entry *pe, enum inode_flags flags) {
     struct fat_inode_base *inode = container_of(base, struct fat_inode_base, inode);
 
     if (!(inode->inode.flags & FS_INODE_DIR)) {
@@ -210,7 +226,7 @@ static fs_status_t fat_inode_create(
     }
 
     char name[11];
-    if (!pack_filename(filename, name)) {
+    if (!pack_filename(hstrget(&pe->name), hstrlen(&pe->name), name)) {
         return FS_ERR_INVAL;
     }
 
@@ -220,16 +236,10 @@ static fs_status_t fat_inode_create(
         goto err;
     }
 
-    extract_filename(name, &child->pe);
-    if (!path_entry_init(&child->pe, pe, &child->inode)) {
-        result = FS_ERR_EXIST;
-        goto err_alloc;
-    }
-
     fs_ssize_t didx = inode->ops->alloc_dentry(inode);
     if (didx < 0) {
         result = didx;
-        goto err_pe;
+        goto err_alloc;
     }
 
     uint8_t bits = inode->sb->layout.bits;
@@ -239,7 +249,7 @@ static fs_status_t fat_inode_create(
     if (flags & FS_INODE_DIR) {
         result = table->ops->table_alloc(table, &first_cluster);
         if (result != FS_OK) {
-            goto err_pe;
+            goto err_alloc;
         }
     }
 
@@ -260,7 +270,7 @@ static fs_status_t fat_inode_create(
 
     result = inode->ops->write_dentry(inode, &dentry, didx);
     if (result != FS_OK) {
-        goto err_pe;
+        goto err_alloc;
     }
 
     fat_inode_init(child, inode->sb, inode, didx, first_cluster);
@@ -281,11 +291,9 @@ static fs_status_t fat_inode_create(
         child->ops->write_dentry(&child->base, &dentry, 2);
     }
 
-    *child_out = &child->pe;
+    pe->inode = &child->inode;
     return FS_OK;
 
-err_pe:
-    path_entry_remove(&child->pe);
 err_alloc:
     kfree(child, sizeof(*child));
 err:
@@ -791,7 +799,6 @@ static fs_status_t fat_inode_write_dentry(struct fat_inode_base *base, const str
     }
     return FS_OK;
 }
-
 
 static fs_ssize_t fat_inode_alloc_dentry(struct fat_inode_base *base) {
     struct fat_inode *inode = container_of(base, struct fat_inode, base);

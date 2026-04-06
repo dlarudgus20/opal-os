@@ -158,7 +158,6 @@ struct fat_inode {
             size_t buflen;
         };
     };
-    struct path_entry pe;
     uint32_t dentry_idx;
     struct fat_inode_base *parent;
     uint32_t first_cluster;

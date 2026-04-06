@@ -109,12 +109,12 @@ int shell_cmd_cat(int argc, char **argv) {
     struct file *file = NULL;
     fs_status_t result;
     if (write_mode) {
-        result = vfs_create_path(path, 0, true, &file);
+        result = vfs_create_path(NULL, path, 0, true, &file);
         if (result != FS_OK) {
             return print_cat_error("lookup/create", result);
         }
     } else {
-        result = vfs_open_path(path, &file);
+        result = vfs_open_path(NULL, path, &file);
         if (result != FS_OK) {
             return print_cat_error("open", result);
         }
@@ -193,24 +193,30 @@ int shell_cmd_ls(int argc, char **argv) {
         return 1;
     }
 
+    int ec = 0;
     struct path_entry *pe = NULL;
-    fs_status_t result = vfs_lookup_path(path, &pe, NULL);
+    fs_status_t result = vfs_lookup_path(NULL, path, &pe, NULL);
     if (result != FS_OK) {
-        return print_ls_error("lookup_path", result);
+        ec = print_ls_error("lookup_path", result);
+        goto end;
     }
     if (!pe || !pe->inode) {
-        return print_ls_error("lookup_path", FS_ERR_NOENT);
+        ec = print_ls_error("lookup_path", FS_ERR_NOENT);
+        goto end;
     }
     if (!(pe->inode->flags & FS_INODE_DIR)) {
-        return print_ls_error("lookup_path", FS_ERR_NOTDIR);
+        ec = print_ls_error("lookup_path", FS_ERR_NOTDIR);
+        goto end;
     }
     if (!pe->inode->ops || !pe->inode->ops->lookup) {
-        return print_ls_error("lookup", FS_ERR_NOTSUPP);
+        ec = print_ls_error("lookup", FS_ERR_NOTSUPP);
+        goto end;
     }
 
     result = pe->inode->ops->lookup(pe->inode, pe);
     if (result != FS_OK) {
-        return print_ls_error("lookup", result);
+        ec = print_ls_error("lookup", result);
+        goto end;
     }
 
     tty0_printf("%s:\n", path);
@@ -220,10 +226,14 @@ int shell_cmd_ls(int argc, char **argv) {
             continue;
         }
         bool is_dir = child->inode && (child->inode->flags & FS_INODE_DIR);
-        tty0_printf("%s%s\n", child->name, is_dir ? "/" : "");
+        tty0_printf("%s%s\n", hstrget(&child->name), is_dir ? "/" : "");
     }
 
-    return 0;
+end:
+    if (pe) {
+        path_entry_release(pe);
+    }
+    return ec;
 }
 
 int shell_cmd_mkdir(int argc, char **argv) {
@@ -233,7 +243,7 @@ int shell_cmd_mkdir(int argc, char **argv) {
     }
 
     struct file *file = NULL;
-    fs_status_t result = vfs_create_path(argv[1], FS_INODE_DIR, false, &file);
+    fs_status_t result = vfs_create_path(NULL, argv[1], FS_INODE_DIR, false, &file);
     if (result != FS_OK) {
         return print_mkdir_error("create", result);
     }

@@ -10,6 +10,8 @@
 - [`interrupt-io.md`](interrupt-io.md): 인터럽트/입력/시리얼 IO 경로
 - [`fs/disk.md`](fs/disk.md): 물리 disk 계층, 요청 큐/완료 모델, 파티션 스캔/리셋
 - [`fs/block_device.md`](fs/block_device.md): block device 공통 계층과 요청 큐 모델
+- [`fs/vfs.md`](fs/vfs.md): VFS 경로 해석, path entry, inode/file 계약
+- [`fs/fat.md`](fs/fat.md): FAT(v0) 연동 범위와 이름/오류 처리 정책
 - [`pata.md`](pata.md): PATA(ATA PIO) 드라이버 구조와 요청/완료 모델
 - [`tty.md`](tty.md): `tty0`, framebuffer TTY, UART TTY, 입력 버퍼 경로
 - [`shell.md`](shell.md): 커널 shell 구현

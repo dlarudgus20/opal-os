@@ -7,6 +7,8 @@
 - [`troubleshooting.md`](troubleshooting.md): 자주 발생하는 빌드/테스트 이슈
 - [`todo.md`](todo.md): 다음 작업 TODO
 - [`opal/README.md`](opal/README.md): 커널 내부 동작 문서
+- [`opal/fs/vfs.md`](opal/fs/vfs.md): VFS 경로 해석/생성 계약
+- [`opal/fs/fat.md`](opal/fs/fat.md): FAT(v0) 동작 범위와 제약
 - [`opal/task/task.md`](opal/task/task.md): 태스크/스케줄러
 - [`opal/interrupt-io.md`](opal/interrupt-io.md): 인터럽트/입력/시리얼 IO 경로
 - [`libcoll/README.md`](libcoll/README.md): libcoll 자료구조 문서
