@@ -166,7 +166,7 @@ static const struct shell_command g_commands[] = {
     CMD_ARGV("lspart",      "list partitions: lspart [disk]",       shell_cmd_lspart),
     CMD_ARGV("mkpart",      "create partition: mkpart ...",         shell_cmd_mkpart),
     CMD_ARGV("rmpart",      "remove partition: rmpart ...",         shell_cmd_rmpart),
-    CMD_ARGV("mount",       "mount fs: mount [fstype] [bdev] [path]", shell_cmd_mount),
+    CMD_ARGV("mount",       "mount fs: mount [fstype] [source] [path]", shell_cmd_mount),
     CMD_ARGV("mkfs",        "format fs: mkfs [fstype] [bdev] [--mount path]", shell_cmd_mkfs),
     CMD_ARGV("cat",         "cat /path | cat > /path",              shell_cmd_cat),
     CMD_ARGV("ls",          "list entries: ls [path]",              shell_cmd_ls),

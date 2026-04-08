@@ -4,34 +4,24 @@
 #include <kc/stdlib.h>
 
 #include <opal/tty.h>
+#include <opal/kargs.h>
 #include <opal/fs/vfs.h>
 #include <opal/fs/fat.h>
+#include <opal/fs/cpio.h>
 #include <opal/fs/block_device.h>
-
-enum shell_fs_type : uint8_t {
-    SHELL_FS_FAT,
-};
-
-static bool parse_fstype(const char *cmd, const char *arg, enum shell_fs_type *fstype_out) {
-    if (strcmp(arg, "fat") == 0) {
-        *fstype_out = SHELL_FS_FAT;
-        return true;
-    }
-
-    tty0_printf("%s: unsupported fstype '%s'\n", cmd, arg);
-    return false;
-}
+#include <opal/platform/mm/defines.h>
+#include <opal/platform/boot/bootinfo.h>
 
 static bool parse_bdev_arg(const char *cmd, const char *arg, struct block_device **dev_out) {
     unsigned long bdev_ul = 0;
     if (kstrtoul_exact(arg, 10, ULONG_MAX, &bdev_ul) != KE_OK) {
-        tty0_printf("%s: invalid bdev\n", cmd);
+        tty0_printf("%s: invalid bdev '%s'\n", cmd, arg);
         return false;
     }
 
     fs_status_t result = bdev_list_get((size_t)bdev_ul, dev_out);
     if (result != FS_OK) {
-        tty0_printf("%s: invalid bdev %lu\n", cmd, bdev_ul);
+        tty0_printf("%s: invalid bdev '%s'\n", cmd, arg);
         return false;
     }
 
@@ -43,6 +33,35 @@ static fs_status_t mount_fat(struct block_device *dev, const char *mount_path) {
     fs_status_t result = fat_mount(dev, &sb);
     if (result != FS_OK) {
         block_device_release(dev);
+        return result;
+    }
+
+    struct path_entry *mounted;
+    result = vfs_mount_path(NULL, mount_path, sb, &mounted);
+    if (result != FS_OK) {
+        sb->ops->umount(sb);
+        return result;
+    }
+    path_entry_release(mounted);
+    return FS_OK;
+}
+
+static fs_status_t mount_cpio(const char *source, const char *mount_path) {
+    if (strcmp(source, "initramfs") != 0) {
+        return FS_ERR_INVAL;
+    }
+
+    const struct bootinfo_module *module = kargs_get()->initramfs;
+    if (!module || module->end <= module->begin) {
+        return FS_ERR_NOENT;
+    }
+
+    void *cpio = (void *)(DIRECT_MAP_START_VIRT + module->begin);
+    size_t len = module->end - module->begin;
+
+    struct superblock *sb = NULL;
+    fs_status_t result = cpio_mount(cpio, len, &sb);
+    if (result != FS_OK) {
         return result;
     }
 
@@ -257,25 +276,22 @@ int shell_cmd_mkdir(int argc, char **argv) {
 
 int shell_cmd_mount(int argc, char **argv) {
     if (argc != 4) {
-        tty0_puts("usage: mount [fstype] [bdev] [mount-path]\n");
+        tty0_puts("usage: mount [fstype] [source] [mount-path]\n");
         return 1;
     }
 
-    enum shell_fs_type fstype;
-    if (!parse_fstype("mount", argv[1], &fstype)) {
-        return 1;
-    }
-
-    struct block_device *dev = NULL;
-    if (!parse_bdev_arg("mount", argv[2], &dev)) {
-        return 1;
-    }
-
-    fs_status_t result = FS_ERR_NOTSUPP;
-    if (fstype == SHELL_FS_FAT) {
+    fs_status_t result = FS_ERR_UNKNOWN;
+    if (strcmp(argv[1], "fat") == 0) {
+        struct block_device *dev = NULL;
+        if (!parse_bdev_arg("mount", argv[2], &dev)) {
+            return 1;
+        }
         result = mount_fat(dev, argv[3]);
+    } else if (strcmp(argv[1], "cpio") == 0) {
+        result = mount_cpio(argv[2], argv[3]);
     } else {
-        block_device_release(dev);
+        tty0_printf("mount: unsupported fstype '%s'\n", argv[1]);
+        return 1;
     }
 
     if (result != FS_OK) {
@@ -303,21 +319,16 @@ int shell_cmd_mkfs(int argc, char **argv) {
         mount_path = argv[4];
     }
 
-    enum shell_fs_type fstype;
-    if (!parse_fstype("mkfs", argv[1], &fstype)) {
-        return 1;
-    }
-
-    struct block_device *dev = NULL;
-    if (!parse_bdev_arg("mkfs", argv[2], &dev)) {
-        return 1;
-    }
-
-    fs_status_t result = FS_ERR_NOTSUPP;
-    if (fstype == SHELL_FS_FAT) {
+    fs_status_t result = FS_ERR_UNKNOWN;
+    if (strcmp(argv[1], "fat") == 0) {
+        struct block_device *dev = NULL;
+        if (!parse_bdev_arg("mkfs", argv[2], &dev)) {
+            return 1;
+        }
         result = mkfs_fat(dev, auto_mount, mount_path);
     } else {
-        block_device_release(dev);
+        tty0_printf("mkfs: unsupported fstype '%s'\n", argv[1]);
+        return 1;
     }
 
     if (result != FS_OK) {
