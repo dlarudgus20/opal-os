@@ -59,6 +59,12 @@
   - `hstr_is_null(&hs)`는 생성 실패(OOM) 판별 용도로 사용
 
 ## VFS API
+- `vfs_get_root()`
+  - 루트 `path_entry`를 반환한다.
+- `vfs_mount_path(base, path, sb)`
+  - `vfs_lookup_path(base, path, &found, &unresolved_path)`로 마운트 포인트를 해석한다.
+  - `found != NULL`이고 `*unresolved_path == '\0'`일 때 `path_entry_mount_super(found, sb)`를 호출한다.
+  - `found`는 내부에서 release되며, 반환 코드는 lookup/mount 결과를 그대로 따른다.
 - `vfs_lookup_path(base, path, &found, &unresolved_path)`
   - `path`가 `/`로 시작하면 루트 기준으로 탐색
   - 상대 경로는 `base` 기준으로 탐색
@@ -92,6 +98,10 @@
     - `found == NULL` 또는 `*unresolved_path != '\0'`이면 lookup 결과 그대로 실패 반환
     - 경로가 완전히 해석되면 `path_entry_create(found, flags, truncate, &file_out)` 호출
   - 즉, 생성/기존 파일 처리 정책은 `path_entry_create`가 담당한다.
+- `path_entry_mount_super(pe, sb)`
+  - `sb->root`가 유효한 디렉터리 inode여야 한다.
+  - `pe->inode != NULL`이면 `FS_ERR_BUSY`.
+  - 성공 시 `pe->mounted = sb`, `pe->inode = sb->root`.
 
 ## 수명/참조 규약
 - 트리 연결(`parent->children`)은 active 참조를 의미하지 않는다.

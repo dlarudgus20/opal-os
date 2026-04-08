@@ -3,6 +3,7 @@
 ## 1. 개요
 커널 유닛 테스트는 `make unit-test`로 실행되며 컴파일 시 `OPAL_UNIT_TEST` 매크로가 정의됩니다.
 핵심 API는 [`kernel/include/opal/test.h`](../kernel/include/opal/test.h)에 정의되어 있습니다.
+- QEMU headless 실행은 `QEMU_DISPNONE=1`을 권장합니다.
 
 ## 2. 테스트 정의
 ```c
@@ -35,6 +36,7 @@ DEFINE_UNIT_TEST(name) {
 ```bash
 make -C kernel build CONFIG=debug PLATFORM=pc-x64 UNIT_TEST=1
 make unit-test CONFIG=debug PLATFORM=pc-x64
+make unit-test CONFIG=debug PLATFORM=pc-x64 QEMU_DISPNONE=1
 ```
 
 ## 6. 비-유닛테스트 빌드

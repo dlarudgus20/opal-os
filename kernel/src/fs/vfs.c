@@ -17,16 +17,27 @@ void vfs_init(void) {
     path_entry_init_empty(&g_root);
 }
 
-fs_status_t vfs_mount_root(struct superblock *sb) {
-    if (!sb || !sb->root || !(sb->root->flags & FS_INODE_DIR)) {
-        return FS_ERR_INVAL;
-    }
-    if (g_root.inode) {
-        return FS_ERR_BUSY;
+struct path_entry *vfs_get_root(void) {
+    return &g_root;
+}
+
+fs_status_t vfs_mount_path(struct path_entry *pe, const char *path, struct superblock *sb, struct path_entry **mounted) {
+    struct path_entry *mount_pe = NULL;
+    const char *unresolved_path = NULL;
+    fs_status_t result = vfs_lookup_path(pe, path, &mount_pe, &unresolved_path);
+    if (!mount_pe || unresolved_path[0] != '\0') {
+        if (mount_pe) {
+            path_entry_release(mount_pe);
+        }
+        return result;
     }
 
-    g_root.mounted = sb;
-    g_root.inode = sb->root;
+    result = path_entry_mount_super(mount_pe, sb);
+    if (result != FS_OK) {
+        path_entry_release(mount_pe);
+        return result;
+    }
+    *mounted = mount_pe;
     return FS_OK;
 }
 
@@ -140,6 +151,19 @@ void path_entry_retain(struct path_entry *pe) {
 void path_entry_release(struct path_entry *pe) {
     assert(pe->refcount > 0);
     pe->refcount--;
+}
+
+fs_status_t path_entry_mount_super(struct path_entry *pe, struct superblock *sb) {
+    if (!sb || !sb->root || !(sb->root->flags & FS_INODE_DIR)) {
+        return FS_ERR_INVAL;
+    }
+    if (pe->inode) {
+        return FS_ERR_BUSY;
+    }
+
+    pe->mounted = sb;
+    pe->inode = sb->root;
+    return FS_OK;
 }
 
 fs_status_t path_entry_add(struct path_entry *parent, struct inode *inode, struct hstr *name, struct path_entry **out) {

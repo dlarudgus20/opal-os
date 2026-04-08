@@ -5,7 +5,7 @@
 
 #include <collections/linkedlist.h>
 
-#include <opal/dynarray.h>
+#include <opal/utils/dynarray.h>
 #include <opal/fs/types.h>
 
 #define DISK_SECTOR_SIZE 512

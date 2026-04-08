@@ -1,8 +1,8 @@
 # Dynarray
 
 ## 개요
-- 헤더: `kernel/include/opal/dynarray.h`
-- 구현: `kernel/src/dynarray.c`
+- 헤더: `kernel/include/opal/utils/dynarray.h`
+- 구현: `kernel/src/utils/dynarray.c`
 - 목적:
   - 커널 내부에서 바이트 단위 가변 버퍼를 제공
   - kmalloc 기반으로 용량 확장/축소를 일관 처리

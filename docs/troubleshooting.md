@@ -36,7 +36,9 @@ objdump -T <target>.so | rg " memcpy$| memmove$| memset$| strlen$"
 - QEMU GUI 백엔드 실행 환경 문제
 
 대응:
-- `QEMU_FLAGS="-display none" make run`처럼 GUI 비활성화
+- `make run QEMU_DISPNONE=1`처럼 GUI 비활성화
+- 필요 시 직접 지정도 가능: `make run QEMU_FLAGS='-m 128 -serial stdio -no-reboot -boot order=dc -display none'`
+  - `-boot order=dc` 누락 시 하드디스크로 먼저 부팅되어 유닛테스트 시리얼 로그가 보이지 않을 수 있음
 
 ## 4) 시스템 PSF 폰트 없음 (`--psf-system` 실패)
 증상:

@@ -7,7 +7,7 @@
 #include <opal/tty.h>
 #include <opal/fs/block_device.h>
 #include <opal/fs/disk.h>
-#include <opal/dynarray.h>
+#include <opal/utils/dynarray.h>
 #include <opal/locks/irqlock.h>
 
 static struct disk *parse_disk_arg(const char *cmd, const char *arg, unsigned long *disk_ul_out) {

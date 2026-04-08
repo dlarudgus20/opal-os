@@ -4,7 +4,7 @@
 #include <kc/ctype.h>
 
 #include <opal/mm/kmalloc.h>
-#include <opal/dynarray.h>
+#include <opal/utils/dynarray.h>
 
 #include "fat.h"
 

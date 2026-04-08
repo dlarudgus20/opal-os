@@ -38,7 +38,7 @@ static bool parse_bdev_arg(const char *cmd, const char *arg, struct block_device
     return true;
 }
 
-static fs_status_t mount_fat(struct block_device *dev) {
+static fs_status_t mount_fat(struct block_device *dev, const char *mount_path) {
     struct superblock *sb = NULL;
     fs_status_t result = fat_mount(dev, &sb);
     if (result != FS_OK) {
@@ -46,16 +46,17 @@ static fs_status_t mount_fat(struct block_device *dev) {
         return result;
     }
 
-    result = vfs_mount_root(sb);
+    struct path_entry *mounted;
+    result = vfs_mount_path(NULL, mount_path, sb, &mounted);
     if (result != FS_OK) {
         sb->ops->umount(sb);
         return result;
     }
-
+    path_entry_release(mounted);
     return FS_OK;
 }
 
-static fs_status_t mkfs_fat(struct block_device *dev, bool auto_mount) {
+static fs_status_t mkfs_fat(struct block_device *dev, bool auto_mount, const char *mount_path) {
     struct superblock *sb = NULL;
     fs_status_t result = fat_format(dev, &sb);
     if (result != FS_OK) {
@@ -64,11 +65,13 @@ static fs_status_t mkfs_fat(struct block_device *dev, bool auto_mount) {
     }
 
     if (auto_mount) {
-        result = vfs_mount_root(sb);
+        struct path_entry *mounted;
+        result = vfs_mount_path(NULL, mount_path, sb, &mounted);
         if (result != FS_OK) {
             sb->ops->umount(sb);
             return result;
         }
+        path_entry_release(mounted);
     } else {
         sb->ops->umount(sb);
     }
@@ -253,8 +256,8 @@ int shell_cmd_mkdir(int argc, char **argv) {
 }
 
 int shell_cmd_mount(int argc, char **argv) {
-    if (argc != 3) {
-        tty0_puts("usage: mount [fstype] [bdev]\n");
+    if (argc != 4) {
+        tty0_puts("usage: mount [fstype] [bdev] [mount-path]\n");
         return 1;
     }
 
@@ -270,7 +273,7 @@ int shell_cmd_mount(int argc, char **argv) {
 
     fs_status_t result = FS_ERR_NOTSUPP;
     if (fstype == SHELL_FS_FAT) {
-        result = mount_fat(dev);
+        result = mount_fat(dev, argv[3]);
     } else {
         block_device_release(dev);
     }
@@ -286,16 +289,18 @@ int shell_cmd_mount(int argc, char **argv) {
 
 int shell_cmd_mkfs(int argc, char **argv) {
     bool auto_mount = false;
-    if (argc != 3 && argc != 4) {
-        tty0_puts("usage: mkfs [fstype] [bdev] [--mount]\n");
+    const char *mount_path = NULL;
+    if (argc != 3 && argc != 5) {
+        tty0_puts("usage: mkfs [fstype] [bdev] [--mount mount-path]\n");
         return 1;
     }
-    if (argc == 4) {
+    if (argc == 5) {
         if (strcmp(argv[3], "--mount") != 0) {
-            tty0_puts("usage: mkfs [fstype] [bdev] [--mount]\n");
+            tty0_puts("usage: mkfs [fstype] [bdev] [--mount mount-path]\n");
             return 1;
         }
         auto_mount = true;
+        mount_path = argv[4];
     }
 
     enum shell_fs_type fstype;
@@ -310,7 +315,7 @@ int shell_cmd_mkfs(int argc, char **argv) {
 
     fs_status_t result = FS_ERR_NOTSUPP;
     if (fstype == SHELL_FS_FAT) {
-        result = mkfs_fat(dev, auto_mount);
+        result = mkfs_fat(dev, auto_mount, mount_path);
     } else {
         block_device_release(dev);
     }

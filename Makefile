@@ -20,6 +20,9 @@ ifeq ($(UEFI), 1)
 UEFI_FIRMWARE ?= /usr/share/ovmf/OVMF.fd
 QEMU_FLAGS += -bios $(UEFI_FIRMWARE)
 endif
+ifeq ($(QEMU_DISPNONE), 1)
+QEMU_FLAGS += -display none
+endif
 
 SUBDIRS     := test-pch kernel libkubsan libkc libpanicimpl libcoll
 

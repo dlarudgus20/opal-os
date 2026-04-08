@@ -3,7 +3,7 @@
 #include <kc/string.h>
 #include <kc/assert.h>
 
-#include <opal/dynarray.h>
+#include <opal/utils/dynarray.h>
 #include <opal/mm/kmalloc.h>
 
 void dynarray_init(struct dynarray *ar) {

@@ -3,7 +3,7 @@
 
 #include <collections/singlylist.h>
 
-#include <opal/dynarray.h>
+#include <opal/utils/dynarray.h>
 #include <opal/fs/disk.h>
 
 struct block_device {

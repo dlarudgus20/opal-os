@@ -32,7 +32,12 @@ ASAN_OPTIONS=detect_leaks=0 make -C kernel test CONFIG=debug PLATFORM=pc-x64
 ## 5. 커널 유닛 테스트
 ```bash
 make unit-test CONFIG=debug PLATFORM=pc-x64
+make unit-test CONFIG=debug PLATFORM=pc-x64 QEMU_DISPNONE=1
 ```
+
+권장:
+- headless 환경에서는 `QEMU_DISPNONE=1`을 사용합니다.
+- 시리얼 로그의 `==== unit test end ====` 확인 후 `root@opal:~$` 프롬프트에서 QEMU를 수동 종료합니다.
 
 정리:
 ```bash

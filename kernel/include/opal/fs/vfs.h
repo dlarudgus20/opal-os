@@ -64,13 +64,15 @@ struct file {
 };
 
 void vfs_init(void);
-fs_status_t vfs_mount_root(struct superblock *sb);
+struct path_entry *vfs_get_root(void);
+fs_status_t vfs_mount_path(struct path_entry *pe, const char *path, struct superblock *sb, struct path_entry **mounted);
 fs_status_t vfs_lookup_path(struct path_entry *pe, const char *path, struct path_entry **found, const char **unresolved_path);
 fs_status_t vfs_create_path(struct path_entry *pe, const char *path, enum inode_flags flags, bool truncate, struct file **file_out);
 fs_status_t vfs_open_path(struct path_entry *pe, const char *path, struct file **file_out);
 
 void path_entry_retain(struct path_entry *pe);
 void path_entry_release(struct path_entry *pe);
+fs_status_t path_entry_mount_super(struct path_entry *pe, struct superblock *sb);
 fs_status_t path_entry_add(struct path_entry *parent, struct inode *inode, struct hstr *name, struct path_entry **out);
 fs_status_t path_entry_lookup(struct path_entry *pe, const char *name, size_t len, struct path_entry **found);
 fs_status_t path_entry_create(struct path_entry *pe, enum inode_flags flags, bool truncate, struct file **file_out);

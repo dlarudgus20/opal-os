@@ -59,11 +59,14 @@ make unit-test
 ```
 
 유닛테스트 실행 규칙:
-- QEMU는 반드시 headless로 실행합니다. (`QEMU_FLAGS`에 `-display none` 포함)
+- QEMU는 반드시 headless로 실행합니다. (`QEMU_DISPNONE=1` 사용)
 ```bash
-make unit-test CONFIG=debug PLATFORM=pc-x64 QEMU_FLAGS='-m 128 -serial stdio -no-reboot -display none'
+make unit-test QEMU_DISPNONE=1
 ```
+- `QEMU_FLAGS`를 직접 지정해야 한다면 `-boot order=dc`를 반드시 포함합니다.
+  - 누락 시 하드디스크로 먼저 부팅되어 유닛테스트 시리얼 로그가 보이지 않을 수 있습니다.
 - 유닛테스트 로그가 끝나고 `root@opal:~$` 프롬프트가 보이면 QEMU를 자동 종료가 아닌 수동 종료해야 합니다.
+- 수동 종료 전 `==== unit test end ====` 마커를 확인합니다.
 - 즉, 테스트 성공 여부 확인 후 프롬프트 상태에 남아 있는 QEMU를 반드시 종료하고 명령을 마무리합니다.
 
 ### 빌드 결과물 삭제

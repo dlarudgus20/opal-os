@@ -19,6 +19,7 @@
 
 실행 관련 변수:
 - `QEMU_FLAGS`: `make run`, `make unit-test`에서 QEMU 실행 인자에 추가
+- `QEMU_DISPNONE=1`: `QEMU_FLAGS`에 `-display none`을 자동 추가
 - `UEFI=1`: `-bios $(UEFI_FIRMWARE)`를 추가해 UEFI 펌웨어로 실행
 - `UEFI_FIRMWARE`: 기본값 `/usr/share/ovmf/OVMF.fd`
 
@@ -97,6 +98,7 @@ make clean-gen
 make test CONFIG=debug PLATFORM=pc-x64
 make -C kernel test CONFIG=debug PLATFORM=pc-x64
 make unit-test CONFIG=debug PLATFORM=pc-x64
+make unit-test QEMU_DISPNONE=1
 ```
 
 ## 7. 리소스 빌드 패턴
