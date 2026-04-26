@@ -7,6 +7,7 @@
 #include <collections/linkedlist.h>
 #include <collections/rbtree.h>
 
+#include <opal/task/types.h>
 #include <opal/task/wait_list.h>
 #include <opal/platform/task/context.h>
 
@@ -33,9 +34,15 @@ enum task_priority : uint8_t {
     TASK_PRIORITY_COUNT,
 };
 
+
+typedef void (*ktask_entry_t)(uintptr_t);
+
 struct task {
     tid_t id;
     struct rbtree_node tid_node;
+
+    procptr_t process;
+    struct linkedlist_link proc_link;
 
     unsigned refcount;
 
@@ -51,30 +58,26 @@ struct task {
     struct rbtree_node timeout_node;
     uint64_t wait_timeout;
 
+    void *kstack;
     struct context ctx;
-    void *stack;
-
-    struct fpu_context fpu_ctx;
-    bool fpu_initialized;
 };
-
-typedef struct taskptr {
-    struct task *ptr;
-} taskptr_t;
 
 void sched_init(void);
 void schedule(void);
 void sched_on_timer(void);
 
-[[nodiscard]] taskptr_t task_create(void (*entry)(uintptr_t), uintptr_t arg, enum task_priority priority);
+[[nodiscard]] taskptr_t task_create(struct process *proc, void (*entry)(void), enum task_priority priority);
+[[nodiscard]] taskptr_t ktask_start(ktask_entry_t entry, uintptr_t arg, enum task_priority priority);
+void task_suspend(struct task *task);
+void task_resume(struct task *task);
 void task_terminate(taskptr_t task);
 
 [[nodiscard]] taskptr_t task_from_id(tid_t id);
 [[nodiscard]] struct task *task_current(void);
-[[nodiscard]] taskptr_t task_addref(struct task *task);
+[[nodiscard]] taskptr_t task_retain(struct task *task);
 tid_t task_release(taskptr_t task);
 
-void task_exit(void);
+[[noreturn]] void task_exit(void);
 bool task_wait(struct wait_list *wl, uint64_t timeout);
 bool task_join(struct task *task, uint64_t timeout);
 

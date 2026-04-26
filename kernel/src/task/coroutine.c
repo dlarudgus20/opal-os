@@ -48,7 +48,7 @@ static void worker(uintptr_t) {
 void coroutine_worker_init(void) {
     linkedlist_init(&g_job_queue);
     event_init(&g_job_event, true);
-    g_worker = task_create(worker, 0, TASK_PRIORITY_KERNEL);
+    g_worker = ktask_start(worker, 0, TASK_PRIORITY_KERNEL);
 }
 
 void coroutine_init(struct coroutine *co, co_handler_t handler) {

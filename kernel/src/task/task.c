@@ -7,12 +7,17 @@
 #include <opal/irq.h>
 #include <opal/timer.h>
 #include <opal/task/task.h>
+#include <opal/task/process.h>
 #include <opal/task/wait_list.h>
 #include <opal/task/coroutine.h>
 #include <opal/mm/mm.h>
 #include <opal/mm/slab.h>
 #include <opal/locks/irqlock.h>
 #include <opal/platform/asm.h>
+#include <opal/platform/mm/pagetable.h>
+
+#define MAX_REFC INT_MAX
+#define TID_END INT_MAX
 
 static int tid_compare(struct task *a, struct task *b) {
     return a->id - b->id;
@@ -49,10 +54,12 @@ struct sched {
     struct task *current;
 };
 
+static struct process g_kproc;
+
 static struct sched g_sched;
 static struct task g_kernel;
 static struct task g_idle;
-alignas(PAGE_SIZE) static char g_idle_stack[PAGE_SIZE];
+alignas(PAGE_SIZE) static unsigned char g_idle_stack[PAGE_SIZE];
 
 static void idle_task(uintptr_t);
 static void irqmsg_timeout(struct irqmsg);
@@ -112,19 +119,21 @@ static void set_dead(struct task *task) {
     task->state = TASK_DEAD;
 }
 
-static void task_init(struct task *task) {
-    assert(g_sched.tid_next < INT_MAX);
+static void task_init(struct task *task, struct process *proc) {
+    assert(g_sched.tid_next < TID_END);
 
     memset(task, 0, sizeof(*task));
     task->id = g_sched.tid_next++;
+    task->process = process_retain(proc);
     task->refcount = 1;
     task->state = TASK_WAITING;
     task->priority = TASK_PRIORITY_NORMAL;
     task->wait_for = NULL;
     task->has_timeout = false;
     task->wait_timeout = 0;
-    task->stack = NULL;
+    task->kstack = NULL;
 
+    linkedlist_push_back(&proc->task_list, &task->proc_link);
     wait_list_init(&task->join_list);
     rbtree_insert_task(&g_sched.tid_tree, task);
 }
@@ -141,14 +150,17 @@ void sched_init(void) {
         linkedlist_init(&g_sched.ready_queue[i]);
     }
 
-    task_init(&g_kernel);
+    proc_tree_init();
+    process_init(&g_kproc, mm_kptbl_get());
+
+    task_init(&g_kernel, &g_kproc);
     g_kernel.priority = TASK_PRIORITY_KERNEL;
     set_running(&g_kernel);
     g_sched.current = &g_kernel;
 
-    task_init(&g_idle);
+    task_init(&g_idle, &g_kproc);
     g_idle.priority = TASK_PRIORITY_IDLE;
-    context_init(&g_idle.ctx, (uintptr_t)idle_task, g_idle_stack, sizeof(g_idle_stack), 0);
+    context_init(&g_idle.ctx, (virt_addr_t)idle_task, (virt_addr_t)g_idle_stack, sizeof(g_idle_stack));
     set_ready(&g_idle);
 
     fpu_init();
@@ -243,8 +255,7 @@ void schedule(void) {
     set_running(next);
 
     g_sched.current = next;
-    fpu_on_task_switch(current, next);
-    context_switch(&current->ctx, &next->ctx);
+    context_switch(current, next);
 
 exit:
     irqlock_release(&irqlock);
@@ -254,45 +265,95 @@ void sched_on_timer(void) {
     schedule();
 }
 
-taskptr_t task_create(void (*entry)(uintptr_t), uintptr_t arg, enum task_priority priority) {
+static void ktask_entry(void) {
+    uintptr_t *kstack = g_sched.current->kstack;
+    ktask_entry_t entry = (ktask_entry_t)kstack[0];
+    interrupts_enable();
+    entry(kstack[1]);
+    task_exit();
+}
+
+taskptr_t ktask_start(ktask_entry_t entry, uintptr_t arg, enum task_priority priority) {
+    taskptr_t task = task_create(&g_kproc, ktask_entry, priority);
+    if (!task.ptr) {
+        return task;
+    }
+    uintptr_t *kstack = task.ptr->kstack;
+    kstack[0] = (uintptr_t)entry;
+    kstack[1] = arg;
+    task_resume(task.ptr);
+    return task;
+}
+
+taskptr_t task_create(struct process *proc, void (*entry)(void), enum task_priority priority) {
     assert(priority < TASK_PRIORITY_COUNT);
+
+    void *kstack = mm_alloc_page_ptr(0);
+    if (!kstack) {
+        return (taskptr_t){ .ptr = NULL };
+    }
 
     irqlock_t irqlock = irqlock_acquire();
 
     struct task *task = slab_alloc(&g_sched.task_slab);
     if (!task) {
         irqlock_release(&irqlock);
+        mm_free_page_ptr(kstack, 0);
         return (taskptr_t){ .ptr = NULL };
     }
 
-    void *stack = mm_alloc_page_ptr(0);
-    if (!stack) {
-        slab_free(&g_sched.task_slab, task);
-        irqlock_release(&irqlock);
-        return (taskptr_t){ .ptr = NULL };
-    }
-
-    task_init(task);
+    task_init(task, proc);
     task->priority = priority;
-    set_ready(task);
+    set_wait_for(task, NULL);
 
-    task->stack = stack;
-    context_init(&task->ctx, (uintptr_t)entry, stack, PAGE_SIZE, arg);
+    task->kstack = kstack;
+    context_init(&task->ctx, (virt_addr_t)entry, (virt_addr_t)kstack, PAGE_SIZE);
 
     irqlock_release(&irqlock);
     return (taskptr_t){ .ptr = task };
 }
 
-static void task_free_stack(struct task *task) {
-    if (task->stack) {
-        pfn_t stack_page = direct_ptr_to_pfn(task->stack);
-        mm_free_page(stack_page, 0);
-        task->stack = NULL;
+void task_suspend(struct task *task) {
+    irqlock_t lock = irqlock_acquire();
+
+    if (g_sched.current == task) {
+        set_wait_for(task, NULL);
+        schedule();
+    } else {
+        assert(task->state == TASK_READY);
+        reset_ready(task);
+        set_wait_for(task, NULL);
     }
+
+    irqlock_release(&lock);
+}
+
+void task_resume(struct task *task) {
+    irqlock_t lock = irqlock_acquire();
+
+    assert(task->state == TASK_WAITING);
+    assert(!task->wait_for);
+    assert(!task->has_timeout);
+    reset_wait_for(task);
+    set_ready(task);
+
+    irqlock_release(&lock);
+}
+
+static void task_free_stack(struct task *task) {
+    if (!task->kstack) {
+        return;
+    }
+
+    pfn_t stack_page = direct_ptr_to_pfn(task->kstack);
+    mm_free_page(stack_page, 0);
+    task->kstack = NULL;
 }
 
 static void task_free(struct task *task) {
     task_free_stack(task);
+    linkedlist_remove(&task->proc_link);
+    process_release(task->process);
     rbtree_remove(&g_sched.tid_tree, &task->tid_node);
     slab_free(&g_sched.task_slab, task);
 }
@@ -317,7 +378,7 @@ void task_terminate(taskptr_t task) {
     set_dead(task.ptr);
     wait_list_wake_all(&task.ptr->join_list);
 
-    fpu_on_task_exit(task.ptr);
+    context_destroy(task.ptr);
     task_free_stack(task.ptr);
     task_release(task);
 
@@ -330,7 +391,7 @@ void task_terminate(taskptr_t task) {
     set_dead(g_sched.current);
     wait_list_wake_all(&g_sched.current->join_list);
 
-    fpu_on_task_exit(g_sched.current);
+    context_destroy(g_sched.current);
 
     g_sched.current->refcount++;
     linkedlist_push_back(&g_sched.dead_list, &g_sched.current->queue_link);
@@ -351,7 +412,7 @@ taskptr_t task_from_id(tid_t id) {
     }
 
     struct task *task = container_of(result.lower, struct task, tid_node);
-    assert(task->refcount < UINT_MAX);
+    assert(task->refcount < MAX_REFC);
     task->refcount++;
 
     irqlock_release(&irqlock);
@@ -362,9 +423,9 @@ struct task *task_current(void) {
     return g_sched.current;
 }
 
-taskptr_t task_addref(struct task *task) {
+taskptr_t task_retain(struct task *task) {
     irqlock_t irqlock = irqlock_acquire();
-    assert(task->refcount < UINT_MAX);
+    assert(task->refcount < MAX_REFC);
     task->refcount++;
     irqlock_release(&irqlock);
     return (taskptr_t){ .ptr = task };

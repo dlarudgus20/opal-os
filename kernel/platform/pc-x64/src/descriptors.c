@@ -4,6 +4,7 @@
 #include <opal/platform/descriptors.h>
 #include <opal/platform/interrupt.h>
 #include <opal/platform/asm.h>
+#include <opal/platform/task/context.h>
 #include <opal/platform/drivers/pic.h>
 
 #define GDT_FLAG_ACCESSED   0x01
@@ -14,7 +15,7 @@
 #define GDT_FLAG_TSS_BUSY   0x0b
 
 #define GDT_FLAG_USER       0x10
-#define GDT_FLAG_DPL_3      0x60
+#define GDT_FLAG_DPL3       0x60
 #define GDT_FLAG_PRESENT    0x80
 
 #define GDT_FLAG2           0xa
@@ -49,9 +50,9 @@ struct PACKED idt {
 static_assert(sizeof(union gdt) == 8);
 static_assert(sizeof(struct idt) == 16);
 
-static union gdt g_gdt[5];
+static union gdt g_gdt[7];
 static struct idt g_idt[256];
-static struct tss g_tss_df;
+static struct tss g_tss;
 
 static void init_gdt(union gdt* gdt, uint32_t base, uint32_t limit, uint8_t flags, uint8_t flags2) {
     gdt->limit_low = limit & 0xffff;
@@ -85,18 +86,20 @@ static void init_idt(struct idt* idt, uint16_t segment, void (*handler)(), uint8
 void descriptors_init(void) {
     memset(g_gdt, 0, sizeof(g_gdt));
     memset(g_idt, 0, sizeof(g_idt));
-    memset(&g_tss_df, 0, sizeof(g_tss_df));
+    memset(&g_tss, 0, sizeof(g_tss));
 
     static alignas(16) char df_stack[0x2000];
-    g_tss_df.ist[0] = (uint64_t)(df_stack + sizeof(df_stack));
+    g_tss.ist[0] = (uint64_t)(df_stack + sizeof(df_stack));
 
     static_assert(KERNEL_CODE_SEGMENT == 1 * 8);
     static_assert(KERNEL_DATA_SEGMENT == 2 * 8);
     init_gdt(g_gdt + 1, 0, 0xffffffff, GDT_FLAG_PRESENT | GDT_FLAG_USER | GDT_FLAG_CODE, GDT_FLAG2);
     init_gdt(g_gdt + 2, 0, 0xffffffff, GDT_FLAG_PRESENT | GDT_FLAG_USER | GDT_FLAG_RW, GDT_FLAG2);
-    init_tss(g_gdt + 3, &g_tss_df);
+    init_gdt(g_gdt + 3, 0, 0xffffffff, GDT_FLAG_PRESENT | GDT_FLAG_USER | GDT_FLAG_DPL3 | GDT_FLAG_CODE, GDT_FLAG2);
+    init_gdt(g_gdt + 4, 0, 0xffffffff, GDT_FLAG_PRESENT | GDT_FLAG_USER | GDT_FLAG_DPL3 | GDT_FLAG_RW, GDT_FLAG2);
+    init_tss(g_gdt + 5, &g_tss);
     load_gdt(g_gdt, sizeof(g_gdt));
-    load_tss(0x18);
+    load_tss(5 * 8);
 
     for (size_t i = 0; i < sizeof(g_idt) / sizeof(g_idt[0]); i++) {
         init_idt(g_idt + i, 0x08, isr_unknown, 0, 0);
@@ -138,6 +141,11 @@ void descriptors_init(void) {
     init_idt(g_idt + 45, 0x08, isr_irq13, 0, 0);
     init_idt(g_idt + 46, 0x08, isr_irq14, 0, 0);
     init_idt(g_idt + 47, 0x08, isr_irq15, 0, 0);
+    init_idt(g_idt + 0x80, 0x08, isr_int80, 3, 0);
 
     load_idt(g_idt, sizeof(g_idt));
+}
+
+void descriptors_set_kstack(uintptr_t kstack_top) {
+    g_tss.rsp[0] = kstack_top;
 }

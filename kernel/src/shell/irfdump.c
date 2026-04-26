@@ -3,7 +3,7 @@
 #include <opal/tty.h>
 #include <opal/kargs.h>
 #include <opal/shell/utils.h>
-#include <opal/platform/mm/defines.h>
+#include <opal/mm/pfn.h>
 #include <opal/platform/boot/bootinfo.h>
 
 int shell_cmd_irfdump(int, char **) {
@@ -20,7 +20,7 @@ int shell_cmd_irfdump(int, char **) {
 
     size_t total_len = module->end - module->begin;
 
-    const unsigned char *ptr = (const unsigned char *)(DIRECT_MAP_START_VIRT + module->begin);
+    const unsigned char *ptr = phys_to_direct_ptr(module->begin);
     tty0_printf("irfdump: [%#018"PRIphys", %#018"PRIphys") %s (%zu bytes)\n",
         module->begin, module->end, module->name, total_len);
 

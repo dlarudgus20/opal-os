@@ -9,8 +9,10 @@
   - `mm_init() -> fb_init() -> hid_init()`
   - `irq_init() -> timer_init() -> sched_init()`
   - `drivers_init()`
-    - `ps2_init() -> uart_init()`
+    - `ps2_init() -> uart_init() -> pata_init()`
+  - `all_disks_register_bdev()`
   - `irq_enable_intr() -> interrupts_enable()`
+  - `kargs_postboot()`
   - `run_user()`
     - 유닛테스트로 빌드되었다면 `unit_test_run()`
     - `shell_start()`
@@ -26,3 +28,11 @@
 - quoted value 지원:
   - `\"`, `\\` 이스케이프
 - 파싱 중 잘못된 토큰/미지원 옵션/모듈 미존재는 경고 로그 후 계속 진행
+
+## postboot 처리 (`kargs_postboot`)
+- 구현: `kernel/src/kargs.c`
+- 목적:
+  - early init 이후 가능한 작업을 부팅 후반에 일괄 수행
+- 현재 동작:
+  - `initramfs`가 유효하면 `cpio_mount()` 후 `vfs_mount_path(NULL, "/", ...)` 수행
+  - 마운트 실패 시 경고 로그를 남기고 부팅은 계속 진행

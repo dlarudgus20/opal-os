@@ -5,7 +5,7 @@
 - 구현: `kernel/src/fs/vfs.c`, `kernel/src/fs/hstr.c`
 - 목적:
   - 파일시스템 공통 경로 해석/생성/오픈 계층 제공
-  - inode 구현(FAT 등)과 shell 사이의 계약을 통일
+  - inode 구현(FAT/CPIO 등)과 shell 사이의 계약을 통일
 
 ## Path Entry
 - `struct path_entry`

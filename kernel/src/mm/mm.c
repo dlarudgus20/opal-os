@@ -24,10 +24,10 @@ static void early_init(void) {
     struct tmpalloc ta;
     tmpalloc_create(&ta, buffer, MAX_MMAP_ENTRIES, mm_get_section_map());
 
-    mm_pagetable_init(&ta);
+    mm_kptbl_init(&ta);
     pfn_init(&ta);
 
-    mm_pagetable_unuse_tmpalloc();
+    mm_kptbl_unuse_tmpalloc();
     mm_map_finalize_tmpalloc(&ta);
 }
 

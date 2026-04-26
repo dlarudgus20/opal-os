@@ -110,7 +110,10 @@ endif
 ifeq ($(CONFIG), debug)
 CFLAGS             += -DDEBUG
 ifneq ($(IS_TEST_BUILD), 1)
-CFLAGS             += -fsanitize=undefined -fno-omit-frame-pointer
+CFLAGS             += -fno-omit-frame-pointer
+ifneq ($(NO_SANITIZE), 1)
+CFLAGS             += -fsanitize=undefined
+endif
 else
 CFLAGS             += -fsanitize=address,undefined -fno-omit-frame-pointer
 endif

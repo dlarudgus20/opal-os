@@ -52,10 +52,8 @@ static void priotest_task(uintptr_t argp) {
         assert(idx < sizeof(arg->state->log));
         arg->state->log[idx] = arg->tag;
 
-        for (volatile size_t spin = 0; spin < 1000000; spin++) {
-        }
+        for (volatile size_t spin = 0; spin < 1000000; spin++) {}
     }
-    task_exit();
 }
 
 static void testtask_cleanup(taskptr_t *tasks, size_t count) {
@@ -78,13 +76,13 @@ int shell_cmd_priotest(int, char **) {
     };
     taskptr_t tasks[4] = { 0 };
 
-    tasks[0] = task_create(priotest_task, (uintptr_t)&args[0], TASK_PRIORITY_LOW);
-    tasks[1] = task_create(priotest_task, (uintptr_t)&args[1], TASK_PRIORITY_HIGH);
-    tasks[2] = task_create(priotest_task, (uintptr_t)&args[2], TASK_PRIORITY_LOW);
-    tasks[3] = task_create(priotest_task, (uintptr_t)&args[3], TASK_PRIORITY_LOWEST);
+    tasks[0] = ktask_start(priotest_task, (uintptr_t)&args[0], TASK_PRIORITY_LOW);
+    tasks[1] = ktask_start(priotest_task, (uintptr_t)&args[1], TASK_PRIORITY_HIGH);
+    tasks[2] = ktask_start(priotest_task, (uintptr_t)&args[2], TASK_PRIORITY_LOW);
+    tasks[3] = ktask_start(priotest_task, (uintptr_t)&args[3], TASK_PRIORITY_LOWEST);
 
     if (!tasks[0].ptr || !tasks[1].ptr || !tasks[2].ptr || !tasks[3].ptr) {
-        tty0_puts("priotest: task_create failed\n");
+        tty0_puts("priotest: ktask_start failed\n");
         testtask_cleanup(tasks, 4);
         return 1;
     }

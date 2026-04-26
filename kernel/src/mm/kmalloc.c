@@ -8,8 +8,6 @@
 #include <opal/mm/kmalloc.h>
 #include <opal/locks/irqlock.h>
 
-#define KMALLOC_ALIGN 8
-
 static const uint16_t g_slab_sizes[] = {
     SLOT_EXTEND(32, KMALLOC_ALIGN),
     SLOT_EXTEND(48, KMALLOC_ALIGN),

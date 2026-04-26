@@ -78,7 +78,7 @@ struct span mm_vmap_alloc(void **va_out, phys_addr_t pa, phys_size_t size) {
             entry->len -= aligned_size;
         }
 
-        mm_pagetable_map(va_base, aligned_start, aligned_size, PTE_FLAG_PRESENT | PTE_FLAG_WRITABLE);
+        pagetable_map(mm_kptbl_get(), va_base, aligned_start, aligned_size, PTE_FLAG_PRESENT | PTE_FLAG_WRITABLE);
 
         irqlock_release(&irqlock);
 
@@ -109,7 +109,7 @@ void mm_vmap_free(struct span span) {
 
     irqlock_t irqlock = irqlock_acquire();
 
-    mm_pagetable_unmap(addr, len);
+    pagetable_unmap(mm_kptbl_get(), addr, len, true);
 
     uint32_t idx = 0;
     while (idx < g_vmap_len && g_vmap_entries[idx].addr < addr) {

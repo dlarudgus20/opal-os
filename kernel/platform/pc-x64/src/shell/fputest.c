@@ -117,7 +117,6 @@ static void fputest_x87_task(uintptr_t argp) {
     arg->result->actual0 = f32_bits(actual);
     arg->result->ok = arg->result->actual0 == f32_bits(seed + step * (float)arg->repeat);
     arg->result->reason = arg->result->ok ? NULL : "x87 state mismatch";
-    task_exit();
 }
 
 [[gnu::target("sse,sse2")]]
@@ -137,7 +136,6 @@ static void fputest_sse_task(uintptr_t argp) {
     arg->result->actual0 = f32_bits(actual);
     arg->result->ok = arg->result->actual0 == f32_bits(seed + step * (float)arg->repeat);
     arg->result->reason = arg->result->ok ? NULL : "xmm0 state mismatch";
-    task_exit();
 }
 
 [[gnu::target("sse,sse2")]]
@@ -164,7 +162,6 @@ static void fputest_mixed_task(uintptr_t argp) {
         arg->result->actual0 == f32_bits(x87_seed + x87_step * (float)arg->repeat) &&
         arg->result->actual1 == f32_bits(sse_seed + sse_step * (float)arg->repeat);
     arg->result->reason = arg->result->ok ? NULL : "mixed x87/xmm0 state mismatch";
-    task_exit();
 }
 
 static void testtask_cleanup(taskptr_t *tasks, size_t count) {
@@ -187,12 +184,12 @@ int shell_cmd_fputest(int, char **) {
     };
     taskptr_t tasks[3] = { 0 };
 
-    tasks[0] = task_create(fputest_x87_task, (uintptr_t)&args[0], TASK_PRIORITY_NORMAL);
-    tasks[1] = task_create(fputest_sse_task, (uintptr_t)&args[1], TASK_PRIORITY_NORMAL);
-    tasks[2] = task_create(fputest_mixed_task, (uintptr_t)&args[2], TASK_PRIORITY_NORMAL);
+    tasks[0] = ktask_start(fputest_x87_task, (uintptr_t)&args[0], TASK_PRIORITY_NORMAL);
+    tasks[1] = ktask_start(fputest_sse_task, (uintptr_t)&args[1], TASK_PRIORITY_NORMAL);
+    tasks[2] = ktask_start(fputest_mixed_task, (uintptr_t)&args[2], TASK_PRIORITY_NORMAL);
 
     if (!tasks[0].ptr || !tasks[1].ptr || !tasks[2].ptr) {
-        tty0_puts("fputest: task_create failed\n");
+        tty0_puts("fputest: ktask_start failed\n");
         testtask_cleanup(tasks, 3);
         return 1;
     }

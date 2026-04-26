@@ -89,6 +89,7 @@ void isr_alignment_check();
 void isr_machine_check();
 void isr_simd_floating_point();
 void isr_unknown();
+void isr_int80();
 
 void isr_impl_divide_by_zero(struct isr_stackframe* frame);
 void isr_impl_debug(struct isr_stackframe* frame);
@@ -109,5 +110,6 @@ void isr_impl_alignment_check(struct isr_stackframe_ec* frame);
 void isr_impl_machine_check(struct isr_stackframe* frame);
 void isr_impl_simd_floating_point(struct isr_stackframe* frame);
 void isr_impl_unknown(struct isr_stackframe* frame);
+void isr_impl_int80(struct isr_stackframe* frame);
 
 #endif

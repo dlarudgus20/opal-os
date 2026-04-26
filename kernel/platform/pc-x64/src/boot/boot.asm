@@ -96,11 +96,12 @@ _start:
 
 bits 64
 lm_start:
-    mov ax, 0x10
+    xor ax, ax
     mov ds, ax
     mov es, ax
     mov fs, ax
     mov gs, ax
+    mov ax, 0x10
     mov ss, ax
     cld
 

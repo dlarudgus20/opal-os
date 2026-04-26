@@ -60,6 +60,7 @@ void kmain(void) {
     irq_enable_intr();
     interrupts_enable();
 
+    kargs_postboot();
     run_user();
 
     irqmsg_drain_loop();

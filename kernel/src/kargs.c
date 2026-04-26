@@ -4,7 +4,9 @@
 
 #include <opal/klog.h>
 #include <opal/kargs.h>
-#include <opal/mm/types.h>
+#include <opal/fs/cpio.h>
+#include <opal/fs/vfs.h>
+#include <opal/mm/pfn.h>
 #include <opal/platform/boot/bootinfo.h>
 
 static struct kargs g_kargs;
@@ -169,6 +171,43 @@ void kargs_init(void) {
 
 const struct kargs *kargs_get(void) {
     return &g_kargs;
+}
+
+static void postboot_initramfs(void) {
+    const struct bootinfo_module *module = g_kargs.initramfs;
+    if (!module) {
+        return;
+    }
+    if (module->end <= module->begin) {
+        kwarn("kargs: invalid initramfs range [%#018"PRIphys", %#018"PRIphys")",
+            module->begin, module->end);
+        return;
+    }
+
+    void *cpio = phys_to_direct_ptr(module->begin);
+    size_t len = module->end - module->begin;
+
+    struct superblock *sb = NULL;
+    fs_status_t result = cpio_mount(cpio, len, &sb);
+    if (result != FS_OK) {
+        kwarn("kargs: failed to mount initramfs image: %s (%d)", fs_status_str(result), result);
+        return;
+    }
+
+    struct path_entry *mounted = NULL;
+    result = vfs_mount_path(NULL, "/", sb, &mounted);
+    if (result != FS_OK) {
+        kwarn("kargs: failed to mount initramfs on /: %s (%d)", fs_status_str(result), result);
+        sb->ops->umount(sb);
+        return;
+    }
+
+    path_entry_release(mounted);
+    kinfo("kargs: mounted initramfs on /");
+}
+
+void kargs_postboot(void) {
+    postboot_initramfs();
 }
 
 void kargs_print_log(void) {

@@ -38,10 +38,6 @@ static struct meta_ranges meta_ranges_for_entry(const struct mmap_entry *entry) 
     };
 }
 
-static void prepare_pagetable(virt_addr_t va, virt_size_t pages_needed) {
-    mm_pagetable_map(va, 0, pages_needed * PAGE_SIZE, 0);
-}
-
 static virt_addr_t allocate_pages(
     struct tmpalloc *ta,
     virt_addr_t va,
@@ -62,7 +58,7 @@ static virt_addr_t allocate_pages(
         size_t pages_allocated;
         phys_addr_t pa = tmpalloc_alloc_pages(ta, pages_needed, &pages_allocated);
 
-        mm_pagetable_map(va, pa, pages_allocated * PAGE_SIZE, PTE_FLAG_WRITABLE | PTE_FLAG_PRESENT);
+        pagetable_map(mm_kptbl_get(), va, pa, pages_allocated * PAGE_SIZE, PTE_FLAG_WRITABLE | PTE_FLAG_PRESENT);
 
         va += pages_allocated * PAGE_SIZE;
         pages_needed -= pages_allocated;
@@ -79,15 +75,13 @@ static void initialize_pages(pfn_t pfn_start, pfn_t pfn_end, bool is_metadata) {
         *ptr = (struct page){
             .flags = is_metadata ? PAGE_FLAG_METADATA : 0,
             .refcount = 0,
-            .buddy = {
-                .order = 0,
-                .link = { .prev = NULL, .next = NULL },
-            },
+            .buddy_order = 0,
+            .buddy_link = { .prev = NULL, .next = NULL },
         };
     }
 }
 
-enum build_stage { STAGE_PREPARE, STAGE_ALLOC, STAGE_INIT };
+enum build_stage { STAGE_ALLOC, STAGE_INIT };
 
 static void build_metadata(struct tmpalloc *ta, const struct mmap *section_map, enum build_stage stage) {
     virt_addr_t allocated_end = PAGES_START_VIRT;
@@ -99,9 +93,7 @@ static void build_metadata(struct tmpalloc *ta, const struct mmap *section_map, 
         const virt_size_t pages_needed = ranges.page_end - ranges.page_start;
         const virt_addr_t va_start = PAGES_START_VIRT + ranges.page_start * PAGE_SIZE;
 
-        if (stage == STAGE_PREPARE) {
-            prepare_pagetable(va_start, pages_needed);
-        } else if (stage == STAGE_ALLOC) {
+        if (stage == STAGE_ALLOC) {
             allocated_end = allocate_pages(ta, va_start, pages_needed, allocated_end);
         } else {
             bool is_metadata = entry->type == MM_SEC_ENTRY_METADATA;
@@ -111,9 +103,6 @@ static void build_metadata(struct tmpalloc *ta, const struct mmap *section_map, 
 }
 
 static void build_metadata_run(struct tmpalloc *ta) {
-    // STAGE_PREPARE
-    build_metadata(ta, mm_get_section_map(), STAGE_PREPARE);
-
     // STAGE_ALLOC
     build_metadata(ta, mm_get_section_map(), STAGE_ALLOC);
 
@@ -188,6 +177,17 @@ pfn_t direct_ptr_to_pfn(void *ptr) {
     virt_addr_t va = (virt_addr_t)ptr;
     assert(DIRECT_MAP_START_VIRT <= va && va < DIRECT_MAP_END_VIRT);
     return (va - DIRECT_MAP_START_VIRT) / PAGE_SIZE;
+}
+
+void *phys_to_direct_ptr(phys_addr_t pa) {
+    assert(pa <= DIRECT_MAP_END_VIRT - DIRECT_MAP_START_VIRT);
+    return (void *)(DIRECT_MAP_START_VIRT + pa);
+}
+
+phys_addr_t direct_ptr_to_phys(void *ptr) {
+    virt_addr_t va = (virt_addr_t)ptr;
+    assert(DIRECT_MAP_START_VIRT <= va && va <= DIRECT_MAP_END_VIRT);
+    return va - DIRECT_MAP_START_VIRT;
 }
 
 #include <opal/tty.h>

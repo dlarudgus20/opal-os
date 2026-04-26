@@ -9,7 +9,8 @@
 #include <opal/fs/fat.h>
 #include <opal/fs/cpio.h>
 #include <opal/fs/block_device.h>
-#include <opal/platform/mm/defines.h>
+#include <opal/shell/shell_cmd.h>
+#include <opal/mm/pfn.h>
 #include <opal/platform/boot/bootinfo.h>
 
 static bool parse_bdev_arg(const char *cmd, const char *arg, struct block_device **dev_out) {
@@ -56,7 +57,7 @@ static fs_status_t mount_cpio(const char *source, const char *mount_path) {
         return FS_ERR_NOENT;
     }
 
-    void *cpio = (void *)(DIRECT_MAP_START_VIRT + module->begin);
+    void *cpio = phys_to_direct_ptr(module->begin);
     size_t len = module->end - module->begin;
 
     struct superblock *sb = NULL;

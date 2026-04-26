@@ -56,6 +56,7 @@ extern isr_impl_%1
 global isr_%1
 isr_%1:
     push_all
+    cld
     mov rdi, rsp
     call isr_impl_%1
     pop_all
@@ -67,6 +68,7 @@ extern isr_impl_%1
 global isr_%1
 isr_%1:
     push_all
+    cld
     mov rdi, rsp
     call isr_impl_%1
     pop_all
@@ -109,3 +111,4 @@ int_handler     irq12
 int_handler     irq13
 int_handler     irq14
 int_handler     irq15
+int_handler     int80

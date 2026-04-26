@@ -12,15 +12,11 @@ enum {
     PAGE_FLAG_BUDDY_HEAD = 1u << 2,
 };
 
-struct page_buddy {
-    uint8_t order;
-    struct linkedlist_link link;
-};
-
 struct page {
     uint16_t flags;
     uint16_t refcount;
-    struct page_buddy buddy;
+    uint8_t buddy_order;
+    struct linkedlist_link buddy_link;
 };
 
 #endif

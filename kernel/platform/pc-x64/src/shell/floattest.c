@@ -69,13 +69,12 @@ static void floattest_task(uintptr_t argp) {
         if (value != redo) {
             arg->result->bits = redo;
             arg->result->ok = false;
-            task_exit();
+            return;
         }
     }
 
     arg->result->bits = value;
     arg->result->ok = true;
-    task_exit();
 }
 
 int shell_cmd_floattest(int, char **) {
@@ -85,9 +84,9 @@ int shell_cmd_floattest(int, char **) {
 
     for (size_t i = 0; i < FLOATTEST_TASK_COUNT; i++) {
         args[i].result = &results[i];
-        tasks[i] = task_create(floattest_task, (uintptr_t)&args[i], TASK_PRIORITY_NORMAL);
+        tasks[i] = ktask_start(floattest_task, (uintptr_t)&args[i], TASK_PRIORITY_NORMAL);
         if (!tasks[i].ptr) {
-            tty0_puts("floattest: task_create failed\n");
+            tty0_puts("floattest: ktask_start failed\n");
             testtask_cleanup(tasks, FLOATTEST_TASK_COUNT);
             return 1;
         }

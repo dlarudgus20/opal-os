@@ -176,6 +176,7 @@ static const struct shell_command g_commands[] = {
     CMD_ARGV("readsec",     "read sectors: readsec D L C",          shell_cmd_rwsec),
     CMD_ARGV("writesec",    "write sectors: writesec D L C V",      shell_cmd_rwsec),
     CMD_ARGV("testrwsec",   "test rw sectors: testrwsec",           shell_cmd_testrwsec),
+    CMD_ARGV("exec",        "exec: exec [path]",                    shell_cmd_exec),
 };
 
 static const struct shell_command *find_command(const char *name, size_t len) {
@@ -253,7 +254,7 @@ static void run_shell(uintptr_t) {
 }
 
 void shell_start(void) {
-    taskptr_t task = task_create(run_shell, 0, TASK_PRIORITY_NORMAL);
+    taskptr_t task = ktask_start(run_shell, 0, TASK_PRIORITY_NORMAL);
     if (!task.ptr) {
         return;
     }
@@ -332,7 +333,7 @@ static int cmd_mmap(int, char **) {
 }
 
 static int cmd_ptable(int, char **) {
-    mm_pagetable_print();
+    mm_kptbl_print();
     return 0;
 }
 

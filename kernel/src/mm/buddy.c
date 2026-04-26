@@ -45,20 +45,20 @@ static void list_push(struct buddy *buddy, uint8_t order, pfn_t pfn) {
     struct page *page = pfn_to_page(pfn);
     set_block_free_state(pfn, order, true);
     page->flags |= PAGE_FLAG_BUDDY_FREE | PAGE_FLAG_BUDDY_HEAD;
-    page->buddy.order = order;
-    linkedlist_push_front(&buddy->free_list[order], &page->buddy.link);
+    page->buddy_order = order;
+    linkedlist_push_front(&buddy->free_list[order], &page->buddy_link);
 }
 
 static pfn_t list_pop(struct buddy *buddy, uint8_t order) {
     struct linkedlist_link *head_link = linkedlist_pop_front(&buddy->free_list[order]);
     assert(head_link != NULL);
 
-    struct page *page = container_of(head_link, struct page, buddy.link);
+    struct page *page = container_of(head_link, struct page, buddy_link);
     const pfn_t head = page_to_pfn(page);
     set_block_free_state(head, order, false);
-    page->buddy.link = (struct linkedlist_link){ .prev = NULL, .next = NULL };
+    page->buddy_link = (struct linkedlist_link){ .prev = NULL, .next = NULL };
     page->flags &= ~PAGE_FLAG_BUDDY_HEAD;
-    page->buddy.order = 0;
+    page->buddy_order = 0;
     return head;
 }
 
@@ -70,18 +70,18 @@ static bool is_free_head_of_order(pfn_t pfn, uint8_t order) {
     struct page *page = pfn_to_page(pfn);
     return (page->flags & PAGE_FLAG_BUDDY_FREE) &&
         (page->flags & PAGE_FLAG_BUDDY_HEAD) &&
-        page->buddy.order == order;
+        page->buddy_order == order;
 }
 
 static void list_remove(uint8_t order, pfn_t pfn) {
     assert(is_free_head_of_order(pfn, order));
 
     struct page *page = pfn_to_page(pfn);
-    linkedlist_remove(&page->buddy.link);
+    linkedlist_remove(&page->buddy_link);
     set_block_free_state(pfn, order, false);
-    page->buddy.link = (struct linkedlist_link){ .prev = NULL, .next = NULL };
+    page->buddy_link = (struct linkedlist_link){ .prev = NULL, .next = NULL };
     page->flags &= ~PAGE_FLAG_BUDDY_HEAD;
-    page->buddy.order = 0;
+    page->buddy_order = 0;
 }
 
 static void add_range(struct buddy *buddy, pfn_t start, pfn_t end) {

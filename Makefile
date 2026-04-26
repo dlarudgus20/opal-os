@@ -7,8 +7,10 @@ KERNEL_ELF  := kernel/$(BUILD_DIR)/kernel.elf
 KERNEL_BIN  := kernel/$(BUILD_DIR)/kernel.sys
 
 ISO_DIR     := $(BUILD_DIR)/iso
-INITRAMFS   := $(BUILD_DIR)/iso/boot/initramfs
 ISO_FILE    := $(BUILD_DIR)/opal-os.iso
+
+INITRAMFS_DIR := $(BUILD_DIR)/initramfs
+INITRAMFS   := $(BUILD_DIR)/iso/boot/initramfs
 
 QEMU_FLAGS  += -m 128 -serial stdio -no-reboot -boot order=dc
 QEMU_HDDS   := \
@@ -45,8 +47,12 @@ $(ISO_FILE): build
 	grub-mkrescue -o $(ISO_FILE) $(ISO_DIR)
 
 $(INITRAMFS): .FORCE
+	$(MAKE) -C opsh
+	rm -rf $(INITRAMFS_DIR)
+	cp -rT initramfs $(INITRAMFS_DIR)
+	cp opsh/$(BUILD_DIR)/opsh.elf $(INITRAMFS_DIR)/opsh.elf
 	@mkdir -p $(dir $@)
-	cd initramfs && (find . | cpio -o -H newc > ../$(INITRAMFS))
+	(cd $(INITRAMFS_DIR); find .) | cpio -o -H newc -D $(INITRAMFS_DIR) > $(INITRAMFS)
 
 run: iso
 	qemu-system-x86_64 $(QEMU_FLAGS) $(QEMU_HDDS) -cdrom $(ISO_FILE) -D qemu.log

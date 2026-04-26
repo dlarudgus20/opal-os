@@ -1,6 +1,7 @@
 #include <kc/assert.h>
 
 #include <opal/irq.h>
+#include <opal/syscall/syscall.h>
 #include <opal/platform/interrupt.h>
 #include <opal/platform/asm.h>
 #include <opal/platform/task/context.h>
@@ -102,4 +103,5 @@ void isr_alignment_check() {}
 void isr_machine_check() {}
 void isr_simd_floating_point() {}
 void isr_unknown() {}
+void isr_int80() {}
 #endif

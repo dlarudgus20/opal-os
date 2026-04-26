@@ -4,7 +4,6 @@
 #include <opal/mm/vmap.h>
 #include <opal/fb/fb.h>
 #include <opal/tty/fb_tty.h>
-#include <opal/platform/mm/defines.h>
 #include <opal/platform/boot/bootinfo.h>
 
 extern unsigned char g_font_data[];

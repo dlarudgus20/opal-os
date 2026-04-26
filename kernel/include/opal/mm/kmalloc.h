@@ -8,6 +8,7 @@
 #include <opal/platform/mm/defines.h>
 
 #define KMALLOC_MAX_SIZE (PAGE_SIZE * 32)
+#define KMALLOC_ALIGN 8
 
 struct kmalloc_slab_list {
     const uint16_t *sizes;

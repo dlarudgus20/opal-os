@@ -2,84 +2,51 @@ bits 64
 
 section .text
 
-; void context_switch(struct context *from, const struct context *to)
-global context_switch
-context_switch:
+; void context_switch_asm(struct context *from, const struct context *to);
+global context_switch_asm
+context_switch_asm:
     push rbp
-    mov rbp, rsp
-
-    push rax
-    pushfq
-    cli
-
-    xor rax, rax
-    mov ax, ss
-    mov [rdi + 23 * 8], rax  ; ss
-
-    mov rax, rbp
-    add rax, 16              ; push rbp + return address
-    mov [rdi + 22 * 8], rax  ; rsp
-
-    pop rax
-    mov [rdi + 21 * 8], rax  ; rflags
-
-    xor rax, rax
-    mov ax, cs
-    mov [rdi + 20 * 8], rax  ; cs
-
-    mov rax, [rbp + 8]       ; return address
-    mov [rdi + 19 * 8], rax  ; rip
-
-    pop rax
-    pop rbp
-
-    ; save other registers
-    mov rsp, rdi
-    add rsp, 19 * 8
-    push rbp
-    push rax
     push rbx
-    push rcx
-    push rdx
-    push rdi
-    push rsi
-    push r8
-    push r9
-    push r10
-    push r11
     push r12
     push r13
     push r14
     push r15
-    xor rax, rax
-    mov ax, ds
-    push rax
-    mov ax, es
-    push rax
-    push fs
-    push gs
+    mov [rdi], rsp
 
-    ; restore context
-    mov rsp, rsi
-    pop gs
-    pop fs
-    pop rax
-    mov es, ax
-    pop rax
-    mov ds, ax
+    mov rsp, [rsi]
     pop r15
     pop r14
     pop r13
     pop r12
-    pop r11
-    pop r10
-    pop r9
-    pop r8
-    pop rsi
-    pop rdi
-    pop rdx
-    pop rcx
     pop rbx
-    pop rax
     pop rbp
+    ret
+
+; void enter_userland_asm(virt_addr_t entry, virt_addr_t stack_top, uint64_t cs, uint64_t ss);
+global enter_userland_asm:
+enter_userland_asm:
+    push rcx    ; ss
+    push rsi    ; rsp = stack_top
+    mov rax, 0x202
+    push rax    ; rflags = IF
+    push rdx    ; cs
+    push rdi    ; rip = entry
+
+    ; zero out all registers
+    ; before iretq into userland
+    xor rax, rax
+    xor rbx, rbx
+    xor rcx, rcx
+    xor rdx, rdx
+    xor rsi, rsi
+    xor rdi, rdi
+    xor rbp, rbp
+    xor r8, r8
+    xor r9, r9
+    xor r10, r10
+    xor r11, r11
+    xor r12, r12
+    xor r13, r13
+    xor r14, r14
+    xor r15, r15
     iretq

@@ -1,12 +1,31 @@
 #include <kc/assert.h>
 
+#include <opal/task/process.h>
+#include <opal/task/task.h>
 #include <opal/platform/asm.h>
 #include <opal/platform/descriptors.h>
 #include <opal/platform/task/context.h>
-#include <opal/platform/mm/defines.h>
-#include <opal/task/task.h>
+#include <opal/platform/mm/pagetable.h>
 
-static struct fpu_context g_fpu_init_ctx;
+struct ctx_stack {
+    uint64_t r15;
+    uint64_t r14;
+    uint64_t r13;
+    uint64_t r12;
+    uint64_t rbx;
+    uint64_t rbp;
+    uint64_t rip;
+    uint64_t dummy; // SysV ABI requirement; see below
+};
+
+// SysV ABI requires rsp % 16 == 8 at the start of a function
+// including returning rip, sizeof(struct ctx_stack) must be a multiple of 16
+static_assert(sizeof(struct ctx_stack) % 16 == 0);
+
+// context.asm
+void context_switch_asm(struct context *from, const struct context *to);
+[[noreturn]] void enter_userland_asm(virt_addr_t entry, virt_addr_t stack_top, uint64_t cs, uint64_t ss);
+
 static struct task *g_fpu_owner;
 
 static void set_task_switched(void) {
@@ -17,24 +36,38 @@ static void clear_task_switched(void) {
     clear_cr0_ts();
 }
 
-void context_init(struct context *ctx, uintptr_t entry, void *stack, size_t stack_size, uintptr_t arg) {
-    assert((uintptr_t)stack % PAGE_SIZE == 0);
+void context_init(struct context *ctx, virt_addr_t entry, virt_addr_t stack, virt_size_t stack_size) {
+    assert(stack % PAGE_SIZE == 0);
     assert(stack_size % PAGE_SIZE == 0);
     assert(stack_size >= PAGE_SIZE);
 
-    ctx->rip = entry;
-    ctx->cs = KERNEL_CODE_SEGMENT;
-    // interrupt on
-    ctx->rflags = rflags_get() | RFLAGS_INTR;
-    // SysV ABI requires rsp % 16 == 8
-    ctx->rsp = (uintptr_t)stack + stack_size - sizeof(uintptr_t);
-    ctx->rbp = ctx->rsp;
-    ctx->ss = KERNEL_DATA_SEGMENT;
-    ctx->ds = KERNEL_DATA_SEGMENT;
-    ctx->es = KERNEL_DATA_SEGMENT;
-    ctx->fs = KERNEL_DATA_SEGMENT;
-    ctx->gs = KERNEL_DATA_SEGMENT;
-    ctx->rdi = arg;
+    struct ctx_stack *rsp = (struct ctx_stack *)(stack + stack_size - sizeof(*rsp));
+    rsp->rip = entry;
+    ctx->rsp = (uint64_t)rsp;
+    ctx->fpu_initialized = false;
+}
+
+void context_destroy(struct task *task) {
+    if (g_fpu_owner == task) {
+        g_fpu_owner = NULL;
+        set_task_switched();
+    }
+}
+
+void context_switch(struct task *from, const struct task *to) {
+    if (from->process.ptr->pagetable != to->process.ptr->pagetable) {
+        pagetable_apply(to->process.ptr->pagetable);
+    }
+    descriptors_set_kstack((uintptr_t)to->kstack + PAGE_SIZE);
+
+    set_task_switched();
+    context_switch_asm(&from->ctx, &to->ctx);
+}
+
+static void fpu_ctx_init(void) {
+    fninit();
+    const uint32_t mxcsr = 0x1f80;
+    ldmxcsr(&mxcsr);
 }
 
 void fpu_init(void) {
@@ -51,26 +84,10 @@ void fpu_init(void) {
     cr4 |= CR4_OSFXSR | CR4_OSXMMEXCPT;
     write_cr4(cr4);
 
-    fninit();
-    const uint32_t mxcsr = 0x1f80;
-    ldmxcsr(&mxcsr);
-    fxsave(&g_fpu_init_ctx);
+    fpu_ctx_init();
 
     g_fpu_owner = NULL;
     set_task_switched();
-}
-
-void fpu_on_task_switch(struct task *from, struct task *to) {
-    if (from != to) {
-        set_task_switched();
-    }
-}
-
-void fpu_on_task_exit(struct task *task) {
-    if (g_fpu_owner == task) {
-        g_fpu_owner = NULL;
-        set_task_switched();
-    }
 }
 
 void fpu_on_device_not_available(void) {
@@ -82,16 +99,19 @@ void fpu_on_device_not_available(void) {
     }
 
     if (g_fpu_owner) {
-        fxsave(&g_fpu_owner->fpu_ctx);
-        g_fpu_owner->fpu_initialized = true;
+        fxsave(g_fpu_owner->ctx.fpu_ctx);
     }
 
-    if (current->fpu_initialized) {
-        fxrstor(&current->fpu_ctx);
+    if (current->ctx.fpu_initialized) {
+        fxrstor(current->ctx.fpu_ctx);
     } else {
-        fxrstor(&g_fpu_init_ctx);
-        current->fpu_initialized = true;
+        fpu_ctx_init();
+        current->ctx.fpu_initialized = true;
     }
 
     g_fpu_owner = current;
+}
+
+[[noreturn]] void enter_userland(virt_addr_t entry, virt_addr_t stack_top) {
+    enter_userland_asm(entry, stack_top, USER_CODE_SEGMENT, USER_DATA_SEGMENT);
 }

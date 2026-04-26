@@ -79,7 +79,7 @@ ALWAYS_INLINE uint64_t rflags_get(void) {
 }
 
 ALWAYS_INLINE void rflags_set(uint64_t flags) {
-    __asm__ volatile ( "push %0; popfq" : : "r"(flags) );
+    __asm__ volatile ( "push %0; popfq" : : "r"(flags) : "cc" );
 }
 
 ALWAYS_INLINE bool interrupt_is_enabled(void) {

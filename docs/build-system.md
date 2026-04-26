@@ -5,7 +5,7 @@
 ## 1. 루트 타깃
 루트 [`Makefile`](../Makefile) 주요 타깃:
 - `make build`: `kernel/` 빌드
-- `make iso`: `kernel.sys` + `grub.cfg`로 ISO 생성
+- `make iso`: `kernel.sys` + `grub.cfg` + `initramfs`로 ISO 생성
 - `make run`: QEMU 실행
 - `make test`: 각 서브프로젝트 테스트 순회
 - `make unit-test`: `UNIT_TEST=1`로 커널 유닛테스트 실행
@@ -16,6 +16,7 @@
 빌드 구성 변수:
 - `CONFIG=debug|release`
 - `PLATFORM=pc-x64`
+- `NO_SANITIZE=1`: freestanding debug 빌드에서 `-fsanitize=undefined`를 비활성화
 
 실행 관련 변수:
 - `QEMU_FLAGS`: `make run`, `make unit-test`에서 QEMU 실행 인자에 추가
@@ -23,11 +24,28 @@
 - `UEFI=1`: `-bios $(UEFI_FIRMWARE)`를 추가해 UEFI 펌웨어로 실행
 - `UEFI_FIRMWARE`: 기본값 `/usr/share/ovmf/OVMF.fd`
 
+### 1.1 ISO / initramfs 생성 경로
+- `$(ISO_FILE)` 생성 전 `$(INITRAMFS)`를 먼저 갱신합니다.
+- `$(INITRAMFS)` 규칙 동작:
+  - 필요한 사용자 프로그램을 빌드
+  - `$(INITRAMFS_DIR)`를 먼저 비운 뒤(`rm -rf`) `initramfs/`를 통째로 복사
+  - 빌드된 사용자 프로그램을 `$(INITRAMFS_DIR)`에 복사
+  - `cpio -H newc`로 `$(BUILD_DIR)/iso/boot/initramfs` 이미지 생성
+- 결과적으로 ISO의 `/boot/initramfs`에는 소스 `initramfs/`와 빌드된 사용자 프로그램이 함께 포함됩니다.
+
 ## 2. 공통 설정 (`mkfiles/conf.mk`)
 ### C 전처리 매크로
 - 일반 빌드: `-DOPAL_CONFIG=... -DOPAL_PLATFORM=...`
 - hosted 테스트: `-DOPAL_TEST`
 - 커널 유닛테스트 빌드: `-DOPAL_UNIT_TEST`
+
+### sanitizer 플래그 적용
+- freestanding(`IS_TEST_BUILD != 1`) + `CONFIG=debug`:
+  - 기본값으로 `-fsanitize=undefined`를 사용
+  - `NO_SANITIZE=1`이면 해당 플래그를 제외
+- hosted 테스트(`IS_TEST_BUILD = 1`) + `CONFIG=debug`:
+  - `-fsanitize=address,undefined`를 사용
+  - 이 경로는 `NO_SANITIZE`의 영향을 받지 않음
 
 ### 빌드 경로
 - 일반: `build/<platform>/<config>`
