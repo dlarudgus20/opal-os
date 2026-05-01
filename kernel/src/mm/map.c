@@ -210,7 +210,7 @@ static void remove_overlaps_mmap(struct mmap *mmap_out, uint32_t max_entries, co
 }
 
 STATIC_OR_TEST void refine_mmap(struct mmap *mmap_out, uint32_t max_entries, const struct mmap *boot_map) {
-    assert(boot_map && boot_map->entries, "boot_map or its entries is null");
+    kassert(boot_map && boot_map->entries, "boot_map or its entries is null");
 
     struct mmap_entry aligned_entries[MAX_MMAP_ENTRIES];
     struct mmap aligned_mmap = { .entries = aligned_entries };
@@ -324,7 +324,7 @@ void mm_map_init(void) {
 }
 
 void mm_map_finalize_tmpalloc(struct tmpalloc *ta) {
-    assert(ta->mm.entries, "tmp_alloc is already finalized");
+    kassert(ta->mm.entries, "tmp_alloc is already finalized");
 
     memcpy(g_mm_sec.entries, ta->mm.entries, ta->mm.length * sizeof(struct mmap_entry));
     g_mm_sec.length = ta->mm.length;

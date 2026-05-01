@@ -1,4 +1,4 @@
-#include <kc/assert.h>
+#include <kc/kassert.h>
 
 #include <opal/tty/fb_tty.h>
 
@@ -142,9 +142,9 @@ static struct tty_ops g_tty_ops = {
 };
 
 void fb_tty_init(struct fb_tty *tty, int x, int y, int width, int height) {
-    assert(tty);
-    assert(MARGIN * 2 + CW <= width);
-    assert(MARGIN * 2 + CH <= height);
+    kassert(tty);
+    kassert(MARGIN * 2 + CW <= width);
+    kassert(MARGIN * 2 + CH <= height);
 
     int ch_w = (width - MARGIN * 2) / CW;
     int ch_h = (height - MARGIN * 2) / CH;

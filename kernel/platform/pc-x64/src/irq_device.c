@@ -1,4 +1,4 @@
-#include <kc/assert.h>
+#include <kc/kassert.h>
 #include <kc/string.h>
 
 #include <opal/locks/irqlock.h>
@@ -15,14 +15,14 @@ void irq_device_init(void) {
 }
 
 void irq_register(irq_t irq, irq_handler_t handler) {
-    assert(irq < IRQ_COUNT);
+    kassert(irq < IRQ_COUNT);
     irqlock_t irqlock = irqlock_acquire();
     g_irq_handlers[irq] = handler;
     irqlock_release(&irqlock);
 }
 
 void irq_enable(irq_t irq) {
-    assert(irq < IRQ_COUNT);
+    kassert(irq < IRQ_COUNT);
     irqlock_t irqlock = irqlock_acquire();
 
     if (irq >= 8) {
@@ -34,7 +34,7 @@ void irq_enable(irq_t irq) {
 }
 
 void irq_disable(irq_t irq) {
-    assert(irq < IRQ_COUNT);
+    kassert(irq < IRQ_COUNT);
     irqlock_t irqlock = irqlock_acquire();
     pic_disable_irq(irq);
     irqlock_release(&irqlock);

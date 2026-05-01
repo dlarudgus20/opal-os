@@ -1,6 +1,6 @@
 #include <limits.h>
 
-#include <kc/assert.h>
+#include <kc/kassert.h>
 #include <kc/stdlib.h>
 #include <kc/string.h>
 
@@ -144,12 +144,12 @@ static void path_entry_init_empty(struct path_entry *pe) {
 }
 
 void path_entry_retain(struct path_entry *pe) {
-    assert(pe->refcount < MAX_REFC);
+    kassert(pe->refcount < MAX_REFC);
     pe->refcount++;
 }
 
 void path_entry_release(struct path_entry *pe) {
-    assert(pe->refcount > 0);
+    kassert(pe->refcount > 0);
     pe->refcount--;
 }
 
@@ -309,12 +309,12 @@ void inode_init(struct inode *inode, const struct inode_ops *ops) {
 }
 
 void inode_retain(struct inode *inode) {
-    assert(inode->refcount < MAX_REFC);
+    kassert(inode->refcount < MAX_REFC);
     inode->refcount++;
 }
 
 void inode_release(struct inode *inode) {
-    assert(inode->refcount > 0);
+    kassert(inode->refcount > 0);
     if (--inode->refcount == 0) {
         inode->ops->close(inode);
     }
@@ -326,12 +326,12 @@ void file_init(struct file *file, const struct file_ops *ops) {
 }
 
 void file_retain(struct file *file) {
-    assert(file->refcount < MAX_REFC);
+    kassert(file->refcount < MAX_REFC);
     file->refcount++;
 }
 
 void file_release(struct file *file) {
-    assert(file->refcount > 0);
+    kassert(file->refcount > 0);
     if (--file->refcount == 0) {
         file->ops->close(file);
     }

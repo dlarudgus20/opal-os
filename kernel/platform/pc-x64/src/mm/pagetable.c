@@ -1,7 +1,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include <kc/assert.h>
+#include <kc/kassert.h>
 #include <kc/stdlib.h>
 #include <kc/string.h>
 
@@ -38,7 +38,7 @@ static phys_addr_t virt_to_phys_direct(virt_addr_t va) {
 
 static virt_addr_t phys_to_virt_table(phys_addr_t pa) {
     if (!g_direct_ready) {
-        assert(pa < BOOTSTRAP_MAP_END_PHYS, "bootstrap pagetable overflow");
+        kassert(pa < BOOTSTRAP_MAP_END_PHYS, "bootstrap pagetable overflow");
         return phys_to_virt_kernel(pa);
     } else {
         return phys_to_virt_direct(pa);
@@ -59,7 +59,7 @@ static phys_addr_t allocate_page(void) {
 }
 
 static bool deallocate_page(phys_addr_t pa) {
-    assert(!g_tmpalloc, "cannot deallocate page while using tmpalloc");
+    kassert(!g_tmpalloc, "cannot deallocate page while using tmpalloc");
 
     pfn_t pfn = phys_to_pfn(pa);
     struct page *page = pfn_to_page(pfn);
@@ -95,7 +95,7 @@ static struct pagetable *get_or_alloc_table(struct pagetable *parent, size_t ind
 
     if (*entry & PTE_FLAG_PRESENT) {
         if (*entry & PTE_FLAG_HUGE) {
-            assert(allow_huge, "unexpected huge page");
+            kassert(allow_huge, "unexpected huge page");
             if (!expand_hugepage(entry)) {
                 return NULL;
             }
@@ -166,9 +166,9 @@ static bool map_2m(struct pagetable *ptbl, virt_addr_t va, phys_addr_t pa, page_
 }
 
 static virt_addr_t map_range_len(struct pagetable *ptbl, virt_addr_t va, phys_addr_t pa, phys_size_t len, page_entry_t flags) {
-    assert(pa % PAGE_SIZE == 0);
-    assert(len % PAGE_SIZE == 0);
-    assert(va % PAGE_SIZE == 0);
+    kassert(pa % PAGE_SIZE == 0);
+    kassert(len % PAGE_SIZE == 0);
+    kassert(va % PAGE_SIZE == 0);
 
     if (va == 0) {
         return 0;
@@ -258,7 +258,7 @@ static virt_addr_t unmap_next(struct pagetable *ptbl, virt_addr_t va, virt_addr_
     const virt_addr_t bits1 = 1ull << 12;
 
     page_entry_t *const pml4e = &ptbl->entries[i4];
-    assert(!(*pml4e & PTE_FLAG_HUGE), "unexpected huge page");
+    kassert(!(*pml4e & PTE_FLAG_HUGE), "unexpected huge page");
     if (va + bits4 <= end && (*pml4e & PTE_FLAG_PRESENT) && deallocate_pdpt(*pml4e & PTE_MASK_ADDR)) {
         *pml4e = 0;
     }
@@ -268,7 +268,7 @@ static virt_addr_t unmap_next(struct pagetable *ptbl, virt_addr_t va, virt_addr_
 
     struct pagetable *const pdpt = (struct pagetable *)phys_to_virt_table(*pml4e & PTE_MASK_ADDR);
     page_entry_t *const pdpe = &pdpt->entries[i3];
-    assert(!(*pdpe & PTE_FLAG_HUGE), "unexpected huge page");
+    kassert(!(*pdpe & PTE_FLAG_HUGE), "unexpected huge page");
     if (va + bits3 <= end && (*pdpe & PTE_FLAG_PRESENT) && deallocate_pdt(*pdpe & PTE_MASK_ADDR)) {
         *pdpe = 0;
     }
@@ -296,8 +296,8 @@ static virt_addr_t unmap_next(struct pagetable *ptbl, virt_addr_t va, virt_addr_
 }
 
 static virt_addr_t unmap_range_len(struct pagetable *ptbl, virt_addr_t va, virt_size_t len, bool flush_tlb) {
-    assert(va % PAGE_SIZE == 0);
-    assert(len % PAGE_SIZE == 0);
+    kassert(va % PAGE_SIZE == 0);
+    kassert(len % PAGE_SIZE == 0);
 
     const virt_addr_t end = va + len;
     const bool invlpg = flush_tlb && (len < HUGE_PAGE_SIZE);

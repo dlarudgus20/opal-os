@@ -1,4 +1,4 @@
-#include <kc/assert.h>
+#include <kc/kassert.h>
 #include <kc/stdlib.h>
 
 #include <opal/locks/irqlock.h>
@@ -18,14 +18,14 @@ static bool try_acquire(struct event *ev) {
 }
 
 void event_init(struct event *ev, bool auto_reset) {
-    assert(ev);
+    kassert(ev);
     wait_list_init(&ev->wait_list);
     ev->signaled = false;
     ev->auto_reset = auto_reset;
 }
 
 void event_signal(struct event *ev) {
-    assert(ev);
+    kassert(ev);
 
     irqlock_t lock = irqlock_acquire();
 
@@ -40,14 +40,14 @@ void event_signal(struct event *ev) {
 }
 
 void event_reset(struct event *ev) {
-    assert(ev);
+    kassert(ev);
     irqlock_t lock = irqlock_acquire();
     ev->signaled = false;
     irqlock_release(&lock);
 }
 
 bool event_wait(struct event *ev, uint64_t timeout) {
-    assert(ev);
+    kassert(ev);
 
     irqlock_t lock = irqlock_acquire();
     bool ok = true;

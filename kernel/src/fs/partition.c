@@ -1,4 +1,4 @@
-#include <kc/assert.h>
+#include <kc/kassert.h>
 #include <kc/string.h>
 #include <kc/stdio.h>
 
@@ -217,7 +217,7 @@ static void reset_partition(struct disk *disk, struct fs_completion *completion,
     ctx->completion = completion;
     ctx->rescan = rescan;
     ctx->req = rescan ? disk_read(disk, 0, 1, mbr) : disk_write(disk, 0, 1, mbr);
-    assert(ctx->req);
+    kassert(ctx->req);
 
     irqlock_release(&irqlock);
 
@@ -385,7 +385,7 @@ static void modify_partition(
     ctx->lba = lba;
     ctx->sectors = sectors;
     ctx->req = disk_write(disk, 0, 1, mbr);
-    assert(ctx->req);
+    kassert(ctx->req);
 
     irqlock_release(&irqlock);
 

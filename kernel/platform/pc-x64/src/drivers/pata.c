@@ -1,4 +1,4 @@
-#include <kc/assert.h>
+#include <kc/kassert.h>
 #include <kc/string.h>
 #include <kc/stdlib.h>
 
@@ -318,8 +318,8 @@ static void words_to_chars(char *out, const uint16_t *id_words, int len) {
 }
 
 static void complete_request(struct pata_port *port, bool success) {
-    assert(port->active_req);
-    assert(port->active_disk);
+    kassert(port->active_req);
+    kassert(port->active_disk);
 
     disk_req_queue_pop_fetched(&port->req_queue, success ? OPAL_OK : OPAL_EIO);
 
@@ -366,7 +366,7 @@ static bool write_first_sector(struct pata_port *port, struct disk_request *req)
         return false;
     }
 
-    assert(port->done_sectors < req_sectors);
+    kassert(port->done_sectors < req_sectors);
 
     uint32_t remaining = req_sectors - port->done_sectors;
     uint16_t cmd_sectors = remaining > 256 ? 256 : (uint16_t)remaining;

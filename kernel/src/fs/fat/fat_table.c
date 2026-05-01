@@ -1,4 +1,4 @@
-#include <kc/assert.h>
+#include <kc/kassert.h>
 #include <kc/stdlib.h>
 #include <kc/string.h>
 

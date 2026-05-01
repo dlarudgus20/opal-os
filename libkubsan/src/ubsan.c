@@ -1,7 +1,7 @@
 #include <stdint.h>
 #include <stddef.h>
 
-#include <kc/assert.h>
+#include <kc/kassert.h>
 
 #if !__has_attribute(no_sanitize)
 #error "Compiler does not support no_sanitize attribute"

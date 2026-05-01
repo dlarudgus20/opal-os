@@ -1,4 +1,4 @@
-#include <kc/assert.h>
+#include <kc/kassert.h>
 #include <kc/string.h>
 
 #include <opal/mm/mm.h>
@@ -67,7 +67,7 @@ struct span kzalloc_span(size_t size) {
         return SPAN_NULL;
     }
 
-    assert(size <= KMALLOC_MAX_SIZE, "invalid size");
+    kassert(size <= KMALLOC_MAX_SIZE, "invalid size");
 
     int idx = slab_index_for_size(size);
     if (idx >= 0) {
@@ -78,7 +78,7 @@ struct span kzalloc_span(size_t size) {
     }
 
     const uint8_t order = page_order_for_size(size);
-    assert(order < PFN_VALID_BIT_WIDTH, "invalid size");
+    kassert(order < PFN_VALID_BIT_WIDTH, "invalid size");
 
     void *ptr = mm_alloc_page_ptr(order);
     if (!ptr) {
@@ -103,7 +103,7 @@ void kfree(void *ptr, size_t size) {
         return;
     }
 
-    assert(size <= KMALLOC_MAX_SIZE, "invalid size");
+    kassert(size <= KMALLOC_MAX_SIZE, "invalid size");
 
     int idx = slab_index_for_size(size);
     if (idx >= 0) {
@@ -114,7 +114,7 @@ void kfree(void *ptr, size_t size) {
     }
 
     const uint8_t order = page_order_for_size(size);
-    assert(order < PFN_VALID_BIT_WIDTH, "invalid size");
+    kassert(order < PFN_VALID_BIT_WIDTH, "invalid size");
 
     mm_free_page_ptr(ptr, order);
 }

@@ -1,6 +1,6 @@
 #include <stddef.h>
 
-#include <kc/assert.h>
+#include <kc/kassert.h>
 
 #include <opal/irq.h>
 #include <opal/klog.h>
@@ -89,7 +89,7 @@ static bool write_data(uint8_t data) {
 }
 
 static bool read_data(uint8_t *out) {
-    assert(out);
+    kassert(out);
     if (!wait_output_full()) {
         return false;
     }

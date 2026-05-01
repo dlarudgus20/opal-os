@@ -1,6 +1,6 @@
 #include <limits.h>
 
-#include <kc/assert.h>
+#include <kc/kassert.h>
 #include <kc/stdlib.h>
 #include <kc/string.h>
 
@@ -18,8 +18,8 @@ struct block_device *block_device_create(struct disk *disk, const char *name, fs
     irqlock_t irqlock = irqlock_acquire();
 
     const fs_size_t end = offset + sectors;
-    assert(end > offset);
-    assert(end <= disk->sectors);
+    kassert(end > offset);
+    kassert(end <= disk->sectors);
 
     if (g_devices_count >= MAX_DEVICES) {
         goto err;
@@ -71,7 +71,7 @@ bool block_device_destroy(struct block_device *dev) {
 
 bool block_device_retain(struct block_device *dev) {
     irqlock_t irqlock = irqlock_acquire();
-    assert(dev->refcount < MAX_REFC);
+    kassert(dev->refcount < MAX_REFC);
     dev->refcount++;
     irqlock_release(&irqlock);
     return true;
@@ -79,7 +79,7 @@ bool block_device_retain(struct block_device *dev) {
 
 void block_device_release(struct block_device *dev) {
     irqlock_t irqlock = irqlock_acquire();
-    assert(dev->refcount > 0);
+    kassert(dev->refcount > 0);
     dev->refcount--;
     irqlock_release(&irqlock);
 }
@@ -107,7 +107,7 @@ kerrno_t bdev_list_get(size_t index, struct block_device **dev_out) {
         }
 
         struct block_device *dev = container_of(ptr, struct block_device, link);
-        assert(dev->refcount < MAX_REFC);
+        kassert(dev->refcount < MAX_REFC);
         dev->refcount++;
         irqlock_release(&irqlock);
         *dev_out = dev;

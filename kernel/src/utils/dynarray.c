@@ -1,7 +1,7 @@
 #include <stdint.h>
 
 #include <kc/string.h>
-#include <kc/assert.h>
+#include <kc/kassert.h>
 
 #include <opal/utils/dynarray.h>
 #include <opal/mm/kmalloc.h>
@@ -85,7 +85,7 @@ bool dynarray_shrink_to(struct dynarray *ar, size_t new_size) {
 }
 
 void *dynarray_push_back(struct dynarray *ar, size_t data_size) {
-    assert(data_size <= SIZE_MAX - ar->size, "dynarray: push_back size overflow");
+    kassert(data_size <= SIZE_MAX - ar->size, "dynarray: push_back size overflow");
     size_t size = ar->size;
     if (!dynarray_resize(ar, size + data_size)) {
         return NULL;
@@ -94,13 +94,13 @@ void *dynarray_push_back(struct dynarray *ar, size_t data_size) {
 }
 
 void dynarray_pop_back(struct dynarray *ar, size_t data_size) {
-    assert(data_size <= ar->size, "dynarray: pop_back out of bounds");
+    kassert(data_size <= ar->size, "dynarray: pop_back out of bounds");
     ar->size -= data_size;
 }
 
 void *dynarray_insert(struct dynarray *ar, size_t pos, size_t data_size) {
-    assert(pos <= ar->size, "dynarray: insert out of bounds");
-    assert(data_size <= SIZE_MAX - ar->size, "dynarray: insert size overflow");
+    kassert(pos <= ar->size, "dynarray: insert out of bounds");
+    kassert(data_size <= SIZE_MAX - ar->size, "dynarray: insert size overflow");
 
     struct span old_data = SPAN_NULL;
     size_t new_size = ar->size + data_size;
@@ -127,7 +127,7 @@ void *dynarray_insert(struct dynarray *ar, size_t pos, size_t data_size) {
 }
 
 void dynarray_remove(struct dynarray *ar, size_t pos, size_t data_size) {
-    assert(pos + data_size <= ar->size, "dynarray: remove out of bounds");
+    kassert(pos + data_size <= ar->size, "dynarray: remove out of bounds");
     if (pos + data_size < ar->size) {
         memmove((unsigned char *)ar->data + pos, (unsigned char *)ar->data + pos + data_size, ar->size - pos - data_size);
     }

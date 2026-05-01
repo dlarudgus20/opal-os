@@ -1,4 +1,4 @@
-#include <kc/assert.h>
+#include <kc/kassert.h>
 
 #include <opal/klog.h>
 #include <opal/fs/disk.h>
@@ -41,7 +41,7 @@ bool disk_register(struct disk *disk) {
 void disk_register_bdev(struct disk *disk) {
     irqlock_t irqlock = irqlock_acquire();
 
-    assert(!disk->bdev);
+    kassert(!disk->bdev);
 
     disk->bdev = block_device_create(disk, disk->name, 0, disk->sectors);
     if (!disk->bdev) {
@@ -143,7 +143,7 @@ struct disk_request *disk_req_queue_fetch(struct disk_req_queue *queue) {
     }
 
     struct disk_request *req = &queue->buffer[queue->fpos];
-    assert(req->state == DISK_REQSTATE_QUEUED);
+    kassert(req->state == DISK_REQSTATE_QUEUED);
     req->state = DISK_REQSTATE_INFLIGHT;
 
     irqlock_release(&irqlock);
@@ -153,10 +153,10 @@ struct disk_request *disk_req_queue_fetch(struct disk_req_queue *queue) {
 void disk_req_queue_pop_fetched(struct disk_req_queue *queue, kerrno_t result) {
     irqlock_t irqlock = irqlock_acquire();
 
-    assert(queue->count_doing > 0);
+    kassert(queue->count_doing > 0);
 
     struct disk_request *req = &queue->buffer[queue->fpos];
-    assert(req->state == DISK_REQSTATE_INFLIGHT);
+    kassert(req->state == DISK_REQSTATE_INFLIGHT);
     req->state = DISK_REQSTATE_DONE;
     fs_completion_signal(&req->completion, result);
 
@@ -172,8 +172,8 @@ kerrno_t disk_request_release(struct disk_request *req) {
 
     struct disk_req_queue *queue = req->disk->req_queue;
 
-    assert(queue->count_done > 0);
-    assert(req->state == DISK_REQSTATE_DONE);
+    kassert(queue->count_done > 0);
+    kassert(req->state == DISK_REQSTATE_DONE);
 
     req->state = DISK_REQSTATE_RELEASED;
 
@@ -204,7 +204,7 @@ kerrno_t disk_request_release(struct disk_request *req) {
         remaining--;
     }
 
-    assert(found, "invalid request to release");
+    kassert(found, "invalid request to release");
 
     kerrno_t result = req->completion.result;
     irqlock_release(&irqlock);

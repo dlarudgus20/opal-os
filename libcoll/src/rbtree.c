@@ -1,7 +1,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include <kc/assert.h>
+#include <kc/kassert.h>
 
 #include "collections/rbtree.h"
 
@@ -281,7 +281,7 @@ static void rotate_left(struct rbtree* tree, struct rbtree_node* node) {
     struct rbtree_node* parent = node->parent;
     struct rbtree_node* right = node->right;
 
-    assert(right != NULL, "rbtree: rotate_left with null right child");
+    kassert(right != NULL, "rbtree: rotate_left with null right child");
     if (right->left != NULL) {
         right->left->parent = node;
     }
@@ -306,7 +306,7 @@ static void rotate_right(struct rbtree* tree, struct rbtree_node* node) {
     struct rbtree_node* parent = node->parent;
     struct rbtree_node* left = node->left;
 
-    assert(left != NULL, "rbtree: rotate_right with null left child");
+    kassert(left != NULL, "rbtree: rotate_right with null left child");
     if (left->right != NULL) {
         left->right->parent = node;
     }

@@ -6,7 +6,7 @@
 - `mem*`, `str*` 계열 함수
 - `sort`
 - 포맷 엔진(`fmt`) + `ksnprintf`/`kvsnprintf`
-- assert/panic 매크로
+- kassert/panic 매크로
 
 ## 문서
 - 개요/동작 문서: [`docs/libkc/README.md`](../docs/libkc/README.md)

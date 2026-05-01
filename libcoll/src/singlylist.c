@@ -1,4 +1,4 @@
-#include <kc/assert.h>
+#include <kc/kassert.h>
 #include "collections/singlylist.h"
 
 struct singlylist_link* singlylist_head(struct singlylist* list) {
@@ -28,6 +28,6 @@ void singlylist_insert_after(struct singlylist_link* restrict link, struct singl
 }
 
 void singlylist_remove_after(struct singlylist_link* before) {
-    assert(before->next != NULL, "singlylist: remove_after on tail");
+    kassert(before->next != NULL, "singlylist: remove_after on tail");
     before->next = before->next->next;
 }

@@ -1,4 +1,4 @@
-#include <kc/assert.h>
+#include <kc/kassert.h>
 
 #include <opal/task/process.h>
 #include <opal/task/task.h>
@@ -37,9 +37,9 @@ static void clear_task_switched(void) {
 }
 
 void context_init(struct context *ctx, virt_addr_t entry, virt_addr_t stack, virt_size_t stack_size) {
-    assert(stack % PAGE_SIZE == 0);
-    assert(stack_size % PAGE_SIZE == 0);
-    assert(stack_size >= PAGE_SIZE);
+    kassert(stack % PAGE_SIZE == 0);
+    kassert(stack_size % PAGE_SIZE == 0);
+    kassert(stack_size >= PAGE_SIZE);
 
     struct ctx_stack *rsp = (struct ctx_stack *)(stack + stack_size - sizeof(*rsp));
     rsp->rip = entry;
@@ -72,8 +72,8 @@ static void fpu_ctx_init(void) {
 
 void fpu_init(void) {
     struct cpuid_info info = cpuid(1, 0);
-    assert((info.edx & CPUID_1_FXSR) != 0, "cpu does not support FXSAVE/FXRSTOR");
-    assert((info.edx & CPUID_1_SSE) != 0, "cpu does not support SSE");
+    kassert((info.edx & CPUID_1_FXSR) != 0, "cpu does not support FXSAVE/FXRSTOR");
+    kassert((info.edx & CPUID_1_SSE) != 0, "cpu does not support SSE");
 
     uint64_t cr0 = read_cr0();
     cr0 |= CR0_MP | CR0_NE;

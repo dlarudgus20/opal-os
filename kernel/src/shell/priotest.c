@@ -1,6 +1,6 @@
 #include <stdatomic.h>
 
-#include <kc/assert.h>
+#include <kc/kassert.h>
 
 #include <opal/tty.h>
 #include <opal/shell/shell_cmd.h>
@@ -49,7 +49,7 @@ static void priotest_task(uintptr_t argp) {
     struct priotest_arg *arg = (struct priotest_arg *)argp;
     for (size_t i = 0; i < arg->repeat; i++) {
         size_t idx = atomic_fetch_add(&arg->state->len, 1);
-        assert(idx < sizeof(arg->state->log));
+        kassert(idx < sizeof(arg->state->log));
         arg->state->log[idx] = arg->tag;
 
         for (volatile size_t spin = 0; spin < 1000000; spin++) {}

@@ -1,4 +1,4 @@
-#include <kc/assert.h>
+#include <kc/kassert.h>
 #include <kc/stdlib.h>
 
 #include <opal/mm/vmap.h>
@@ -16,7 +16,7 @@ static struct vmap_entry g_vmap_entries[MAX_VMAP_ENTRIES];
 static uint32_t g_vmap_len = 0;
 
 static void remove_entry(uint32_t idx) {
-    assert(idx < g_vmap_len);
+    kassert(idx < g_vmap_len);
     for (uint32_t i = idx + 1; i < g_vmap_len; i++) {
         g_vmap_entries[i - 1] = g_vmap_entries[i];
     }
@@ -24,8 +24,8 @@ static void remove_entry(uint32_t idx) {
 }
 
 static void insert_entry(uint32_t idx, virt_addr_t addr, virt_size_t len) {
-    assert(g_vmap_len < MAX_VMAP_ENTRIES);
-    assert(idx <= g_vmap_len);
+    kassert(g_vmap_len < MAX_VMAP_ENTRIES);
+    kassert(idx <= g_vmap_len);
 
     for (uint32_t i = g_vmap_len; i > idx; i--) {
         g_vmap_entries[i] = g_vmap_entries[i - 1];
@@ -46,7 +46,7 @@ void mm_vmap_init(void) {
 }
 
 struct span mm_vmap_alloc(void **va_out, phys_addr_t pa, phys_size_t size) {
-    assert(va_out);
+    kassert(va_out);
     *va_out = NULL;
 
     if (size == 0) {
@@ -55,7 +55,7 @@ struct span mm_vmap_alloc(void **va_out, phys_addr_t pa, phys_size_t size) {
 
     phys_addr_t aligned_start = align_floor_sz_p2(pa, PAGE_SIZE);
     phys_addr_t aligned_end = align_ceil_sz_p2(pa + size, PAGE_SIZE);
-    assert(aligned_end == 0 || aligned_start < aligned_end, "overflow detected");
+    kassert(aligned_end == 0 || aligned_start < aligned_end, "overflow detected");
 
     phys_size_t aligned_size = aligned_end - aligned_start;
     if (aligned_size == 0) {
@@ -102,10 +102,10 @@ void mm_vmap_free(struct span span) {
     const virt_size_t len = span.size;
     const virt_addr_t end = addr + len;
 
-    assert(addr % PAGE_SIZE == 0);
-    assert(len % PAGE_SIZE == 0);
-    assert(VMAP_START_VIRT <= addr && addr < VMAP_END_VIRT);
-    assert(len <= VMAP_END_VIRT - addr);
+    kassert(addr % PAGE_SIZE == 0);
+    kassert(len % PAGE_SIZE == 0);
+    kassert(VMAP_START_VIRT <= addr && addr < VMAP_END_VIRT);
+    kassert(len <= VMAP_END_VIRT - addr);
 
     irqlock_t irqlock = irqlock_acquire();
 
@@ -118,11 +118,11 @@ void mm_vmap_free(struct span span) {
 
     if (idx > 0) {
         const struct vmap_entry *prev = &g_vmap_entries[idx - 1];
-        assert(prev->addr + prev->len <= addr, "double free or overlap detected");
+        kassert(prev->addr + prev->len <= addr, "double free or overlap detected");
     }
     if (idx < g_vmap_len) {
         const struct vmap_entry *next = &g_vmap_entries[idx];
-        assert(end <= next->addr, "double free or overlap detected");
+        kassert(end <= next->addr, "double free or overlap detected");
     }
 
     const bool merge_prev =

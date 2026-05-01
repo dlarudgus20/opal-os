@@ -20,7 +20,7 @@
 
 ## API
 - `xarray_init(xa, stride)`
-  - `stride > 0`이고 플래그 비트와 겹치지 않아야 함(assert)
+  - precondition: `stride > 0`이고 플래그 비트와 겹치지 않아야 함
 - `xarray_destroy(xa)`
   - 동적으로 할당된 하위 노드를 모두 해제하고 루트를 초기화
 - `xarray_get(xa, index)`

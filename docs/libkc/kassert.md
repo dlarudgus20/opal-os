@@ -1,7 +1,7 @@
-# libkc `assert.h`
+# libkc `kassert.h`
 
 ## 개요
-`assert.h`는 커널 런타임에서 조건 위반을 즉시 중단시키기 위한 매크로 집합입니다.
+`kassert.h`는 커널 런타임에서 조건 위반을 즉시 중단시키기 위한 매크로 집합입니다.
 
 모든 실패 경로는 `panic_format()`으로 모이며, 호출 위치(`file`, `func`, `line`)를 함께 전달합니다.
 libkc를 사용하는 측에서 `panic_format()` 구현을 제공해야 합니다.
@@ -15,13 +15,13 @@ libkc를 사용하는 측에서 `panic_format()` 구현을 제공해야 합니�
 ### `panicf(fmt, ...)`
 - `printf` 스타일 메시지로 panic을 발생시킵니다.
 
-### `assert(...)`
-- 1개 인자: `assert(exp)`
+### `kassert(...)`
+- 1개 인자: `kassert(exp)`
   - 실패 시 `"assertion failed : exp"` 메시지로 panic
-- 2개 인자: `assert(exp, msg)`
+- 2개 인자: `kassert(exp, msg)`
   - 실패 시 `"msg : exp"` 메시지로 panic
 
-### `assertf(exp, fmt, ...)`
+### `kassertf(exp, fmt, ...)`
 - 실패 시 `printf` 스타일 사용자 메시지 + 표현식 문자열(`exp`)을 함께 출력합니다.
 
 ## 외부 제공 심볼

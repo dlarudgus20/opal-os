@@ -2,7 +2,7 @@
 
 #define NO_BUILTIN_MACRO
 #include <kc/string.h>
-#include <kc/assert.h>
+#include <kc/kassert.h>
 
 void *memcpy(void *restrict dest, const void *restrict src, size_t n) {
     unsigned char *d = (unsigned char *) dest;

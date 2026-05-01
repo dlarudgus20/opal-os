@@ -1,7 +1,7 @@
 #include <limits.h>
 
 #include <kc/inttypes.h>
-#include <kc/assert.h>
+#include <kc/kassert.h>
 #include <kc/string.h>
 
 #include <opal/irq.h>
@@ -120,7 +120,7 @@ static void set_dead(struct task *task) {
 }
 
 static void task_init(struct task *task, struct process *proc) {
-    assert(g_sched.tid_next < TID_END);
+    kassert(g_sched.tid_next < TID_END);
 
     memset(task, 0, sizeof(*task));
     task->id = g_sched.tid_next++;
@@ -286,7 +286,7 @@ taskptr_t ktask_start(ktask_entry_t entry, uintptr_t arg, enum task_priority pri
 }
 
 taskptr_t task_create(struct process *proc, void (*entry)(void), enum task_priority priority) {
-    assert(priority < TASK_PRIORITY_COUNT);
+    kassert(priority < TASK_PRIORITY_COUNT);
 
     void *kstack = mm_alloc_page_ptr(0);
     if (!kstack) {
@@ -320,7 +320,7 @@ void task_suspend(struct task *task) {
         set_wait_for(task, NULL);
         schedule();
     } else {
-        assert(task->state == TASK_READY);
+        kassert(task->state == TASK_READY);
         reset_ready(task);
         set_wait_for(task, NULL);
     }
@@ -331,9 +331,9 @@ void task_suspend(struct task *task) {
 void task_resume(struct task *task) {
     irqlock_t lock = irqlock_acquire();
 
-    assert(task->state == TASK_WAITING);
-    assert(!task->wait_for);
-    assert(!task->has_timeout);
+    kassert(task->state == TASK_WAITING);
+    kassert(!task->wait_for);
+    kassert(!task->has_timeout);
     reset_wait_for(task);
     set_ready(task);
 
@@ -412,7 +412,7 @@ taskptr_t task_from_id(tid_t id) {
     }
 
     struct task *task = container_of(result.lower, struct task, tid_node);
-    assert(task->refcount < MAX_REFC);
+    kassert(task->refcount < MAX_REFC);
     task->refcount++;
 
     irqlock_release(&irqlock);
@@ -425,7 +425,7 @@ struct task *task_current(void) {
 
 taskptr_t task_retain(struct task *task) {
     irqlock_t irqlock = irqlock_acquire();
-    assert(task->refcount < MAX_REFC);
+    kassert(task->refcount < MAX_REFC);
     task->refcount++;
     irqlock_release(&irqlock);
     return (taskptr_t){ .ptr = task };
@@ -434,7 +434,7 @@ taskptr_t task_retain(struct task *task) {
 tid_t task_release(taskptr_t task) {
     irqlock_t irqlock = irqlock_acquire();
 
-    assert(task.ptr->refcount > 0);
+    kassert(task.ptr->refcount > 0);
     task.ptr->refcount--;
 
     tid_t id = task.ptr->id;
@@ -449,7 +449,7 @@ tid_t task_release(taskptr_t task) {
 }
 
 bool wait_list_wake_one(struct wait_list *wl) {
-    assert(wl);
+    kassert(wl);
 
     irqlock_t irqlock = irqlock_acquire();
     bool waken = true;
@@ -474,7 +474,7 @@ exit:
 }
 
 void wait_list_wake_all(struct wait_list *wl) {
-    assert(wl);
+    kassert(wl);
 
     irqlock_t irqlock = irqlock_acquire();
 
@@ -507,8 +507,8 @@ bool task_wait(struct wait_list *wl, uint64_t timeout) {
 }
 
 bool task_join(struct task *task, uint64_t timeout) {
-    assert(task);
-    assert(task != g_sched.current, "cannot join self");
+    kassert(task);
+    kassert(task != g_sched.current, "cannot join self");
 
     irqlock_t irqlock = irqlock_acquire();
     bool ok = true;

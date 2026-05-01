@@ -14,14 +14,14 @@ void irqlock_release(irqlock_t *lock);
 
 #else
 
-#include <kc/assert.h>
+#include <kc/kassert.h>
 
 [[nodiscard]] static inline irqlock_t irqlock_acquire(void) {
     return (struct irqlock){ .flag = true };
 }
 
 static inline void irqlock_release(irqlock_t *lock) {
-    assert(lock->flag);
+    kassert(lock->flag);
     lock->flag = false;
 }
 

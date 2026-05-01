@@ -2,7 +2,7 @@
 
 #include <kc/ctype.h>
 #include <kc/string.h>
-#include <kc/assert.h>
+#include <kc/kassert.h>
 #include <kc/stdlib.h>
 
 #include <opal/test.h>

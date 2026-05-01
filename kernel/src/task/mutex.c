@@ -1,4 +1,4 @@
-#include <kc/assert.h>
+#include <kc/kassert.h>
 
 #include <opal/klog.h>
 #include <opal/locks/irqlock.h>
@@ -21,13 +21,13 @@ static bool try_acquire(struct mutex *mutex) {
 }
 
 void mutex_init(struct mutex *mutex) {
-    assert(mutex);
+    kassert(mutex);
     wait_list_init(&mutex->wait_list);
     mutex->owner = NULL;
 }
 
 void mutex_lock(struct mutex *mutex) {
-    assert(mutex);
+    kassert(mutex);
 
     irqlock_t lock = irqlock_acquire();
 
@@ -46,11 +46,11 @@ exit:
 }
 
 void mutex_unlock(struct mutex *mutex) {
-    assert(mutex);
+    kassert(mutex);
 
     irqlock_t lock = irqlock_acquire();
 
-    assert(mutex->owner == task_current(), "mutex: unlock by non-owner");
+    kassert(mutex->owner == task_current(), "mutex: unlock by non-owner");
     mutex->owner = NULL;
     wait_list_wake_one(&mutex->wait_list);
 

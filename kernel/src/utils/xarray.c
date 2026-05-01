@@ -1,4 +1,4 @@
-#include <kc/assert.h>
+#include <kc/kassert.h>
 
 #include <opal/utils/xarray.h>
 #include <opal/mm/kmalloc.h>
@@ -32,7 +32,7 @@ static bool addmul_u64_checked(uint64_t base, uint64_t mul_a, uint64_t mul_b, ui
 }
 
 void xarray_init(struct xarray *xa, uintptr_t stride) {
-    assert(stride > 0 && (stride & FLAG_MASK) == 0);
+    kassert(stride > 0 && (stride & FLAG_MASK) == 0);
     xa->root = (struct xa_node){ };
     xa->stride = stride;
     xa->depth = 1;
@@ -170,7 +170,7 @@ bool xarray_set(struct xarray *xa, uint64_t index, void *value) {
 static bool value_for_index(
     const struct xarray *xa, uint64_t start_index, uint64_t start_value, uint64_t at, uint64_t *out
 ) {
-    assert(at >= start_index);
+    kassert(at >= start_index);
     return !addmul_u64_checked(start_value, at - start_index, xa->stride, out);
 }
 

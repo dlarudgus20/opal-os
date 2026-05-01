@@ -4,7 +4,7 @@
 #include <kc/stdio.h>
 #include <kc/stdlib.h>
 #include <kc/string.h>
-#include <kc/assert.h>
+#include <kc/kassert.h>
 
 #include <opal/klog.h>
 #include <opal/tty.h>
@@ -161,8 +161,8 @@ void klog_write(uint16_t level, const char *msg, uint16_t msglen) {
 }
 
 bool klog_read(struct klog_record_header *header_out, char *msg_out, size_t msg_size) {
-    assert(header_out, "klog_read requires a non-NULL header_out");
-    assert(msg_out && msg_size > 0, "klog_read requires a non-empty msg_out buffer");
+    kassert(header_out, "klog_read requires a non-NULL header_out");
+    kassert(msg_out && msg_size > 0, "klog_read requires a non-empty msg_out buffer");
 
     irqlock_t irqlock = irqlock_acquire();
 
@@ -186,7 +186,7 @@ bool klog_read(struct klog_record_header *header_out, char *msg_out, size_t msg_
 
     if (header_out->level == KLOG_WRAP) {
         bool ok = klog_read(header_out, msg_out + msglen_to_copy, msg_size - msglen_to_copy);
-        assert(ok, "klog wrap marker must be followed by a log record");
+        kassert(ok, "klog wrap marker must be followed by a log record");
     }
 
     klog_queue.full = false;

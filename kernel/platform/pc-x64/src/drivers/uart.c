@@ -1,6 +1,6 @@
 #include <stdint.h>
 
-#include <kc/assert.h>
+#include <kc/kassert.h>
 
 #include <collections/ringbuffer.h>
 
@@ -378,7 +378,7 @@ void uart_suppress_tx(uart_handle_t uart, bool suppress) {
 }
 
 size_t uart_try_write(uart_handle_t uart, const char *buf, size_t len) {
-    assert(buf);
+    kassert(buf);
 
     if (!uart_is_available(uart)) {
         return 0;
@@ -418,7 +418,7 @@ size_t uart_try_write(uart_handle_t uart, const char *buf, size_t len) {
 }
 
 size_t uart_try_read(uart_handle_t uart, char *buf, size_t len) {
-    assert(buf);
+    kassert(buf);
 
     if (!uart_is_available(uart)) {
         return 0;

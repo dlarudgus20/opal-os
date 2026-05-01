@@ -1,4 +1,4 @@
-#include <kc/assert.h>
+#include <kc/kassert.h>
 #include <kc/stdlib.h>
 #include <kc/string.h>
 
@@ -34,7 +34,7 @@ void proc_tree_init(void) {
 }
 
 void process_init(struct process *proc, struct pagetable *ptbl) {
-    assert(g_pid_next < PID_END);
+    kassert(g_pid_next < PID_END);
 
     proc->id = g_pid_next++;
     proc->refcount = 1;
@@ -113,7 +113,7 @@ procptr_t process_from_id(pid_t id) {
     }
 
     struct process *proc = container_of(result.lower, struct process, pid_node);
-    assert(proc->refcount < MAX_REFC);
+    kassert(proc->refcount < MAX_REFC);
     proc->refcount++;
 
     irqlock_release(&irqlock);
@@ -122,7 +122,7 @@ procptr_t process_from_id(pid_t id) {
 
 procptr_t process_retain(struct process *proc) {
     irqlock_t irqlock = irqlock_acquire();
-    assert(proc->refcount < MAX_REFC);
+    kassert(proc->refcount < MAX_REFC);
     proc->refcount++;
     irqlock_release(&irqlock);
     return (procptr_t){ .ptr = proc };
@@ -131,7 +131,7 @@ procptr_t process_retain(struct process *proc) {
 pid_t process_release(procptr_t proc) {
     irqlock_t irqlock = irqlock_acquire();
 
-    assert(proc.ptr->refcount > 0);
+    kassert(proc.ptr->refcount > 0);
     proc.ptr->refcount--;
 
     pid_t id = proc.ptr->id;

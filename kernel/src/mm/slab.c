@@ -1,4 +1,4 @@
-#include <kc/assert.h>
+#include <kc/kassert.h>
 #include <kc/stdlib.h>
 #include <kc/string.h>
 
@@ -71,10 +71,10 @@ static void check_redzones(const struct slab *slab, const struct slab_obj_hdr *h
     struct redzones redzones = get_redzones(slab, hdr);
 
     void *const prefix_bad = memchr_not(redzones.prefix, SLAB_REDZONE_PATTERN, redzones.prefix_len);
-    assert(!prefix_bad, "slab redzone prefix corrupted");
+    kassert(!prefix_bad, "slab redzone prefix corrupted");
 
     void *const suffix_bad = memchr_not(redzones.suffix, SLAB_REDZONE_PATTERN, redzones.suffix_len);
-    assert(!suffix_bad, "slab redzone suffix corrupted");
+    kassert(!suffix_bad, "slab redzone suffix corrupted");
 }
 
 static void fill_unused_payload(const struct slab *slab, struct slab_obj_hdr *hdr) {
@@ -83,7 +83,7 @@ static void fill_unused_payload(const struct slab *slab, struct slab_obj_hdr *hd
 
 static void check_unused_payload(const struct slab *slab, const struct slab_obj_hdr *hdr) {
     void *const unused_bad = memchr_not(payload_ptr(slab, hdr), SLAB_UNUSED_PATTERN, slab->object_size);
-    assert(!unused_bad, "slab unused payload corrupted");
+    kassert(!unused_bad, "slab unused payload corrupted");
 }
 
 static void push_partial_page(struct slab *slab, struct slab_page *page) {
@@ -125,7 +125,7 @@ static struct slab_page *create_slab_page(struct slab *slab) {
 }
 
 static void destroy_slab_page(struct slab *slab, struct slab_page *page) {
-    assert(page->inuse == 0, "cannot destroy in-use slab page");
+    kassert(page->inuse == 0, "cannot destroy in-use slab page");
     slab->total_objects -= slab->page_capacity;
     mm_free_page(direct_ptr_to_pfn(page), 0);
 }
@@ -140,17 +140,17 @@ static struct slab_page *pick_alloc_page(struct slab *slab) {
     }
 
     struct linkedlist_link *head = linkedlist_head(&slab->partial_pages);
-    assert(head != linkedlist_nil(&slab->partial_pages));
+    kassert(head != linkedlist_nil(&slab->partial_pages));
     struct slab_page *page = page_from_link(head);
-    assert(page->free_head != 0, "partial slab page has no free objects");
+    kassert(page->free_head != 0, "partial slab page has no free objects");
     return page;
 }
 
 void slab_create(struct slab *slab, size_t object_size, size_t object_align) {
-    assert(slab);
-    assert(!slab->initialized, "slab is already initialized");
-    assert(0 < object_size && object_size <= UINT16_MAX, "invalid slab object_size");
-    assert(ispower2(object_align) && object_align <= UINT16_MAX, "invalid slab object_align");
+    kassert(slab);
+    kassert(!slab->initialized, "slab is already initialized");
+    kassert(0 < object_size && object_size <= UINT16_MAX, "invalid slab object_size");
+    kassert(ispower2(object_align) && object_align <= UINT16_MAX, "invalid slab object_align");
 
     memset(slab, 0, sizeof(*slab));
     slab->object_size = (uint16_t)object_size;
@@ -164,10 +164,10 @@ void slab_create(struct slab *slab, size_t object_size, size_t object_align) {
     const size_t slot_offset = align_ceil_sz_p2(sizeof(struct slab_page), slot_align);
     const size_t page_capacity = (PAGE_SIZE - slot_offset) / slot_stride;
 
-    assert(slot_stride <= UINT16_MAX, "slab object is too big");
-    assert(slot_offset < PAGE_SIZE, "page is too small");
-    assert(page_capacity > 0, "slab object is too big");
-    assert(page_capacity <= INT16_MAX, "page is too small");
+    kassert(slot_stride <= UINT16_MAX, "slab object is too big");
+    kassert(slot_offset < PAGE_SIZE, "page is too small");
+    kassert(page_capacity > 0, "slab object is too big");
+    kassert(page_capacity <= INT16_MAX, "page is too small");
 
     slab->payload_offset = (uint16_t)prefix_end;
     slab->slot_stride = (uint16_t)slot_stride;
@@ -179,8 +179,8 @@ void slab_create(struct slab *slab, size_t object_size, size_t object_align) {
 }
 
 void slab_destroy(struct slab *slab) {
-    assert(slab && slab->initialized, "slab is not initialized");
-    assert(slab->inuse_objects == 0, "slab has in-use objects");
+    kassert(slab && slab->initialized, "slab is not initialized");
+    kassert(slab->inuse_objects == 0, "slab has in-use objects");
 
     struct slab_page *page;
     while ((page = pop_partial_page(slab)) != NULL) {
@@ -191,17 +191,17 @@ void slab_destroy(struct slab *slab) {
 }
 
 void *slab_alloc(struct slab *slab) {
-    assert(slab && slab->initialized, "slab is not initialized");
+    kassert(slab && slab->initialized, "slab is not initialized");
 
     struct slab_page *page = pick_alloc_page(slab);
     if (!page) {
         return NULL;
     }
 
-    assert(page->free_head != 0, "slab page has no free objects");
+    kassert(page->free_head != 0, "slab page has no free objects");
 
     struct slab_obj_hdr *hdr = offset_to_hdr(page, page->free_head);
-    assert(hdr->is_free, "slab object state is corrupted");
+    kassert(hdr->is_free, "slab object state is corrupted");
 
     check_redzones(slab, hdr);
     check_unused_payload(slab, hdr);
@@ -222,24 +222,24 @@ void *slab_alloc(struct slab *slab) {
 }
 
 void slab_free(struct slab *slab, void *ptr) {
-    assert(slab && slab->initialized, "slab is not initialized");
-    assert(ptr, "slab free ptr is null");
+    kassert(slab && slab->initialized, "slab is not initialized");
+    kassert(ptr, "slab free ptr is null");
 
     const virt_addr_t va = (virt_addr_t)ptr;
-    assert(va >= DIRECT_MAP_START_VIRT && va < DIRECT_MAP_END_VIRT, "invalid pointer to free");
+    kassert(va >= DIRECT_MAP_START_VIRT && va < DIRECT_MAP_END_VIRT, "invalid pointer to free");
 
     struct slab_obj_hdr *hdr = slot_from_payload(slab, ptr);
     struct slab_page *page = hdr_to_page(hdr);
 
     const size_t offset = (char *)hdr - (char *)page;
     const size_t delta = offset - slab->slot_offset;
-    assert(offset >= slab->slot_offset, "invalid pointer to free");
-    assert(delta / slab->slot_stride < slab->page_capacity, "invalid pointer to free");
-    assert(delta % slab->slot_stride == 0, "invalid pointer to free");
+    kassert(offset >= slab->slot_offset, "invalid pointer to free");
+    kassert(delta / slab->slot_stride < slab->page_capacity, "invalid pointer to free");
+    kassert(delta % slab->slot_stride == 0, "invalid pointer to free");
 
-    assert(page->owner == slab, "object belongs to another slab");
-    assert(!hdr->is_free, "double free detected");
-    assert(page->inuse > 0, "slab page is corrupted");
+    kassert(page->owner == slab, "object belongs to another slab");
+    kassert(!hdr->is_free, "double free detected");
+    kassert(page->inuse > 0, "slab page is corrupted");
 
     const bool was_full = (page->free_head == 0);
 
@@ -266,16 +266,16 @@ void slab_free(struct slab *slab, void *ptr) {
 }
 
 size_t slab_get_object_size(const struct slab *slab) {
-    assert(slab && slab->initialized, "slab is not initialized");
+    kassert(slab && slab->initialized, "slab is not initialized");
     return slab->object_size;
 }
 
 size_t slab_get_inuse(const struct slab *slab) {
-    assert(slab && slab->initialized, "slab is not initialized");
+    kassert(slab && slab->initialized, "slab is not initialized");
     return slab->inuse_objects;
 }
 
 size_t slab_get_total(const struct slab *slab) {
-    assert(slab && slab->initialized, "slab is not initialized");
+    kassert(slab && slab->initialized, "slab is not initialized");
     return slab->total_objects;
 }

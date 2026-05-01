@@ -30,7 +30,7 @@
   - `irqlock` 구역에서 `refcount` 증감
   - 0이 되면 `process_free()`로 정리
 - `process_free()`:
-  - `task_list`가 비어 있어야 함(assert)
+  - precondition: `task_list`가 비어 있어야 함
   - 열린 파일 참조 해제
   - PID 트리 제거
   - `vmtree` 기반 매핑 페이지 해제 + `pagetable_destroy()`

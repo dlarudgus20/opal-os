@@ -3,7 +3,7 @@
 #include <kc/stdio.h>
 #include <kc/stdlib.h>
 #include <kc/string.h>
-#include <kc/assert.h>
+#include <kc/kassert.h>
 
 #include <opal/tty.h>
 #include <opal/platform/asm.h>

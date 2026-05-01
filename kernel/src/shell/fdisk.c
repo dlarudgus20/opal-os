@@ -1,6 +1,6 @@
 #include <limits.h>
 
-#include <kc/assert.h>
+#include <kc/kassert.h>
 #include <kc/string.h>
 #include <kc/stdlib.h>
 
@@ -216,7 +216,7 @@ int shell_cmd_mkpart(int argc, char **argv) {
     }
 
     struct disk *disk = disk_list_get((size_t)disk_ul);
-    assert(disk);
+    kassert(disk);
 
     struct fs_completion comp;
     fs_completion_init(&comp);
@@ -244,7 +244,7 @@ int shell_cmd_rmpart(int argc, char **argv) {
     }
 
     struct disk *disk = disk_list_get((size_t)disk_ul);
-    assert(disk);
+    kassert(disk);
 
     struct fs_completion comp;
     fs_completion_init(&comp);

@@ -1,7 +1,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include <kc/assert.h>
+#include <kc/kassert.h>
 #include <kc/stdlib.h>
 
 #include <opal/mm/map.h>
@@ -156,37 +156,37 @@ pfn_t phys_to_pfn(phys_addr_t pa) {
 }
 
 struct page *pfn_to_page(pfn_t pfn) {
-    assert(pfn < g_pfn_end);
+    kassert(pfn < g_pfn_end);
     return (struct page *)PAGES_START_VIRT + pfn;
 }
 
 pfn_t page_to_pfn(struct page *page) {
     virt_addr_t va = (virt_addr_t)page;
-    assert(va >= PAGES_START_VIRT);
+    kassert(va >= PAGES_START_VIRT);
     pfn_t pfn = (va - PAGES_START_VIRT) / sizeof(struct page);
-    assert(pfn < g_pfn_end);
+    kassert(pfn < g_pfn_end);
     return pfn;
 }
 
 void *pfn_to_direct_ptr(pfn_t pfn) {
-    assert(pfn < g_pfn_end);
+    kassert(pfn < g_pfn_end);
     return (void *)(DIRECT_MAP_START_VIRT + pfn * PAGE_SIZE);
 }
 
 pfn_t direct_ptr_to_pfn(void *ptr) {
     virt_addr_t va = (virt_addr_t)ptr;
-    assert(DIRECT_MAP_START_VIRT <= va && va < DIRECT_MAP_END_VIRT);
+    kassert(DIRECT_MAP_START_VIRT <= va && va < DIRECT_MAP_END_VIRT);
     return (va - DIRECT_MAP_START_VIRT) / PAGE_SIZE;
 }
 
 void *phys_to_direct_ptr(phys_addr_t pa) {
-    assert(pa <= DIRECT_MAP_END_VIRT - DIRECT_MAP_START_VIRT);
+    kassert(pa <= DIRECT_MAP_END_VIRT - DIRECT_MAP_START_VIRT);
     return (void *)(DIRECT_MAP_START_VIRT + pa);
 }
 
 phys_addr_t direct_ptr_to_phys(void *ptr) {
     virt_addr_t va = (virt_addr_t)ptr;
-    assert(DIRECT_MAP_START_VIRT <= va && va <= DIRECT_MAP_END_VIRT);
+    kassert(DIRECT_MAP_START_VIRT <= va && va <= DIRECT_MAP_END_VIRT);
     return va - DIRECT_MAP_START_VIRT;
 }
 

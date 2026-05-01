@@ -1,4 +1,4 @@
-#include <kc/assert.h>
+#include <kc/kassert.h>
 #include <kc/string.h>
 
 #include <collections/ringbuffer.h>
@@ -38,7 +38,7 @@ void irq_init(void) {
 }
 
 void irqmsg_register(irqmsg_type_t msg, irqmsg_handler_t handler) {
-    assert(msg < IRQMSG_COUNT);
+    kassert(msg < IRQMSG_COUNT);
     irqlock_t irqlock = irqlock_acquire();
     g_irqmsg_handlers[msg] = handler;
     irqlock_release(&irqlock);
@@ -95,7 +95,7 @@ exit:
         while (irqmsg_pop(&msg)) {
             interrupts_enable();
 
-            assert(msg.type < IRQMSG_COUNT);
+            kassert(msg.type < IRQMSG_COUNT);
             irqmsg_handler_t handler = g_irqmsg_handlers[msg.type];
             if (handler) {
                 handler(msg);

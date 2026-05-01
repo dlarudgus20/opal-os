@@ -1,4 +1,4 @@
-#include <kc/assert.h>
+#include <kc/kassert.h>
 
 #include <opal/platform/asm.h>
 #include <opal/platform/drivers/pic.h>
@@ -15,7 +15,7 @@
 #define PIT_CMD_BINARY          0x00
 
 static void pit_set_rate(uint32_t hz) {
-    assert(hz > 0);
+    kassert(hz > 0);
 
     uint32_t divisor = (PIT_INPUT_HZ + (hz / 2u)) / hz;
     if (divisor == 0) {

@@ -1,4 +1,4 @@
-#include <kc/assert.h>
+#include <kc/kassert.h>
 #include "collections/ringbuffer.h"
 
 void ringbuffer_init(struct ringbuffer* rb, void* buffer, size_t maxlen) {
@@ -18,7 +18,7 @@ bool ringbuffer_is_empty(struct ringbuffer* rb) {
 }
 
 size_t ringbuffer_push_index(struct ringbuffer* rb) {
-    assert(rb->count < rb->maxlen, "ringbuffer is full");
+    kassert(rb->count < rb->maxlen, "ringbuffer is full");
 
     size_t last = rb->tail;
     rb->tail += 1;
@@ -30,7 +30,7 @@ size_t ringbuffer_push_index(struct ringbuffer* rb) {
 }
 
 size_t ringbuffer_pop_index(struct ringbuffer* rb) {
-    assert(rb->count > 0, "ringbuffer is empty");
+    kassert(rb->count > 0, "ringbuffer is empty");
 
     size_t first = rb->head;
     rb->head += 1;

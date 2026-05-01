@@ -5,7 +5,7 @@
 
 #include <kc/attributes.h>
 #include <kc/string.h>
-#include <kc/assert.h>
+#include <kc/kassert.h>
 
 #ifdef OPAL_TEST
 #define STATIC_OR_TEST

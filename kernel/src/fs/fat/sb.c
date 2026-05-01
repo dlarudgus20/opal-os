@@ -1,4 +1,4 @@
-#include <kc/assert.h>
+#include <kc/kassert.h>
 #include <kc/stdlib.h>
 #include <kc/string.h>
 
@@ -209,7 +209,7 @@ static bool calc_fat_layout(
         reserved_sectors = 1;
         root_entries = FAT12_ROOT_ENTRIES;
     } else {
-        assert(bits == 32);
+        kassert(bits == 32);
     }
 
     uint32_t root_dir_size = (uint32_t)root_entries * 32;

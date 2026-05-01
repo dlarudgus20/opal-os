@@ -1,4 +1,4 @@
-#include <kc/assert.h>
+#include <kc/kassert.h>
 #include <kc/string.h>
 
 #include <opal/klog.h>
@@ -37,8 +37,8 @@ static void erase_entry(struct tmpalloc *ta, uint32_t index) {
 }
 
 phys_addr_t tmpalloc_alloc_pages(struct tmpalloc *ta, size_t max_pages, size_t *allocated_pages) {
-    assert(allocated_pages);
-    assert(ta->mm.entries, "tmp_alloc is already finalized");
+    kassert(allocated_pages);
+    kassert(ta->mm.entries, "tmp_alloc is already finalized");
 
     for (uint32_t i = 0; i < ta->mm.length; i++) {
         struct mmap_entry *usable = &ta->mm.entries[i];

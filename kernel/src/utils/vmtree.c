@@ -1,7 +1,7 @@
 #include <opal/utils/vmtree.h>
 #include <opal/mm/kmalloc.h>
 
-#include <kc/assert.h>
+#include <kc/kassert.h>
 #include <kc/string.h>
 
 #define VMTREE_FLAG_LEAF ((uintptr_t)1)
@@ -32,7 +32,7 @@ static bool node_is_full(const struct vmtree_node *node) {
 }
 
 static uintptr_t node_tag(struct vmtree_node *node, bool leaf) {
-    assert(((uintptr_t)node & VMTREE_FLAG_MASK) == 0);
+    kassert(((uintptr_t)node & VMTREE_FLAG_MASK) == 0);
     return (uintptr_t)node | (leaf ? VMTREE_FLAG_LEAF : 0);
 }
 
@@ -113,8 +113,8 @@ static bool child_is_uniform(uintptr_t tagged, uintptr_t *entry_out) {
 
 static void remove_leaf_pivot(struct vmtree_node *node, size_t pivot_idx) {
     const size_t n = pivot_count(node);
-    assert(pivot_idx < n);
-    assert(n > 0);
+    kassert(pivot_idx < n);
+    kassert(n > 0);
 
     for (size_t i = pivot_idx; i + 1 < n; i++) {
         node->pivots[i] = node->pivots[i + 1];
@@ -139,8 +139,8 @@ static void merge_leaf_neighbors(struct vmtree_node *node) {
 
 static void remove_internal_pivot(struct vmtree_node *node, size_t pivot_idx) {
     const size_t n = pivot_count(node);
-    assert(pivot_idx < n);
-    assert(n > 0);
+    kassert(pivot_idx < n);
+    kassert(n > 0);
 
     for (size_t i = pivot_idx; i + 1 < n; i++) {
         node->pivots[i] = node->pivots[i + 1];
@@ -443,7 +443,7 @@ static vmtree_status_t write_range(
 }
 
 void vmtree_init(struct vmtree *tree) {
-    assert(tree);
+    kassert(tree);
     tree->root_node.parent = NULL;
     for (size_t i = 0; i < VMTREE_NODE_SLOTS; i++) {
         tree->root_node.slots[i] = 0;
@@ -554,7 +554,7 @@ bool vmtree_iter_next(struct vmtree_iter *iter, struct vmtree_entry *out) {
         }
 
         struct vmtree_entry entry = vmtree_get(iter->tree, addr);
-        assert(entry.end > addr);
+        kassert(entry.end > addr);
 
         if (entry.entry) {
             *out = entry;

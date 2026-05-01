@@ -1,4 +1,4 @@
-#include <kc/assert.h>
+#include <kc/kassert.h>
 #include <kc/stdlib.h>
 
 #include <opal/locks/irqlock.h>
@@ -10,13 +10,13 @@ static bool try_acquire(struct completion *c) {
 }
 
 void completion_init(struct completion *c) {
-    assert(c);
+    kassert(c);
     wait_list_init(&c->wait_list);
     c->signaled = false;
 }
 
 void completion_signal(struct completion *c) {
-    assert(c);
+    kassert(c);
 
     irqlock_t lock = irqlock_acquire();
 
@@ -27,7 +27,7 @@ void completion_signal(struct completion *c) {
 }
 
 bool completion_wait(struct completion *c, uint64_t timeout) {
-    assert(c);
+    kassert(c);
 
     irqlock_t lock = irqlock_acquire();
     bool ok = true;

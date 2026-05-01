@@ -1,6 +1,6 @@
 #include <stdarg.h>
 
-#include <kc/assert.h>
+#include <kc/kassert.h>
 #include <kc/fmt.h>
 #include <kc/stdlib.h>
 #include <kc/string.h>

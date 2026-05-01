@@ -1,4 +1,4 @@
-#include <kc/assert.h>
+#include <kc/kassert.h>
 
 #include <opal/irq.h>
 #include <opal/syscall/syscall.h>

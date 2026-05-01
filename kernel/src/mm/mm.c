@@ -1,6 +1,6 @@
 #include <stdint.h>
 
-#include <kc/assert.h>
+#include <kc/kassert.h>
 #include <kc/string.h>
 
 #include <opal/klog.h>
@@ -116,7 +116,7 @@ void mm_log_buddy(void) {
 
     irqlock_release(&irqlock);
 
-    assert(total >= free + reserved);
+    kassert(total >= free + reserved);
     size_t used = total - free - reserved;
     kinfo("buddy: used: %zu / free: %zu / reserved: %zu / total=%zu / max_order=%u",
         used, free, reserved, total, max_order);

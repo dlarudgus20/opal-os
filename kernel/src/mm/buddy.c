@@ -1,7 +1,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include <kc/assert.h>
+#include <kc/kassert.h>
 #include <kc/stdlib.h>
 
 #include <opal/mm/buddy.h>
@@ -12,7 +12,7 @@
 #define BUDDY_MAX_ORDERS PFN_VALID_BIT_WIDTH
 
 static pfn_t order_pages(uint8_t order) {
-    assert(order < BUDDY_MAX_ORDERS);
+    kassert(order < BUDDY_MAX_ORDERS);
     return (pfn_t)1 << order;
 }
 
@@ -51,7 +51,7 @@ static void list_push(struct buddy *buddy, uint8_t order, pfn_t pfn) {
 
 static pfn_t list_pop(struct buddy *buddy, uint8_t order) {
     struct linkedlist_link *head_link = linkedlist_pop_front(&buddy->free_list[order]);
-    assert(head_link != NULL);
+    kassert(head_link != NULL);
 
     struct page *page = container_of(head_link, struct page, buddy_link);
     const pfn_t head = page_to_pfn(page);
@@ -74,7 +74,7 @@ static bool is_free_head_of_order(pfn_t pfn, uint8_t order) {
 }
 
 static void list_remove(uint8_t order, pfn_t pfn) {
-    assert(is_free_head_of_order(pfn, order));
+    kassert(is_free_head_of_order(pfn, order));
 
     struct page *page = pfn_to_page(pfn);
     linkedlist_remove(&page->buddy_link);
@@ -159,16 +159,16 @@ pfn_t buddy_alloc(struct buddy *buddy, uint8_t order) {
         list_push(buddy, cur, buddy_pfn);
     }
 
-    assert(buddy->free_pages >= order_pages(order));
+    kassert(buddy->free_pages >= order_pages(order));
     buddy->free_pages -= order_pages(order);
     return pfn;
 }
 
 void buddy_free(struct buddy *buddy, pfn_t pfn, uint8_t order) {
-    assert(order <= buddy->max_order, "invalid buddy order");
-    assert(page_is_usable(pfn), "pfn is not allocated before");
-    assert((pfn & (order_pages(order) - 1)) == 0, "invalid pfn with requested order");
-    assert((pfn_to_page(pfn)->flags & PAGE_FLAG_BUDDY_FREE) == 0, "pfn is not allocated before");
+    kassert(order <= buddy->max_order, "invalid buddy order");
+    kassert(page_is_usable(pfn), "pfn is not allocated before");
+    kassert((pfn & (order_pages(order) - 1)) == 0, "invalid pfn with requested order");
+    kassert((pfn_to_page(pfn)->flags & PAGE_FLAG_BUDDY_FREE) == 0, "pfn is not allocated before");
 
     const uint8_t req_order = order;
 
