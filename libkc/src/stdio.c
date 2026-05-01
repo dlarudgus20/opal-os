@@ -3,15 +3,15 @@
 #include <kc/stdio.h>
 #include <kc/fmt.h>
 
-int snprintf_s(char *restrict buffer, size_t bufsz, const char *restrict format, ...) {
+int ksnprintf(char *restrict buffer, size_t bufsz, const char *restrict format, ...) {
     va_list arg;
     va_start(arg, format);
-    int result = vsnprintf_s(buffer, bufsz, format, arg);
+    int result = kvsnprintf(buffer, bufsz, format, arg);
     va_end(arg);
     return result;
 }
 
-int vsnprintf_s(char *restrict buffer, size_t bufsz, const char *restrict format, va_list arg) {
+int kvsnprintf(char *restrict buffer, size_t bufsz, const char *restrict format, va_list arg) {
     if (buffer && bufsz > INT_MAX) {
         return -1;
     }

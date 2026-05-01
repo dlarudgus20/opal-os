@@ -86,10 +86,10 @@ struct disk_request *disk_write(struct disk *disk, fs_size_t lba, fs_size_t sect
 void disk_req_queue_init(struct disk_req_queue *queue, struct disk_request *buffer, size_t capacity);
 bool disk_req_queue_is_full_unlocked(struct disk_req_queue *queue);
 [[nodiscard]] struct disk_request *disk_req_queue_fetch(struct disk_req_queue *queue);
-void disk_req_queue_pop_fetched(struct disk_req_queue *queue, fs_status_t result);
+void disk_req_queue_pop_fetched(struct disk_req_queue *queue, kerrno_t result);
 
-[[nodiscard]] fs_status_t disk_request_release(struct disk_request *req);
-bool disk_request_wait(struct disk_request *req, uint64_t timeout, fs_status_t *result);
+[[nodiscard]] kerrno_t disk_request_release(struct disk_request *req);
+bool disk_request_wait(struct disk_request *req, uint64_t timeout, kerrno_t *result);
 
 // partition.c
 void disk_register_bdev(struct disk *disk);

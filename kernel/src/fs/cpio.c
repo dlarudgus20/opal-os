@@ -123,23 +123,23 @@ static void free_tree(struct cpio_node *node) {
     kfree(node, sizeof(*node));
 }
 
-static fs_status_t ensure_dir_child(struct cpio_sb *sb, struct cpio_node *parent, const char *name, size_t len, struct cpio_node **out) {
+static kerrno_t ensure_dir_child(struct cpio_sb *sb, struct cpio_node *parent, const char *name, size_t len, struct cpio_node **out) {
     struct cpio_node *child = find_child(parent, name, len);
     if (!child) {
         child = alloc_node(sb, parent, name, len, true);
         if (!child) {
-            return FS_ERR_NOMEM;
+            return OPAL_ENOMEM;
         }
         *out = child;
-        return FS_OK;
+        return OPAL_OK;
     }
 
     if (!(child->inode.flags & FS_INODE_DIR)) {
-        return FS_ERR_INVAL;
+        return OPAL_EINVAL;
     }
 
     *out = child;
-    return FS_OK;
+    return OPAL_OK;
 }
 
 static bool is_dot(const char *s, size_t len) {
@@ -150,7 +150,7 @@ static bool is_dotdot(const char *s, size_t len) {
     return len == 2 && s[0] == '.' && s[1] == '.';
 }
 
-static fs_status_t upsert_leaf(
+static kerrno_t upsert_leaf(
     struct cpio_sb *sb, struct cpio_node *parent, const char *name, size_t len, bool is_dir,
     const unsigned char *data, fs_size_t size
 ) {
@@ -158,7 +158,7 @@ static fs_status_t upsert_leaf(
     if (!child) {
         child = alloc_node(sb, parent, name, len, is_dir);
         if (!child) {
-            return FS_ERR_NOMEM;
+            return OPAL_ENOMEM;
         }
     }
 
@@ -166,21 +166,21 @@ static fs_status_t upsert_leaf(
         child->inode.flags |= FS_INODE_DIR;
         child->data = NULL;
         child->size = 0;
-        return FS_OK;
+        return OPAL_OK;
     }
 
     if (child->inode.flags & FS_INODE_DIR) {
         if (!linkedlist_is_empty(&child->children)) {
-            return FS_ERR_INVAL;
+            return OPAL_EINVAL;
         }
         child->inode.flags &= ~FS_INODE_DIR;
     }
     child->data = data;
     child->size = size;
-    return FS_OK;
+    return OPAL_OK;
 }
 
-static fs_status_t add_archive_entry(
+static kerrno_t add_archive_entry(
     struct cpio_sb *sb, const char *path, size_t path_len, bool is_dir,
     const unsigned char *data, fs_size_t size
 ) {
@@ -190,7 +190,7 @@ static fs_status_t add_archive_entry(
     }
 
     if (path_len == 0 || is_dot(path, path_len)) {
-        return is_dir ? FS_OK : FS_ERR_INVAL;
+        return is_dir ? OPAL_OK : OPAL_EINVAL;
     }
 
     struct cpio_node *node = sb->root;
@@ -209,7 +209,7 @@ static fs_status_t add_archive_entry(
         }
         const size_t seg_len = i - begin;
         if (seg_len == 0 || seg_len > VFS_MAX_NAME || is_dotdot(path + begin, seg_len)) {
-            return FS_ERR_INVAL;
+            return OPAL_EINVAL;
         }
 
         size_t next = i;
@@ -220,15 +220,15 @@ static fs_status_t add_archive_entry(
 
         if (is_dot(path + begin, seg_len)) {
             if (is_last) {
-                return is_dir ? FS_OK : FS_ERR_INVAL;
+                return is_dir ? OPAL_OK : OPAL_EINVAL;
             }
             i = next;
             continue;
         }
 
         if (!is_last) {
-            fs_status_t result = ensure_dir_child(sb, node, path + begin, seg_len, &node);
-            if (result != FS_OK) {
+            kerrno_t result = ensure_dir_child(sb, node, path + begin, seg_len, &node);
+            if (result != OPAL_OK) {
                 return result;
             }
             i = next;
@@ -238,7 +238,7 @@ static fs_status_t add_archive_entry(
         return upsert_leaf(sb, node, path + begin, seg_len, is_dir, data, size);
     }
 
-    return FS_OK;
+    return OPAL_OK;
 }
 
 static void cpio_umount(struct superblock *base) {
@@ -252,20 +252,20 @@ static void cpio_umount(struct superblock *base) {
 static void cpio_inode_close(struct inode *) {
 }
 
-static fs_status_t cpio_inode_open(struct inode *inode, struct file **file_out) {
+static kerrno_t cpio_inode_open(struct inode *inode, struct file **file_out) {
     if (inode->flags & FS_INODE_DIR) {
-        return FS_ERR_ISDIR;
+        return OPAL_EISDIR;
     }
 
     struct cpio_node *node = container_of(inode, struct cpio_node, inode);
     *file_out = &node->file;
     file_retain(*file_out);
-    return FS_OK;
+    return OPAL_OK;
 }
 
-static fs_status_t cpio_inode_lookup(struct inode *inode, struct path_entry *pe) {
+static kerrno_t cpio_inode_lookup(struct inode *inode, struct path_entry *pe) {
     if (!(inode->flags & FS_INODE_DIR)) {
-        return FS_ERR_NOTDIR;
+        return OPAL_ENOTDIR;
     }
 
     struct cpio_node *node = container_of(inode, struct cpio_node, inode);
@@ -273,14 +273,14 @@ static fs_status_t cpio_inode_lookup(struct inode *inode, struct path_entry *pe)
         struct cpio_node *child = container_of(ptr, struct cpio_node, link);
         struct hstr hs = hstr_clone(&child->name);
         if (hstr_is_null(&hs)) {
-            return FS_ERR_NOMEM;
+            return OPAL_ENOMEM;
         }
 
         struct path_entry *out = NULL;
-        fs_status_t result = path_entry_add(pe, &child->inode, &hs, &out);
-        if (result != FS_OK) {
+        kerrno_t result = path_entry_add(pe, &child->inode, &hs, &out);
+        if (result != OPAL_OK) {
             hstr_free(&hs);
-            if (result != FS_ERR_EXIST) {
+            if (result != OPAL_EEXIST) {
                 return result;
             }
             continue;
@@ -288,47 +288,47 @@ static fs_status_t cpio_inode_lookup(struct inode *inode, struct path_entry *pe)
         path_entry_release(out);
     }
 
-    return FS_OK;
+    return OPAL_OK;
 }
 
-static fs_status_t cpio_inode_create(struct inode *, struct path_entry *, enum inode_flags) {
-    return FS_ERR_NOTSUPP;
+static kerrno_t cpio_inode_create(struct inode *, struct path_entry *, enum inode_flags) {
+    return OPAL_ENOTSUPP;
 }
 
 static void cpio_file_close(struct file *) {
 }
 
-static fs_status_t cpio_file_seek(struct file *file, fs_off_t offset, enum fs_seek origin, fs_size_t *pos) {
+static kerrno_t cpio_file_seek(struct file *file, fs_off_t offset, enum fs_seek origin, fs_size_t *pos) {
     struct cpio_node *node = container_of(file, struct cpio_node, file);
     if (node->inode.flags & FS_INODE_DIR) {
-        return FS_ERR_ISDIR;
+        return OPAL_EISDIR;
     }
 
     if (origin == FS_SEEK_SET) {
         if (offset < 0 || (fs_size_t)offset > node->size) {
-            return FS_ERR_RANGE;
+            return OPAL_ERANGE;
         }
         *pos = (fs_size_t)offset;
-        return FS_OK;
+        return OPAL_OK;
     }
     if (origin == FS_SEEK_END) {
         if (offset > 0 || offset < -(fs_off_t)node->size) {
-            return FS_ERR_RANGE;
+            return OPAL_ERANGE;
         }
         *pos = (fs_size_t)((fs_off_t)node->size + offset);
-        return FS_OK;
+        return OPAL_OK;
     }
 
-    return FS_ERR_INVAL;
+    return OPAL_EINVAL;
 }
 
 static fs_ssize_t cpio_file_read(struct file *file, fs_size_t pos, void *buffer, fs_size_t size) {
     struct cpio_node *node = container_of(file, struct cpio_node, file);
     if (node->inode.flags & FS_INODE_DIR) {
-        return FS_ERR_ISDIR;
+        return OPAL_EISDIR;
     }
     if (pos > node->size) {
-        return FS_ERR_RANGE;
+        return OPAL_ERANGE;
     }
     if (size > node->size - pos) {
         size = node->size - pos;
@@ -342,11 +342,11 @@ static fs_ssize_t cpio_file_read(struct file *file, fs_size_t pos, void *buffer,
 }
 
 static fs_ssize_t cpio_file_write(struct file *, fs_size_t, const void *, fs_size_t, bool) {
-    return FS_ERR_NOTSUPP;
+    return OPAL_ENOTSUPP;
 }
 
-static fs_status_t cpio_file_truncate(struct file *, fs_size_t) {
-    return FS_ERR_NOTSUPP;
+static kerrno_t cpio_file_truncate(struct file *, fs_size_t) {
+    return OPAL_ENOTSUPP;
 }
 
 static struct superblock_ops g_cpio_sb_ops = {
@@ -368,12 +368,12 @@ static struct file_ops g_cpio_file_ops = {
     .truncate = cpio_file_truncate,
 };
 
-fs_status_t cpio_mount(void *cpio, size_t len, struct superblock **sb_out) {
+kerrno_t cpio_mount(void *cpio, size_t len, struct superblock **sb_out) {
     if (!cpio || !sb_out) {
-        return FS_ERR_INVAL;
+        return OPAL_EINVAL;
     }
 
-    fs_status_t result = FS_ERR_NOMEM;
+    kerrno_t result = OPAL_ENOMEM;
     struct cpio_sb *sb = kzalloc(sizeof(*sb));
     if (!sb) {
         return result;
@@ -388,13 +388,13 @@ fs_status_t cpio_mount(void *cpio, size_t len, struct superblock **sb_out) {
     size_t off = 0;
     while (off < len) {
         if (len - off < CPIO_HDR_SIZE) {
-            result = FS_ERR_INVAL;
+            result = OPAL_EINVAL;
             goto err;
         }
 
         const char *hdr = (const char *)(buf + off);
         if (memcmp(hdr, CPIO_NEWC_MAGIC, 6) != 0 && memcmp(hdr, CPIO_CRC_MAGIC, 6) != 0) {
-            result = FS_ERR_INVAL;
+            result = OPAL_EINVAL;
             goto err;
         }
 
@@ -404,37 +404,37 @@ fs_status_t cpio_mount(void *cpio, size_t len, struct superblock **sb_out) {
         if (!parse_hex_u32(hdr + 14, 8, &mode)
             || !parse_hex_u32(hdr + 54, 8, &filesize)
             || !parse_hex_u32(hdr + 94, 8, &namesize)) {
-            result = FS_ERR_INVAL;
+            result = OPAL_EINVAL;
             goto err;
         }
 
         off += CPIO_HDR_SIZE;
         if (namesize == 0 || namesize > len - off) {
-            result = FS_ERR_INVAL;
+            result = OPAL_EINVAL;
             goto err;
         }
 
         const char *name = (const char *)(buf + off);
         const size_t name_len = namesize - 1;
         if (name[name_len] != '\0' || memchr(name, '\0', name_len)) {
-            result = FS_ERR_INVAL;
+            result = OPAL_EINVAL;
             goto err;
         }
         off += namesize;
 
         if (!advance_aligned4(&off, len)) {
-            result = FS_ERR_INVAL;
+            result = OPAL_EINVAL;
             goto err;
         }
         if (filesize > len - off) {
-            result = FS_ERR_INVAL;
+            result = OPAL_EINVAL;
             goto err;
         }
 
         const unsigned char *data = buf + off;
         off += filesize;
         if (!advance_aligned4(&off, len)) {
-            result = FS_ERR_INVAL;
+            result = OPAL_EINVAL;
             goto err;
         }
 
@@ -444,18 +444,18 @@ fs_status_t cpio_mount(void *cpio, size_t len, struct superblock **sb_out) {
 
         const uint32_t kind = mode & CPIO_S_IFMT;
         if (kind != CPIO_S_IFREG && kind != CPIO_S_IFDIR) {
-            result = FS_ERR_NOTSUPP;
+            result = OPAL_ENOTSUPP;
             goto err;
         }
 
         result = add_archive_entry(sb, name, name_len, kind == CPIO_S_IFDIR, data, filesize);
-        if (result != FS_OK) {
+        if (result != OPAL_OK) {
             goto err;
         }
     }
 
     *sb_out = &sb->sb;
-    return FS_OK;
+    return OPAL_OK;
 
 err:
     sb->sb.ops->umount(&sb->sb);

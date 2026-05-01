@@ -24,7 +24,7 @@ struct LibkcApi {
     char *(*strcat)(char *, const char *);
     char *(*strncat)(char *, const char *, size_t);
     void (*strcat_sized)(char *, size_t, const char *);
-    int (*snprintf_s)(char *, size_t, const char *, ...);
+    int (*ksnprintf)(char *, size_t, const char *, ...);
 };
 
 class LibkcTest : public ::testing::Test {

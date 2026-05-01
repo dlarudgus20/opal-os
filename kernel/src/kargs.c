@@ -188,16 +188,16 @@ static void postboot_initramfs(void) {
     size_t len = module->end - module->begin;
 
     struct superblock *sb = NULL;
-    fs_status_t result = cpio_mount(cpio, len, &sb);
-    if (result != FS_OK) {
-        kwarn("kargs: failed to mount initramfs image: %s (%d)", fs_status_str(result), result);
+    kerrno_t result = cpio_mount(cpio, len, &sb);
+    if (result != OPAL_OK) {
+        kwarn("kargs: failed to mount initramfs image: %s (%d)", kerrno_str(result), result);
         return;
     }
 
     struct path_entry *mounted = NULL;
     result = vfs_mount_path(NULL, "/", sb, &mounted);
-    if (result != FS_OK) {
-        kwarn("kargs: failed to mount initramfs on /: %s (%d)", fs_status_str(result), result);
+    if (result != OPAL_OK) {
+        kwarn("kargs: failed to mount initramfs on /: %s (%d)", kerrno_str(result), result);
         sb->ops->umount(sb);
         return;
     }

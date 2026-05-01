@@ -21,7 +21,7 @@ bool block_device_destroy(struct block_device *dev);
 bool block_device_retain(struct block_device *dev);
 void block_device_release(struct block_device *dev);
 [[nodiscard]] size_t bdev_list_count(void);
-[[nodiscard]] fs_status_t bdev_list_get(size_t index, struct block_device **dev_out);
+[[nodiscard]] kerrno_t bdev_list_get(size_t index, struct block_device **dev_out);
 
 struct disk_request *block_device_read(struct block_device *dev, fs_size_t lba, fs_size_t sectors, void *buffer);
 struct disk_request *block_device_write(struct block_device *dev, fs_size_t lba, fs_size_t sectors, const void *buffer);

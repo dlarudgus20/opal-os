@@ -13,16 +13,16 @@ int shell_cmd_exec(int argc, char **argv) {
     int ret = 1;
 
     struct file *file = NULL;
-    fs_status_t result = vfs_open_path(NULL, argv[1], &file);
-    if (result != FS_OK) {
-        tty0_printf("exec: vfs_open_path: %s (%d)\n", fs_status_str(result), result);
+    kerrno_t result = vfs_open_path(NULL, argv[1], &file);
+    if (result != OPAL_OK) {
+        tty0_printf("exec: vfs_open_path: %s (%d)\n", kerrno_str(result), result);
         return 1;
     }
 
     fs_size_t len;
     result = file->ops->seek(file, 0, FS_SEEK_END, &len);
-    if (result != FS_OK) {
-        tty0_printf("exec: i/o error: %s (%d)\n", fs_status_str(result), result);
+    if (result != OPAL_OK) {
+        tty0_printf("exec: i/o error: %s (%d)\n", kerrno_str(result), result);
         goto err_file;
     }
 
@@ -34,7 +34,7 @@ int shell_cmd_exec(int argc, char **argv) {
 
     fs_ssize_t n = file->ops->read(file, 0, buf, len);
     if (n < 0) {
-        tty0_printf("exec: i/o error: %s (%d)\n", fs_status_str((fs_status_t)n), (fs_status_t)n);
+        tty0_printf("exec: i/o error: %s (%d)\n", kerrno_str((kerrno_t)n), (kerrno_t)n);
         goto err_alloc;
     } else if ((fs_size_t)n != len) {
         tty0_printf("exec: cannot read all of file\n");
@@ -48,8 +48,8 @@ int shell_cmd_exec(int argc, char **argv) {
     }
 
     taskptr_t task;
-    enum pload_status load_result = process_load_elf(proc.ptr, buf, len, &task);
-    if (load_result != PLOAD_OK) {
+    kerrno_t load_result = process_load_elf(proc.ptr, buf, len, &task);
+    if (load_result != OPAL_OK) {
         tty0_printf("exec: cannot load elf: %d\n", load_result);
         goto err_proc;
     }

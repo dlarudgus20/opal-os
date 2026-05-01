@@ -21,7 +21,7 @@ kerrno_t kstrtoul(const char *str, int base, char **endptr, unsigned long *resul
         if (endptr) {
             *endptr = (char *)str;
         }
-        return KEINVAL;
+        return OPAL_EINVAL;
     }
 
     const char *s = str;
@@ -34,7 +34,7 @@ kerrno_t kstrtoul(const char *str, int base, char **endptr, unsigned long *resul
             if (endptr) {
                 *endptr = (char *)s;
             }
-            return KEINVAL;
+            return OPAL_EINVAL;
         }
         s++;
     }
@@ -80,7 +80,7 @@ kerrno_t kstrtoul(const char *str, int base, char **endptr, unsigned long *resul
         if (endptr) {
             *endptr = (char *)str;
         }
-        return KEINVAL;
+        return OPAL_EINVAL;
     }
 
     if (endptr) {
@@ -88,22 +88,22 @@ kerrno_t kstrtoul(const char *str, int base, char **endptr, unsigned long *resul
     }
 
     if (overflow) {
-        return KERANGE;
+        return OPAL_ERANGE;
     }
 
     *result = value;
-    return KE_OK;
+    return OPAL_OK;
 }
 
 kerrno_t kstrtoul_exact(const char *str, int base, unsigned long max, unsigned long *result) {
     char *endptr;
     kerrno_t err = kstrtoul(str, base, &endptr, result);
-    if (err == KE_OK) {
+    if (err == OPAL_OK) {
         if (*endptr != '\0') {
-            return KEINVAL;
+            return OPAL_EINVAL;
         }
         if (*result > max) {
-            return KERANGE;
+            return OPAL_ERANGE;
         }
     }
     return err;

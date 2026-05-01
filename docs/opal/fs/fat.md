@@ -8,8 +8,8 @@
   - VFS `inode_ops`/`file_ops` 계약으로 파일/디렉터리 연산 제공
 
 ## 공개 API
-- `fs_status_t fat_mount(struct block_device *bdev, struct superblock **sb_out);`
-- `fs_status_t fat_format(struct block_device *bdev, struct superblock **sb_out);`
+- `kerrno_t fat_mount(struct block_device *bdev, struct superblock **sb_out);`
+- `kerrno_t fat_format(struct block_device *bdev, struct superblock **sb_out);`
 
 ## 마운트(`fat_mount`)
 - 동작:
@@ -32,7 +32,7 @@
   - FAT12/16/32 후보를 순회해 배치 계산(`calc_fat_layout`)
   - BPB/boot sector/FAT 초기값/root 초기 엔트리를 기록
   - 포맷 완료 후 superblock 반환
-- 포맷 실패 시 단계별로 `FS_ERR_*`를 전파하며 partial state를 완전 복구하지는 않는다.
+- 포맷 실패 시 단계별로 `OPAL_E*`를 전파하며 partial state를 완전 복구하지는 않는다.
 
 ## 디렉터리/엔트리 조회
 - 디렉터리 조회는 `inode->ops->lookup` 경로로 들어온다.
@@ -43,8 +43,8 @@
   - `0xe5`(삭제), `.` 시작, 볼륨 라벨은 스킵
   - 나머지는 `struct path_entry`로 등록
 - 캐시 등록 실패 처리:
-  - `FS_ERR_EXIST`: 이미 캐시에 있으므로 무시하고 계속
-  - 그 외(`FS_ERR_NOMEM` 등): 즉시 에러 전파
+  - `OPAL_EEXIST`: 이미 캐시에 있으므로 무시하고 계속
+  - 그 외(`OPAL_ENOMEM` 등): 즉시 에러 전파
 
 ## `fat_root_inode` / `fat_inode` 구현 상세
 - 공통 베이스:
@@ -56,7 +56,7 @@
   - dentry 쓰기/할당:
     - `root_inode_write_dentry`: root 영역의 특정 dentry를 1섹터 단위로 갱신
     - `root_inode_alloc_dentry`: 빈 slot(`name[0] == 0 || 0xe5`) 탐색
-  - 파일 인터페이스는 디렉터리로 취급되어 read/write/truncate가 `FS_ERR_ISDIR`
+  - 파일 인터페이스는 디렉터리로 취급되어 read/write/truncate가 `OPAL_EISDIR`
 - `fat_inode` (일반 파일/디렉터리):
   - 필드: `parent`, `dentry_idx`, `first_cluster`, `filesize`
   - 초기화: `fat_inode_init`이 parent dentry를 보고 디렉터리 플래그를 결정
@@ -76,7 +76,7 @@
 - 생성은 `inode_ops.create(parent_inode, pe, flags)`로 처리된다.
 - 이름 변환(`pack_filename`)은 `pe->name`을 FAT 8.3으로 변환:
   - 허용: `A-Z`, `0-9`, `!#$%&'()-@^_`{}~`
-  - 소문자/기타 문자는 `FS_ERR_INVAL`
+  - 소문자/기타 문자는 `OPAL_EINVAL`
   - base 8자 + 확장자 3자 제한
 - 디렉터리 생성 시:
   - 부모 dentry에 새 항목 기록

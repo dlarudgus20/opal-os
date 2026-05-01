@@ -22,24 +22,24 @@ static intptr_t syscall_tty0_getc() {
 static intptr_t syscall_open(uintptr_t arg1) {
     const char *upath = (const char *)arg1;
     if (!upath) {
-        return FS_ERR_INVAL;
+        return OPAL_EINVAL;
     }
 
     size_t len = strnlen_s(upath, SYSCALL_PATH_MAX + 1);
     if (len > SYSCALL_PATH_MAX) {
-        return FS_ERR_INVAL;
+        return OPAL_EINVAL;
     }
 
     char *kpath = kzalloc(len + 1);
     if (!kpath) {
-        return FS_ERR_NOMEM;
+        return OPAL_ENOMEM;
     }
     memcpy(kpath, upath, len);
 
     struct file *file;
     fs_ssize_t result = vfs_open_path(NULL, kpath, &file);
     kfree(kpath, len + 1);
-    if (result != FS_OK) {
+    if (result != OPAL_OK) {
         return result;
     }
 
@@ -57,7 +57,7 @@ err_file:
 
 static intptr_t syscall_close(uintptr_t arg1) {
     if (arg1 >= FD_MAX) {
-        return FS_ERR_INVAL;
+        return OPAL_EINVAL;
     }
     bool ok = process_close_file(process_current(), (fd_t)arg1);
     return ok ? 0 : -1;
@@ -93,22 +93,22 @@ struct sysret syscall_dispatch(uintptr_t arg0, uintptr_t arg1, uintptr_t arg2, u
     switch (arg0) {
         case SYS_TASK_EXIT:
             task_exit();
-            sysret.ret1 = 0;
+            sysret.ret0 = 0;
             break;
         case SYS_TTY0_PUTC:
-            sysret.ret1 = syscall_tty0_putc(arg1);
+            sysret.ret0 = syscall_tty0_putc(arg1);
             break;
         case SYS_TTY0_GETC:
-            sysret.ret1 = syscall_tty0_getc();
+            sysret.ret0 = syscall_tty0_getc();
             break;
         case SYS_OPEN:
-            sysret.ret1 = syscall_open(arg1);
+            sysret.ret0 = syscall_open(arg1);
             break;
         case SYS_CLOSE:
-            sysret.ret1 = syscall_close(arg1);
+            sysret.ret0 = syscall_close(arg1);
             break;
         case SYS_READC:
-            sysret.ret1 = syscall_readc(arg1, arg2);
+            sysret.ret0 = syscall_readc(arg1, arg2);
             break;
     }
     (void)arg2;

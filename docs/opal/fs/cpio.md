@@ -7,7 +7,7 @@
   - 부팅 시 전달된 initramfs(CPIO `newc`) 이미지를 읽기 전용 파일시스템으로 마운트
 
 ## 공개 API
-- `fs_status_t cpio_mount(void *cpio, size_t len, struct superblock **sb_out);`
+- `kerrno_t cpio_mount(void *cpio, size_t len, struct superblock **sb_out);`
 
 ## 지원 포맷/타입
 - CPIO 헤더 포맷:
@@ -16,7 +16,7 @@
 - 엔트리 타입:
   - 디렉터리(`S_IFDIR`)
   - 일반 파일(`S_IFREG`)
-- 그 외 타입은 `FS_ERR_NOTSUPP`로 거부
+- 그 외 타입은 `OPAL_ENOTSUPP`로 거부
 
 ## 동작 특성
 - 아카이브 전체를 파싱해 in-memory 트리(`cpio_node`)를 구성
@@ -27,10 +27,10 @@
 ## VFS 연동
 - `inode_ops`:
   - `lookup`: 디렉터리 자식 조회 지원
-  - `create`: 미지원 (`FS_ERR_NOTSUPP`)
+  - `create`: 미지원 (`OPAL_ENOTSUPP`)
 - `file_ops`:
   - `seek`, `read` 지원
-  - `write`, `truncate` 미지원 (`FS_ERR_NOTSUPP`)
+  - `write`, `truncate` 미지원 (`OPAL_ENOTSUPP`)
 - 즉, 현재 `cpiofs`는 읽기 전용입니다.
 
 ## 부팅 경로 연동

@@ -21,10 +21,10 @@ struct path_entry *vfs_get_root(void) {
     return &g_root;
 }
 
-fs_status_t vfs_mount_path(struct path_entry *pe, const char *path, struct superblock *sb, struct path_entry **mounted) {
+kerrno_t vfs_mount_path(struct path_entry *pe, const char *path, struct superblock *sb, struct path_entry **mounted) {
     struct path_entry *mount_pe = NULL;
     const char *unresolved_path = NULL;
-    fs_status_t result = vfs_lookup_path(pe, path, &mount_pe, &unresolved_path);
+    kerrno_t result = vfs_lookup_path(pe, path, &mount_pe, &unresolved_path);
     if (!mount_pe || unresolved_path[0] != '\0') {
         if (mount_pe) {
             path_entry_release(mount_pe);
@@ -33,15 +33,15 @@ fs_status_t vfs_mount_path(struct path_entry *pe, const char *path, struct super
     }
 
     result = path_entry_mount_super(mount_pe, sb);
-    if (result != FS_OK) {
+    if (result != OPAL_OK) {
         path_entry_release(mount_pe);
         return result;
     }
     *mounted = mount_pe;
-    return FS_OK;
+    return OPAL_OK;
 }
 
-fs_status_t vfs_lookup_path(struct path_entry *pe, const char *path, struct path_entry **found, const char **unresolved_path) {
+kerrno_t vfs_lookup_path(struct path_entry *pe, const char *path, struct path_entry **found, const char **unresolved_path) {
     *found = NULL;
     if (unresolved_path) {
         *unresolved_path = path;
@@ -52,9 +52,9 @@ fs_status_t vfs_lookup_path(struct path_entry *pe, const char *path, struct path
         pe = &g_root;
         subpath += strspn(subpath, "/");
     } else if (path[0] == '\0') {
-        return FS_ERR_INVAL;
+        return OPAL_EINVAL;
     } else if (!pe) {
-        return FS_ERR_INVAL;
+        return OPAL_EINVAL;
     }
 
     path_entry_retain(pe);
@@ -65,18 +65,18 @@ fs_status_t vfs_lookup_path(struct path_entry *pe, const char *path, struct path
 
     while (pe->inode) {
         if (subpath[0] == '\0') {
-            return FS_OK;
+            return OPAL_OK;
         } else if (!(pe->inode->flags & FS_INODE_DIR)) {
-            return FS_ERR_NOTDIR;
+            return OPAL_ENOTDIR;
         }
 
         size_t sep = strcspn(subpath, "/");
         if (sep > VFS_MAX_NAME) {
-            return FS_ERR_NOENT;
+            return OPAL_ENOENT;
         }
 
         struct path_entry *lookup;
-        fs_status_t result = path_entry_lookup(pe, subpath, sep, &lookup);
+        kerrno_t result = path_entry_lookup(pe, subpath, sep, &lookup);
         if (!lookup) {
             return result;
         }
@@ -90,18 +90,18 @@ fs_status_t vfs_lookup_path(struct path_entry *pe, const char *path, struct path
             *unresolved_path = subpath;
         }
 
-        if (result != FS_OK) {
+        if (result != OPAL_OK) {
             return result;
         }
     }
 
-    return FS_ERR_NOENT;
+    return OPAL_ENOENT;
 }
 
-fs_status_t vfs_create_path(struct path_entry *pe, const char *path, enum inode_flags flags, bool truncate, struct file **file_out) {
+kerrno_t vfs_create_path(struct path_entry *pe, const char *path, enum inode_flags flags, bool truncate, struct file **file_out) {
     struct path_entry *found;
     const char *unresolved_path;
-    fs_status_t result = vfs_lookup_path(pe, path, &found, &unresolved_path);
+    kerrno_t result = vfs_lookup_path(pe, path, &found, &unresolved_path);
     if (!found || *unresolved_path != '\0') {
         if (found) {
             path_entry_release(found);
@@ -114,10 +114,10 @@ fs_status_t vfs_create_path(struct path_entry *pe, const char *path, enum inode_
     return result;
 }
 
-fs_status_t vfs_open_path(struct path_entry *pe, const char *path, struct file **file_out) {
+kerrno_t vfs_open_path(struct path_entry *pe, const char *path, struct file **file_out) {
     struct path_entry *found;
-    fs_status_t result = vfs_lookup_path(pe, path, &found, NULL);
-    if (result != FS_OK) {
+    kerrno_t result = vfs_lookup_path(pe, path, &found, NULL);
+    if (result != OPAL_OK) {
         if (found) {
             path_entry_release(found);
         }
@@ -153,22 +153,22 @@ void path_entry_release(struct path_entry *pe) {
     pe->refcount--;
 }
 
-fs_status_t path_entry_mount_super(struct path_entry *pe, struct superblock *sb) {
+kerrno_t path_entry_mount_super(struct path_entry *pe, struct superblock *sb) {
     if (!sb || !sb->root || !(sb->root->flags & FS_INODE_DIR)) {
-        return FS_ERR_INVAL;
+        return OPAL_EINVAL;
     }
     if (pe->inode) {
-        return FS_ERR_BUSY;
+        return OPAL_EBUSY;
     }
 
     pe->mounted = sb;
     pe->inode = sb->root;
-    return FS_OK;
+    return OPAL_OK;
 }
 
-fs_status_t path_entry_add(struct path_entry *parent, struct inode *inode, struct hstr *name, struct path_entry **out) {
+kerrno_t path_entry_add(struct path_entry *parent, struct inode *inode, struct hstr *name, struct path_entry **out) {
     if (!parent->inode || !(parent->inode->flags & FS_INODE_DIR)) {
-        return FS_ERR_NOTDIR;
+        return OPAL_ENOTDIR;
     }
 
     struct linkedlist_link *link = linkedlist_head(&parent->children);
@@ -179,7 +179,7 @@ fs_status_t path_entry_add(struct path_entry *parent, struct inode *inode, struc
         if (hstr_equal(name, &child->name)) {
             if (child->inode) {
                 *out = NULL;
-                return FS_ERR_EXIST;
+                return OPAL_EEXIST;
             }
             found = child;
             break;
@@ -190,7 +190,7 @@ fs_status_t path_entry_add(struct path_entry *parent, struct inode *inode, struc
         found = kzalloc(sizeof(*found));
         if (!found) {
             *out = NULL;
-            return FS_ERR_NOMEM;
+            return OPAL_ENOMEM;
         }
         path_entry_init(found);
         found->parent = parent;
@@ -205,14 +205,14 @@ fs_status_t path_entry_add(struct path_entry *parent, struct inode *inode, struc
     found->mounted = NULL;
 
     *out = found;
-    return FS_OK;
+    return OPAL_OK;
 }
 
-static fs_status_t create_negative(struct path_entry *parent, const struct hstr *name, struct path_entry **out) {
+static kerrno_t create_negative(struct path_entry *parent, const struct hstr *name, struct path_entry **out) {
     struct hstr str = hstr_clone(name);
     if (hstr_is_null(&str)) {
         *out = NULL;
-        return FS_ERR_NOMEM;
+        return OPAL_ENOMEM;
     }
 
     return path_entry_add(parent, NULL, &str, out);
@@ -229,23 +229,23 @@ static struct path_entry *find_child(struct path_entry *parent, const struct hst
     return NULL;
 }
 
-fs_status_t path_entry_lookup(struct path_entry *pe, const char *name, size_t len, struct path_entry **found) {
+kerrno_t path_entry_lookup(struct path_entry *pe, const char *name, size_t len, struct path_entry **found) {
     if (len == 0) {
-        return FS_ERR_INVAL;
+        return OPAL_EINVAL;
     }
     if (len > VFS_MAX_NAME) {
-        return FS_ERR_NOENT;
+        return OPAL_ENOENT;
     }
 
     struct hstr hs = hstr_stack(name, len);
     struct path_entry *child = find_child(pe, &hs);
     if (child) {
         *found = child;
-        return child->inode ? FS_OK : FS_ERR_NOENT;
+        return child->inode ? OPAL_OK : OPAL_ENOENT;
     }
 
-    fs_status_t result = pe->inode->ops->lookup(pe->inode, pe);
-    if (result != FS_OK) {
+    kerrno_t result = pe->inode->ops->lookup(pe->inode, pe);
+    if (result != OPAL_OK) {
         *found = NULL;
         return result;
     }
@@ -253,22 +253,22 @@ fs_status_t path_entry_lookup(struct path_entry *pe, const char *name, size_t le
     child = find_child(pe, &hs);
     if (child) {
         *found = child;
-        return child->inode ? FS_OK : FS_ERR_NOENT;
+        return child->inode ? OPAL_OK : OPAL_ENOENT;
     }
 
     return create_negative(pe, &hs, found);
 }
 
-fs_status_t path_entry_create(struct path_entry *pe, enum inode_flags flags, bool truncate, struct file **file_out) {
-    fs_status_t result;
+kerrno_t path_entry_create(struct path_entry *pe, enum inode_flags flags, bool truncate, struct file **file_out) {
+    kerrno_t result;
     if (!pe->inode) {
         if (!pe->parent) {
-            return FS_ERR_NOENT;
+            return OPAL_ENOENT;
         }
 
         struct inode *pinode = pe->parent->inode;
         result = pinode->ops->create(pinode, pe, flags);
-        if (result != FS_OK) {
+        if (result != OPAL_OK) {
             return result;
         }
 
@@ -277,23 +277,23 @@ fs_status_t path_entry_create(struct path_entry *pe, enum inode_flags flags, boo
         return result;
     } else {
         if (!truncate) {
-            return FS_ERR_EXIST;
+            return OPAL_EEXIST;
         }
 
         struct inode *inode = pe->inode;
         struct file *file;
         result = inode->ops->open(inode, &file);
-        if (result != FS_OK) {
+        if (result != OPAL_OK) {
             return result;
         }
         result = file->ops->truncate(file, 0);
-        if (result != FS_OK) {
+        if (result != OPAL_OK) {
             file_release(file);
             return result;
         }
 
         *file_out = file;
-        return FS_OK;
+        return OPAL_OK;
     }
 }
 

@@ -106,7 +106,7 @@ static bool pack_filename(const char *filename, size_t len, char out[11]) {
     return i + 1 + j == len;
 }
 
-static fs_status_t dentry_lookup(struct fat_sb *sb, struct fat_dentry *dentries, uint32_t count, struct path_entry *pe) {
+static kerrno_t dentry_lookup(struct fat_sb *sb, struct fat_dentry *dentries, uint32_t count, struct path_entry *pe) {
     for (uint32_t idx = 0; idx < count; idx++) {
         struct fat_dentry *dentry = &dentries[idx];
 
@@ -119,7 +119,7 @@ static fs_status_t dentry_lookup(struct fat_sb *sb, struct fat_dentry *dentries,
 
         struct fat_inode *child = kzalloc(sizeof(*child));
         if (!child) {
-            return FS_ERR_NOMEM;
+            return OPAL_ENOMEM;
         }
         struct fat_inode_base *parent = (struct fat_inode_base *)pe->inode;
         fat_inode_init(child, sb, parent, idx, dentry_get_first_cluster(dentry, sb->layout.bits));
@@ -128,22 +128,22 @@ static fs_status_t dentry_lookup(struct fat_sb *sb, struct fat_dentry *dentries,
         struct hstr hs = extract_filename_hs(dentry->name);
         if (hstr_is_null(&hs)) {
             inode_release(&child->inode);
-            return FS_ERR_NOMEM;
+            return OPAL_ENOMEM;
         }
 
         struct path_entry *out;
-        fs_status_t result = path_entry_add(pe, &child->inode, &hs, &out);
-        if (result != FS_OK) {
+        kerrno_t result = path_entry_add(pe, &child->inode, &hs, &out);
+        if (result != OPAL_OK) {
             hstr_free(&hs);
             inode_release(&child->inode);
-            if (result != FS_ERR_EXIST) {
+            if (result != OPAL_EEXIST) {
                 return result;
             }
         } else {
             path_entry_release(out);
         }
     }
-    return FS_OK;
+    return OPAL_OK;
 }
 
 void fat_root_init(struct fat_root_inode *inode, struct fat_sb *sb, uint32_t offset, uint16_t entries) {
@@ -164,19 +164,19 @@ static void root_inode_close(struct inode *base) {
     }
 }
 
-static fs_status_t root_inode_open(struct inode *base, struct file **file_out) {
+static kerrno_t root_inode_open(struct inode *base, struct file **file_out) {
     struct fat_root_inode *inode = container_of(base, struct fat_root_inode, inode);
     *file_out = &inode->file;
     file_retain(*file_out);
-    return FS_OK;
+    return OPAL_OK;
 }
 
-static fs_status_t root_inode_readall(struct fat_root_inode *inode) {
+static kerrno_t root_inode_readall(struct fat_root_inode *inode) {
     uint32_t lsec = inode->sb->layout.bytes_per_sector / DISK_SECTOR_SIZE;
-    fs_status_t result = FS_ERR_NOMEM;
+    kerrno_t result = OPAL_ENOMEM;
 
     if (inode->buffer) {
-        return FS_OK;
+        return OPAL_OK;
     }
 
     size_t size = sizeof(*inode->buffer) * inode->entries;
@@ -189,16 +189,16 @@ static fs_status_t root_inode_readall(struct fat_root_inode *inode) {
 
     struct disk_request *req = block_device_read(inode->sb->bdev, inode->offset * lsec, sectors, inode->buffer);
     if (!req) {
-        result = FS_ERR_BUSY;
+        result = OPAL_EBUSY;
         goto err_alloc;
     }
 
     disk_request_wait(req, TIMEOUT_INFINITY, &result);
-    if (result != FS_OK) {
+    if (result != OPAL_OK) {
         goto err_alloc;
     }
 
-    return FS_OK;
+    return OPAL_OK;
 
 err_alloc:
     kfree(inode->buffer, inode->buflen);
@@ -207,30 +207,30 @@ err:
     return result;
 }
 
-static fs_status_t root_inode_lookup(struct inode *base, struct path_entry *pe) {
+static kerrno_t root_inode_lookup(struct inode *base, struct path_entry *pe) {
     struct fat_root_inode *inode = container_of(base, struct fat_root_inode, inode);
 
-    fs_status_t result = root_inode_readall(inode);
-    if (result != FS_OK) {
+    kerrno_t result = root_inode_readall(inode);
+    if (result != OPAL_OK) {
         return result;
     }
 
     return dentry_lookup(inode->sb, inode->buffer, inode->entries, pe);
 }
 
-static fs_status_t fat_inode_create(struct inode *base, struct path_entry *pe, enum inode_flags flags) {
+static kerrno_t fat_inode_create(struct inode *base, struct path_entry *pe, enum inode_flags flags) {
     struct fat_inode_base *inode = container_of(base, struct fat_inode_base, inode);
 
     if (!(inode->inode.flags & FS_INODE_DIR)) {
-        return FS_ERR_NOTDIR;
+        return OPAL_ENOTDIR;
     }
 
     char name[11];
     if (!pack_filename(hstrget(&pe->name), hstrlen(&pe->name), name)) {
-        return FS_ERR_INVAL;
+        return OPAL_EINVAL;
     }
 
-    fs_status_t result = FS_ERR_NOMEM;
+    kerrno_t result = OPAL_ENOMEM;
     struct fat_inode *child = kzalloc(sizeof(*child));
     if (!child) {
         goto err;
@@ -248,7 +248,7 @@ static fs_status_t fat_inode_create(struct inode *base, struct path_entry *pe, e
     uint32_t first_cluster = 0;
     if (flags & FS_INODE_DIR) {
         result = table->ops->table_alloc(table, &first_cluster);
-        if (result != FS_OK) {
+        if (result != OPAL_OK) {
             goto err_alloc;
         }
     }
@@ -269,7 +269,7 @@ static fs_status_t fat_inode_create(struct inode *base, struct path_entry *pe, e
     memcpy(dentry.name, name, sizeof(name));
 
     result = inode->ops->write_dentry(inode, &dentry, didx);
-    if (result != FS_OK) {
+    if (result != OPAL_OK) {
         goto err_alloc;
     }
 
@@ -292,7 +292,7 @@ static fs_status_t fat_inode_create(struct inode *base, struct path_entry *pe, e
     }
 
     pe->inode = &child->inode;
-    return FS_OK;
+    return OPAL_OK;
 
 err_alloc:
     kfree(child, sizeof(*child));
@@ -300,18 +300,18 @@ err:
     return result;
 }
 
-static fs_status_t root_inode_write_dentry(struct fat_inode_base *base, const struct fat_dentry *dentry, uint32_t index) {
+static kerrno_t root_inode_write_dentry(struct fat_inode_base *base, const struct fat_dentry *dentry, uint32_t index) {
     struct fat_root_inode *inode = container_of(base, struct fat_root_inode, base);
 
-    fs_status_t result = root_inode_readall(inode);
-    if (result != FS_OK) {
+    kerrno_t result = root_inode_readall(inode);
+    if (result != OPAL_OK) {
         return result;
     }
 
     if (index > inode->entries) {
-        return FS_ERR_RANGE;
+        return OPAL_ERANGE;
     } else if (index == inode->entries) {
-        return FS_ERR_NOSPC;
+        return OPAL_ENOSPC;
     }
 
     struct fat_dentry old = inode->buffer[index];
@@ -323,7 +323,7 @@ static fs_status_t root_inode_write_dentry(struct fat_inode_base *base, const st
     uint32_t de_sec = de_off / DISK_SECTOR_SIZE;
     unsigned char *b = (unsigned char *)inode->buffer;
     result = fat_write_sectors(inode->sb->bdev, inode->offset * lsec + de_sec, 1, b + de_sec * DISK_SECTOR_SIZE);
-    if (result != FS_OK) {
+    if (result != OPAL_OK) {
         inode->buffer[index] = old;
     }
     return result;
@@ -332,8 +332,8 @@ static fs_status_t root_inode_write_dentry(struct fat_inode_base *base, const st
 static fs_ssize_t root_inode_alloc_dentry(struct fat_inode_base *base) {
     struct fat_root_inode *inode = container_of(base, struct fat_root_inode, base);
 
-    fs_status_t result = root_inode_readall(inode);
-    if (result != FS_OK) {
+    kerrno_t result = root_inode_readall(inode);
+    if (result != OPAL_OK) {
         return result;
     }
 
@@ -344,27 +344,27 @@ static fs_ssize_t root_inode_alloc_dentry(struct fat_inode_base *base) {
         }
     }
 
-    return FS_ERR_NOSPC;
+    return OPAL_ENOSPC;
 }
 
 static void root_file_close(struct file *) {
     panic();
 }
 
-static fs_status_t root_file_seek(struct file *, fs_off_t, enum fs_seek, fs_size_t *) {
-    return FS_ERR_NOTSUPP;
+static kerrno_t root_file_seek(struct file *, fs_off_t, enum fs_seek, fs_size_t *) {
+    return OPAL_ENOTSUPP;
 }
 
 static fs_ssize_t root_file_read(struct file *, fs_size_t, void *, fs_size_t) {
-    return FS_ERR_ISDIR;
+    return OPAL_EISDIR;
 }
 
 static fs_ssize_t root_file_write(struct file *, fs_size_t, const void *, fs_size_t, bool) {
-    return FS_ERR_ISDIR;
+    return OPAL_EISDIR;
 }
 
-static fs_status_t root_file_truncate(struct file *, fs_size_t) {
-    return FS_ERR_ISDIR;
+static kerrno_t root_file_truncate(struct file *, fs_size_t) {
+    return OPAL_EISDIR;
 }
 
 static struct fat_inode_ops g_root_ops = {
@@ -425,9 +425,9 @@ static void fat_inode_close(struct inode *base) {
     return !(2 <= cluster && cluster < 0x0ffffff0 && cluster - 2 < layout->cluster_count);
 }
 
-static fs_status_t fat_inode_readall(struct fat_inode *inode) {
+static kerrno_t fat_inode_readall(struct fat_inode *inode) {
     if (inode->buffer) {
-        return FS_OK;
+        return OPAL_OK;
     }
 
     const struct fat_dentry *dentry = get_dentry(inode);
@@ -444,7 +444,7 @@ static fs_status_t fat_inode_readall(struct fat_inode *inode) {
 
     if (filesize == 0) {
         inode->filesize = 0;
-        return FS_OK;
+        return OPAL_OK;
     }
 
     struct dynarray buffer;
@@ -455,25 +455,25 @@ static fs_status_t fat_inode_readall(struct fat_inode *inode) {
     uint32_t pspc = layout->sectors_per_cluster * lsec;
     uint32_t data_offset = layout->data_offset * lsec;
 
-    fs_status_t result = FS_OK;
+    kerrno_t result = OPAL_OK;
 
     struct fat_table *table = &inode->sb->table;
     uint32_t cluster = inode->first_cluster & 0x0fffffff;
     while (!is_cluster_eof(layout, cluster) && buffer.size < filesize) {
         void *cluster_buffer = dynarray_push_back(&buffer, pspc * DISK_SECTOR_SIZE);
         if (!cluster_buffer) {
-            result = FS_ERR_NOMEM;
+            result = OPAL_ENOMEM;
             goto err;
         }
 
         result = fat_read_sectors(inode->sb->bdev, data_offset + (cluster - 2) * pspc, pspc, cluster_buffer);
-        if (result != FS_OK) {
+        if (result != OPAL_OK) {
             goto err;
         }
 
         uint32_t entry;
         result = table->ops->table_at(table, cluster, &entry);
-        if (result != FS_OK) {
+        if (result != OPAL_OK) {
             goto err;
         }
         cluster = entry & 0x0fffffff;
@@ -489,29 +489,29 @@ static fs_status_t fat_inode_readall(struct fat_inode *inode) {
     }
     inode->buffer = buffer.data;
     inode->buflen = buffer.capacity;
-    return FS_OK;
+    return OPAL_OK;
 
 err:
     dynarray_destroy(&buffer);
     return result;
 }
 
-static fs_status_t fat_inode_open(struct inode *base, struct file **file_out) {
+static kerrno_t fat_inode_open(struct inode *base, struct file **file_out) {
     struct fat_inode *inode = container_of(base, struct fat_inode, inode);
     *file_out = &inode->file;
     file_retain(*file_out);
-    return FS_OK;
+    return OPAL_OK;
 }
 
-static fs_status_t fat_inode_lookup(struct inode *base, struct path_entry *pe) {
+static kerrno_t fat_inode_lookup(struct inode *base, struct path_entry *pe) {
     struct fat_inode *inode = container_of(base, struct fat_inode, inode);
     const struct fat_dentry *dentry = get_dentry(inode);
     if (dentry && !(dentry->attr & FAT_ATTR_DIRECTORY)) {
-        return FS_ERR_NOTDIR;
+        return OPAL_ENOTDIR;
     }
 
-    fs_status_t result = fat_inode_readall(inode);
-    if (result != FS_OK) {
+    kerrno_t result = fat_inode_readall(inode);
+    if (result != OPAL_OK) {
         return result;
     }
 
@@ -523,32 +523,32 @@ static void fat_file_close(struct file *) {
     panic();
 }
 
-static fs_status_t fat_file_seek(struct file *file, fs_off_t offset, enum fs_seek origin, fs_size_t *pos) {
+static kerrno_t fat_file_seek(struct file *file, fs_off_t offset, enum fs_seek origin, fs_size_t *pos) {
     struct fat_inode *inode = container_of(file, struct fat_inode, file);
     const struct fat_dentry *dentry = get_dentry(inode);
     if (!dentry || (dentry->attr & FAT_ATTR_DIRECTORY)) {
-        return FS_ERR_ISDIR;
+        return OPAL_EISDIR;
     }
 
-    fs_status_t result = fat_inode_readall(inode);
-    if (result != FS_OK) {
+    kerrno_t result = fat_inode_readall(inode);
+    if (result != OPAL_OK) {
         return result;
     }
 
     if (origin == FS_SEEK_SET) {
         if (offset < 0 || offset > (fs_off_t)inode->filesize) {
-            return FS_ERR_RANGE;
+            return OPAL_ERANGE;
         }
         *pos = (fs_size_t)offset;
-        return FS_OK;
+        return OPAL_OK;
     } else if (origin == FS_SEEK_END) {
         if (offset > 0 || offset < -(fs_off_t)inode->filesize) {
-            return FS_ERR_RANGE;
+            return OPAL_ERANGE;
         }
         *pos = (fs_size_t)(inode->filesize + offset);
-        return FS_OK;
+        return OPAL_OK;
     } else {
-        return FS_ERR_INVAL;
+        return OPAL_EINVAL;
     }
 }
 
@@ -556,17 +556,17 @@ static fs_ssize_t fat_file_read(struct file *file, fs_size_t pos, void *buffer, 
     struct fat_inode *inode = container_of(file, struct fat_inode, file);
     const struct fat_dentry *dentry = get_dentry(inode);
     if (!dentry || dentry->attr & FAT_ATTR_DIRECTORY) {
-        return FS_ERR_ISDIR;
+        return OPAL_EISDIR;
     }
 
-    fs_status_t result = fat_inode_readall(inode);
-    if (result != FS_OK) {
+    kerrno_t result = fat_inode_readall(inode);
+    if (result != OPAL_OK) {
         return result;
     }
 
     uint32_t fsz = inode->filesize;
     if (pos > fsz) {
-        return FS_ERR_RANGE;
+        return OPAL_ERANGE;
     }
     if (size > fsz - pos) {
         size = fsz - pos;
@@ -583,19 +583,19 @@ static fs_ssize_t fat_file_read(struct file *file, fs_size_t pos, void *buffer, 
 static fs_ssize_t fat_inode_write(struct inode *base, fs_size_t pos, const void *buffer, fs_size_t size, bool append) {
     struct fat_inode *inode = container_of(base, struct fat_inode, inode);
 
-    fs_status_t result = fat_inode_readall(inode);
-    if (result != FS_OK) {
+    kerrno_t result = fat_inode_readall(inode);
+    if (result != OPAL_OK) {
         return result;
     }
 
     uint32_t fsz = inode->filesize;
     if (!append) {
         if (pos > fsz || size > fsz - pos) {
-            return FS_ERR_RANGE;
+            return OPAL_ERANGE;
         }
     } else {
         if (size > UINT32_MAX - fsz) {
-            return FS_ERR_NOSPC;
+            return OPAL_ENOSPC;
         }
         pos = fsz;
         fsz += (uint32_t)size;
@@ -614,7 +614,7 @@ static fs_ssize_t fat_inode_write(struct inode *base, fs_size_t pos, const void 
     size_t newlen = (fsz + bpc - 1) / bpc * bpc;
     unsigned char *newbuf = kzalloc(newlen);
     if (!newbuf) {
-        return FS_ERR_NOMEM;
+        return OPAL_ENOMEM;
     }
     memcpy(newbuf, inode->buffer, inode->filesize);
     memcpy(newbuf + pos, buffer, size);
@@ -623,7 +623,7 @@ static fs_ssize_t fat_inode_write(struct inode *base, fs_size_t pos, const void 
     uint32_t first_cluster = inode->first_cluster & 0x0fffffff;
     if (is_cluster_eof(layout, first_cluster)) {
         result = table->ops->table_alloc(table, &first_cluster);
-        if (result != FS_OK) {
+        if (result != OPAL_OK) {
             goto err;
         }
     }
@@ -633,7 +633,7 @@ static fs_ssize_t fat_inode_write(struct inode *base, fs_size_t pos, const void 
     while (1) {
         if (byte_index + bpc > pos) {
             result = fat_write_sectors(inode->sb->bdev, data_offset + (cluster - 2) * pspc, pspc, newbuf + byte_index);
-            if (result != FS_OK) {
+            if (result != OPAL_OK) {
                 break;
             }
         }
@@ -645,19 +645,19 @@ static fs_ssize_t fat_inode_write(struct inode *base, fs_size_t pos, const void 
 
         uint32_t entry;
         result = table->ops->table_at(table, cluster, &entry);
-        if (result != FS_OK) {
+        if (result != OPAL_OK) {
             break;
         }
         uint32_t next_cluster = entry & 0x0fffffff;
 
         if (is_cluster_eof(layout, next_cluster)) {
             if (!append) {
-                result = FS_ERR_RANGE;
+                result = OPAL_ERANGE;
                 break;
             }
             result = fat_table_append(table, cluster, &next_cluster);
-            if (result != FS_OK) {
-                result = FS_ERR_NOSPC;
+            if (result != OPAL_OK) {
+                result = OPAL_ENOSPC;
                 break;
             }
         }
@@ -689,7 +689,7 @@ static fs_ssize_t fat_inode_write(struct inode *base, fs_size_t pos, const void 
             updated = true;
         }
 
-        result = FS_OK;
+        result = OPAL_OK;
         if (updated) {
             struct fat_inode_base *parent = inode->parent;
             result = parent->ops->write_dentry(parent, &new_dentry, inode->dentry_idx);
@@ -701,7 +701,7 @@ static fs_ssize_t fat_inode_write(struct inode *base, fs_size_t pos, const void 
     inode->filesize = fsz;
     inode->buffer = newbuf;
     inode->buflen = newlen;
-    return result == FS_OK ? (fs_ssize_t)size : result;
+    return result == OPAL_OK ? (fs_ssize_t)size : result;
 
 err:
     kfree(newbuf, newlen);
@@ -712,21 +712,21 @@ static fs_ssize_t fat_file_write(struct file *file, fs_size_t pos, const void *b
     struct fat_inode *inode = container_of(file, struct fat_inode, file);
     const struct fat_dentry *dentry = get_dentry(inode);
     if (!dentry || (dentry->attr & FAT_ATTR_DIRECTORY)) {
-        return FS_ERR_ISDIR;
+        return OPAL_EISDIR;
     }
 
     return fat_inode_write(&inode->inode, pos, buffer, size, append);
 }
 
-static fs_status_t fat_file_truncate(struct file *file, fs_size_t size) {
+static kerrno_t fat_file_truncate(struct file *file, fs_size_t size) {
     struct fat_inode *inode = container_of(file, struct fat_inode, file);
     const struct fat_dentry *dentry = get_dentry(inode);
     if (!dentry || (dentry->attr & FAT_ATTR_DIRECTORY)) {
-        return FS_ERR_ISDIR;
+        return OPAL_EISDIR;
     }
 
     if (size != 0) {
-        return FS_ERR_INVAL;
+        return OPAL_EINVAL;
     }
 
     struct fat_layout *layout = &inode->sb->layout;
@@ -735,11 +735,11 @@ static fs_status_t fat_file_truncate(struct file *file, fs_size_t size) {
     dentry_set_first_cluster(&new_dentry, layout->bits, 0);
     new_dentry.file_size = 0;
 
-    fs_status_t result = FS_OK;
+    kerrno_t result = OPAL_OK;
 
     struct fat_inode_base *parent = inode->parent;
     result = parent->ops->write_dentry(parent, &new_dentry, inode->dentry_idx);
-    if (result != FS_OK) {
+    if (result != OPAL_OK) {
         return result;
     }
 
@@ -748,13 +748,13 @@ static fs_status_t fat_file_truncate(struct file *file, fs_size_t size) {
     while (!is_cluster_eof(layout, cluster)) {
         uint32_t entry;
         result = table->ops->table_at(table, cluster, &entry);
-        if (result != FS_OK) {
+        if (result != OPAL_OK) {
             break;
         }
 
         uint32_t next_cluster = entry & 0x0fffffff;
         result = table->ops->table_set(table, cluster, 0);
-        if (result != FS_OK) {
+        if (result != OPAL_OK) {
             break;
         }
         cluster = next_cluster;
@@ -770,23 +770,23 @@ static fs_status_t fat_file_truncate(struct file *file, fs_size_t size) {
     return result;
 }
 
-static fs_status_t fat_inode_write_dentry(struct fat_inode_base *base, const struct fat_dentry *dentry, uint32_t index) {
+static kerrno_t fat_inode_write_dentry(struct fat_inode_base *base, const struct fat_dentry *dentry, uint32_t index) {
     struct fat_inode *inode = container_of(base, struct fat_inode, base);
     const struct fat_dentry *my_dentry = get_dentry(inode);
 
     if (my_dentry && !(my_dentry->attr & FAT_ATTR_DIRECTORY)) {
-        return FS_ERR_NOTDIR;
+        return OPAL_ENOTDIR;
     }
 
-    fs_status_t result = fat_inode_readall(inode);
-    if (result != FS_OK) {
+    kerrno_t result = fat_inode_readall(inode);
+    if (result != OPAL_OK) {
         return result;
     }
 
     uint32_t entries = inode->filesize / sizeof(*dentry);
     bool append = false;
     if (index > entries) {
-        return FS_ERR_RANGE;
+        return OPAL_ERANGE;
     } else if (index == entries) {
         append = true;
     }
@@ -795,9 +795,9 @@ static fs_status_t fat_inode_write_dentry(struct fat_inode_base *base, const str
     if (result < 0) {
         return result;
     } else if (result != sizeof(*dentry)) {
-        return FS_ERR_RANGE;
+        return OPAL_ERANGE;
     }
-    return FS_OK;
+    return OPAL_OK;
 }
 
 static fs_ssize_t fat_inode_alloc_dentry(struct fat_inode_base *base) {
@@ -805,11 +805,11 @@ static fs_ssize_t fat_inode_alloc_dentry(struct fat_inode_base *base) {
     const struct fat_dentry *my_dentry = get_dentry(inode);
 
     if (my_dentry && !(my_dentry->attr & FAT_ATTR_DIRECTORY)) {
-        return FS_ERR_NOTDIR;
+        return OPAL_ENOTDIR;
     }
 
-    fs_status_t result = fat_inode_readall(inode);
-    if (result != FS_OK) {
+    kerrno_t result = fat_inode_readall(inode);
+    if (result != OPAL_OK) {
         return result;
     }
 
@@ -824,7 +824,7 @@ static fs_ssize_t fat_inode_alloc_dentry(struct fat_inode_base *base) {
     }
 
     result = fat_inode_write_dentry(base, &(struct fat_dentry) { }, count);
-    if (result != FS_OK) {
+    if (result != OPAL_OK) {
         return result;
     }
 

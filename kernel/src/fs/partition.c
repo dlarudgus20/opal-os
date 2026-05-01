@@ -21,7 +21,7 @@ struct mbr_part_entry {
 
 static_assert(sizeof(struct mbr_part_entry) == 16);
 
-static void complete_not_null(struct fs_completion *comp, fs_status_t result) {
+static void complete_not_null(struct fs_completion *comp, kerrno_t result) {
     if (comp) {
         fs_completion_signal(comp, result);
     }
@@ -71,12 +71,12 @@ static void unregister_partitions(struct disk *disk) {
 }
 
 static struct span alloc_part_name(struct disk *disk, size_t index) {
-    int len = snprintf_s(NULL, 0, "%s:%zu", disk->name, index);
+    int len = ksnprintf(NULL, 0, "%s:%zu", disk->name, index);
     char *partname = kzalloc(len + 1);
     if (!partname) {
         return SPAN_NULL;
     }
-    snprintf_s(partname, len + 1, "%s:%zu", disk->name, index);
+    ksnprintf(partname, len + 1, "%s:%zu", disk->name, index);
     return SPAN(partname, len + 1);
 }
 
@@ -135,21 +135,21 @@ static void build_part_table(struct disk *disk) {
     return a_start < b_end && b_start < a_end;
 }
 
-[[nodiscard]] static fs_status_t apply_create_part(
+[[nodiscard]] static kerrno_t apply_create_part(
     struct disk *disk, struct mbr_part_entry table[4],
     size_t index, fs_size_t lba, fs_size_t sectors, uint8_t type
 ) {
     fs_size_t end = lba + sectors;
 
     if (lba == 0) {
-        return FS_ERR_RANGE;
+        return OPAL_ERANGE;
     }
     if (end > disk->sectors) {
-        return FS_ERR_RANGE;
+        return OPAL_ERANGE;
     }
 
     if (table[index].type != 0) {
-        return FS_ERR_EXIST;
+        return OPAL_EEXIST;
     }
 
     for (size_t i = 0; i < 4; i++) {
@@ -160,7 +160,7 @@ static void build_part_table(struct disk *disk) {
         uint64_t e_start = table[i].lba;
         uint64_t e_end = e_start + table[i].sectors;
         if (is_range_overlap(lba, end, e_start, e_end)) {
-            return FS_ERR_RANGE;
+            return OPAL_ERANGE;
         }
     }
 
@@ -171,7 +171,7 @@ static void build_part_table(struct disk *disk) {
     table[index].type = type;
     table[index].lba = lba;
     table[index].sectors = sectors;
-    return FS_OK;
+    return OPAL_OK;
 }
 
 struct co_part_reset {
@@ -185,7 +185,7 @@ struct co_part_reset {
 static co_state_t co_reset_handler(struct coroutine *co);
 
 static void reset_partition(struct disk *disk, struct fs_completion *completion, bool rescan) {
-    fs_status_t result = FS_ERR_NOMEM;
+    kerrno_t result = OPAL_ENOMEM;
 
     unsigned char *mbr = kzalloc(DISK_SECTOR_SIZE);
     if (!mbr) {
@@ -205,11 +205,11 @@ static void reset_partition(struct disk *disk, struct fs_completion *completion,
     irqlock_t irqlock = irqlock_acquire();
 
     if (disk_req_queue_is_full_unlocked(disk->req_queue)) {
-        result = FS_ERR_BUSY;
+        result = OPAL_EBUSY;
         goto err_req;
     }
     if (!lock_partitions(disk)) {
-        result = FS_ERR_BUSY;
+        result = OPAL_EBUSY;
         goto err_req;
     }
 
@@ -244,7 +244,7 @@ void disk_reset_partition(struct disk *disk, struct fs_completion *completion) {
 
 static co_state_t co_reset_handler(struct coroutine *co) {
     struct co_part_reset *ctx = container_of(co, struct co_part_reset, co);
-    fs_status_t result;
+    kerrno_t result;
 
     if (co->state == CO_DONE) {
         kfree(ctx, sizeof(*ctx));
@@ -253,7 +253,7 @@ static co_state_t co_reset_handler(struct coroutine *co) {
 
     struct disk *disk = ctx->req->disk;
     disk_request_wait(ctx->req, TIMEOUT_INFINITY, &result);
-    if (result != FS_OK) {
+    if (result != OPAL_OK) {
         kerror("reset_partition: fs error %d", result);
         goto err;
     }
@@ -272,7 +272,7 @@ static co_state_t co_reset_handler(struct coroutine *co) {
         build_part_table(disk);
     }
 
-    result = FS_OK;
+    result = OPAL_OK;
     goto done;
 
 err:
@@ -304,15 +304,15 @@ static void modify_partition(
     struct disk *disk, size_t index, fs_size_t lba, fs_size_t sectors, uint8_t type,
     bool removal, struct fs_completion *completion
 ) {
-    fs_status_t result = FS_ERR_NOMEM;
+    kerrno_t result = OPAL_ENOMEM;
 
     if (!removal && (type == 0 || lba + sectors <= lba)) {
-        result = FS_ERR_INVAL;
+        result = OPAL_EINVAL;
         goto err_ctx;
     }
 
     if (index >= 4) {
-        result = FS_ERR_NOENT;
+        result = OPAL_ENOENT;
         goto err_ctx;
     }
 
@@ -324,7 +324,7 @@ static void modify_partition(
     irqlock_t irqlock = irqlock_acquire();
 
     if (!disk->part_table_sectors.ptr) {
-        result = FS_ERR_INVAL;
+        result = OPAL_EINVAL;
         goto err_req;
     }
 
@@ -337,11 +337,11 @@ static void modify_partition(
     }
 
     if (removal && !ctx->entry) {
-        result = FS_ERR_NOENT;
+        result = OPAL_ENOENT;
         goto err_req;
     }
     if (!removal && ctx->entry) {
-        result = FS_ERR_EXIST;
+        result = OPAL_EEXIST;
         goto err_req;
     }
 
@@ -354,11 +354,11 @@ static void modify_partition(
     }
 
     if (disk_req_queue_is_full_unlocked(disk->req_queue)) {
-        result = FS_ERR_BUSY;
+        result = OPAL_EBUSY;
         goto err_name;
     }
     if (ctx->entry && !block_device_retain(ctx->entry->bdev)) {
-        result = FS_ERR_BUSY;
+        result = OPAL_EBUSY;
         goto err_name;
     }
 
@@ -371,8 +371,8 @@ static void modify_partition(
     if (removal) {
         memset(mbr_entry, 0, sizeof(*table));
     } else {
-        fs_status_t r = apply_create_part(disk, table, index, lba, sectors, type);
-        if (r != FS_OK) {
+        kerrno_t r = apply_create_part(disk, table, index, lba, sectors, type);
+        if (r != OPAL_OK) {
             result = r;
             goto err_name;
         }
@@ -417,7 +417,7 @@ void disk_remove_partition(struct disk *disk, size_t index, struct fs_completion
 
 static co_state_t co_modify_handler(struct coroutine *co) {
     struct co_part_modify *ctx = container_of(co, struct co_part_modify, co);
-    fs_status_t result;
+    kerrno_t result;
 
     if (co->state == CO_DONE) {
         kfree(ctx, sizeof(*ctx));
@@ -429,7 +429,7 @@ static co_state_t co_modify_handler(struct coroutine *co) {
 
     irqlock_t irqlock = irqlock_acquire();
 
-    if (result != FS_OK) {
+    if (result != OPAL_OK) {
         kerror("modify_partition: fs error %d", result);
         goto err_io;
     }
@@ -443,7 +443,7 @@ static co_state_t co_modify_handler(struct coroutine *co) {
         struct partition_entry *new_entry = dynarray_push_back(&disk->partitions, sizeof(*new_entry));
         if (!new_entry) {
             kerror("modify_partition: cannot register block device %s", (char *)ctx->partname.ptr);
-            result = FS_ERR_NOMEM;
+            result = OPAL_ENOMEM;
             goto err;
         }
 
@@ -451,7 +451,7 @@ static co_state_t co_modify_handler(struct coroutine *co) {
         if (!bdev) {
             kerror("modify_partition: cannot register block device %s", (char *)ctx->partname.ptr);
             dynarray_pop_back(&disk->partitions, sizeof(*new_entry));
-            result = FS_ERR_NOMEM;
+            result = OPAL_ENOMEM;
             goto err;
         }
 
@@ -459,7 +459,7 @@ static co_state_t co_modify_handler(struct coroutine *co) {
         new_entry->bdev = bdev;
     }
 
-    result = FS_OK;
+    result = OPAL_OK;
     goto done;
 
 err_io:

@@ -14,7 +14,7 @@ int shell_cmd_lsblk(int argc, char **argv) {
 
     for (size_t i = 0; i < count; i++) {
         struct block_device *dev;
-        if (bdev_list_get(i, &dev) != FS_OK) {
+        if (bdev_list_get(i, &dev) != OPAL_OK) {
             continue;
         }
         const char *name = dev->name ? dev->name : "-";

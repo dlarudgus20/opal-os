@@ -15,9 +15,9 @@ enum syscall_index : uint64_t {
 };
 
 struct sysret {
+    intptr_t ret0;
     intptr_t ret1;
     intptr_t ret2;
-    intptr_t ret3;
 };
 
 struct sysret syscall_dispatch(uintptr_t arg0, uintptr_t arg1, uintptr_t arg2, uintptr_t arg3, uintptr_t arg4, uintptr_t arg5);

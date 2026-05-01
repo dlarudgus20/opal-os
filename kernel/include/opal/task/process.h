@@ -1,6 +1,8 @@
 #ifndef OPAL_TASK_PROCESS_H
 #define OPAL_TASK_PROCESS_H
 
+#include <kc/kerrno.h>
+
 #include <collections/linkedlist.h>
 #include <collections/rbtree.h>
 
@@ -14,13 +16,6 @@
 
 typedef int pid_t;
 typedef int fd_t;
-
-enum pload_status {
-    PLOAD_OK,
-    PLOAD_NOMEM,
-    PLOAD_BAD_IMAGE,
-    PLOAD_NO_EXEC,
-};
 
 struct file;
 struct pagetable;
@@ -56,6 +51,6 @@ bool process_close_file(struct process *proc, fd_t fd);
     struct process *proc, virt_addr_t entry, virt_addr_t stack, virt_size_t stack_size, enum task_priority priority
 );
 
-[[nodiscard]] enum pload_status process_load_elf(struct process *proc, void *elf, size_t size, taskptr_t *out);
+[[nodiscard]] kerrno_t process_load_elf(struct process *proc, void *elf, size_t size, taskptr_t *out);
 
 #endif

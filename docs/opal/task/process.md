@@ -37,6 +37,7 @@
 
 ## 유저 ELF 로드
 - 진입점: `process_load_elf(proc, elf, size, out_task)`
+- 반환 타입: `kerrno_t`
 - 검증:
   - ELF ident/type/machine/phdr 범위 검증
   - `PT_LOAD`만 허용(일부 타입 제외)
@@ -50,6 +51,11 @@
   - 현재 1페이지를 `ustack_bottom`에 매핑
 - 시작:
   - `process_create_usertask()`로 태스크 생성 후 `enter_userland(entry, stack_top)`
+- 주요 반환 코드:
+  - `OPAL_OK`: 성공
+  - `OPAL_ENOMEM`: 매핑/태스크 생성 중 메모리 부족
+  - `OPAL_EBADIMAGE`: ELF 구조/헤더/프로그램 헤더 불일치 등 이미지 손상
+  - `OPAL_ENOEXEC`: 실행 불가 형식/타겟 아키텍처 불일치/실행 정책 위반
 
 ## FD 테이블 API
 - `process_open_file(proc, file)`:

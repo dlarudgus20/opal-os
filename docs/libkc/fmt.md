@@ -6,8 +6,8 @@
   - `int fmt_sprintf(struct fmt *fmt, const char *format, ...)`
   - `int fmt_vsprintf(struct fmt *fmt, const char *format, va_list ap)`
 - `stdio.h`:
-  - `int snprintf_s(char *buffer, size_t bufsz, const char *format, ...)`
-  - `int vsnprintf_s(char *buffer, size_t bufsz, const char *format, va_list ap)`
+  - `int ksnprintf(char *buffer, size_t bufsz, const char *format, ...)`
+  - `int kvsnprintf(char *buffer, size_t bufsz, const char *format, va_list ap)`
 
 ## `fmt.h`
 
@@ -40,14 +40,14 @@
 
 ## `stdio.h`
 
-### `snprintf_s`/`vsnprintf_s`
+### `ksnprintf`/`kvsnprintf`
 - `fmt_vsprintf`를 버퍼 모드로 감싼 래퍼 API입니다.
 - 입력 버퍼 크기(`bufsz`)를 검사하고, 오류 시 `-1`을 반환합니다.
 - 포맷 실패 시 `buffer[0] = '\0'`로 정리합니다.
 - `buffer == NULL && bufsz == 0` 조합을 허용하며, 이때는 counting 모드로 동작해 필요한 출력 길이만 계산할 수 있습니다.
 
 ## 입력 검증과 반환 규칙
-- `snprintf_s`/`vsnprintf_s`:
+- `ksnprintf`/`kvsnprintf`:
   - `buffer == NULL && bufsz > 0`: `-1`
   - `buffer != NULL && bufsz > INT_MAX`: `-1`
   - `buffer == NULL && bufsz == 0`: 허용 (counting 모드)
@@ -62,7 +62,7 @@
 
 ### 길이 계산 패턴
 ```c
-int len = snprintf_s(NULL, 0, "%s:%d", name, idx);
+int len = ksnprintf(NULL, 0, "%s:%d", name, idx);
 if (len < 0) {
     // format 오류 처리
 }

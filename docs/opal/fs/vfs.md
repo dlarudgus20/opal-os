@@ -17,17 +17,17 @@
 - `path_entry_lookup(pe, name, len, &found)`
   - 캐시에 없으면 `inode->ops->lookup`를 호출해 디렉터리를 재스캔
   - 재스캔 후에도 없으면 negative entry 생성 시도
-  - negative 생성 메모리 부족은 `FS_ERR_NOMEM`으로 전파
+  - negative 생성 메모리 부족은 `OPAL_ENOMEM`으로 전파
 - `path_entry_add(parent, inode, &name, &out)`
-  - 같은 이름의 positive entry가 있으면 `FS_ERR_EXIST`
+  - 같은 이름의 positive entry가 있으면 `OPAL_EEXIST`
   - 같은 이름의 negative entry가 있으면 재사용
 - `path_entry_create(pe, flags, truncate, &file_out)`
   - `pe->inode == NULL`(negative entry)이면:
-    - `pe`가 루트라면 `FS_ERR_NOENT`
+    - `pe`가 루트라면 `OPAL_ENOENT`
     - 부모 inode에 대해 `inode_ops.create(parent_inode, pe, flags)` 호출
     - 성공 후 생성된 inode를 `open`하여 `file_out` 반환
   - `pe->inode != NULL`(이미 존재)이면:
-    - `truncate == false`: `FS_ERR_EXIST`
+    - `truncate == false`: `OPAL_EEXIST`
     - `truncate == true`: 기존 inode를 `open` 후 `truncate(0)` 수행
 
 ## hstr
@@ -71,23 +71,23 @@
   - 반환 시 `found`는 retain된 엔트리이며 호출자가 `path_entry_release` 해야 함
   - 반환값:
     - 경로를 끝까지 해석한 경우:
-      - `FS_OK`
+      - `OPAL_OK`
       - `found`: 찾은 path entry
       - `*unresolved_path == '\0'`
     - 중간 컴포넌트에서 miss가 난 경우:
-      - `FS_ERR_NOENT`
+      - `OPAL_ENOENT`
       - `found`: miss가 발생한 negative path entry
       - `unresolved_path`: 아직 해석되지 않은 나머지 경로 시작 위치
     - 중간에서 디렉터리가 아닌 inode를 만난 경우:
-      - `FS_ERR_NOTDIR`
+      - `OPAL_ENOTDIR`
       - `found`: 해당 non-dir 엔트리
       - `unresolved_path`: 아직 해석되지 않은 나머지 경로 시작 위치
     - inode lookup 실패 시 / 메모리 부족 시:
-      - `inode->ops->lookup` 에러코드 그대로 전파 / `FS_ERR_NOMEM`
+      - `inode->ops->lookup` 에러코드 그대로 전파 / `OPAL_ENOMEM`
       - `found`: 에러가 발생하기 전 path entry
       - `unresolved_path`: 아직 해석되지 않은 나머지 경로 시작 위치
     - 입력이 invalid(`path[0]=='\0'`, 상대 경로인데 `base==NULL`)인 경우:
-      - `FS_ERR_INVAL`
+      - `OPAL_EINVAL`
       - `found`: `NULL`
       - `unresolved_path`: 입력 `path` 그대로
 - `vfs_open_path(base, path, &file_out)`
@@ -100,7 +100,7 @@
   - 즉, 생성/기존 파일 처리 정책은 `path_entry_create`가 담당한다.
 - `path_entry_mount_super(pe, sb)`
   - `sb->root`가 유효한 디렉터리 inode여야 한다.
-  - `pe->inode != NULL`이면 `FS_ERR_BUSY`.
+  - `pe->inode != NULL`이면 `OPAL_EBUSY`.
   - 성공 시 `pe->mounted = sb`, `pe->inode = sb->root`.
 
 ## 수명/참조 규약

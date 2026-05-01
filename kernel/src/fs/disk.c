@@ -150,7 +150,7 @@ struct disk_request *disk_req_queue_fetch(struct disk_req_queue *queue) {
     return req;
 }
 
-void disk_req_queue_pop_fetched(struct disk_req_queue *queue, fs_status_t result) {
+void disk_req_queue_pop_fetched(struct disk_req_queue *queue, kerrno_t result) {
     irqlock_t irqlock = irqlock_acquire();
 
     assert(queue->count_doing > 0);
@@ -167,7 +167,7 @@ void disk_req_queue_pop_fetched(struct disk_req_queue *queue, fs_status_t result
     irqlock_release(&irqlock);
 }
 
-fs_status_t disk_request_release(struct disk_request *req) {
+kerrno_t disk_request_release(struct disk_request *req) {
     irqlock_t irqlock = irqlock_acquire();
 
     struct disk_req_queue *queue = req->disk->req_queue;
@@ -206,17 +206,17 @@ fs_status_t disk_request_release(struct disk_request *req) {
 
     assert(found, "invalid request to release");
 
-    fs_status_t result = req->completion.result;
+    kerrno_t result = req->completion.result;
     irqlock_release(&irqlock);
     return result;
 }
 
-bool disk_request_wait(struct disk_request *req, uint64_t timeout, fs_status_t *result) {
+bool disk_request_wait(struct disk_request *req, uint64_t timeout, kerrno_t *result) {
     if (!fs_completion_wait(&req->completion, timeout)) {
         return false;
     }
 
-    fs_status_t r = disk_request_release(req);
+    kerrno_t r = disk_request_release(req);
     if (result) {
         *result = r;
     }

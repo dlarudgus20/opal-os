@@ -8,24 +8,24 @@
 
 static struct superblock_ops g_fs_ops;
 
-fs_status_t fat_read_sectors(struct block_device *bdev, uint32_t lba, uint32_t sectors, void *buffer) {
+kerrno_t fat_read_sectors(struct block_device *bdev, uint32_t lba, uint32_t sectors, void *buffer) {
     struct disk_request *req = block_device_read(bdev, lba, sectors, buffer);
     if (!req) {
-        return FS_ERR_BUSY;
+        return OPAL_EBUSY;
     }
 
-    fs_status_t result;
+    kerrno_t result;
     disk_request_wait(req, TIMEOUT_INFINITY, &result);
     return result;
 }
 
-fs_status_t fat_write_sectors(struct block_device *bdev, uint32_t lba, uint32_t sectors, const void *buffer) {
+kerrno_t fat_write_sectors(struct block_device *bdev, uint32_t lba, uint32_t sectors, const void *buffer) {
     struct disk_request *req = block_device_write(bdev, lba, sectors, buffer);
     if (!req) {
-        return FS_ERR_BUSY;
+        return OPAL_EBUSY;
     }
 
-    fs_status_t result;
+    kerrno_t result;
     disk_request_wait(req, TIMEOUT_INFINITY, &result);
     return result;
 }
@@ -116,12 +116,12 @@ static void init_sb_from_layout(struct block_device *bdev, struct fat_sb *sb) {
     }
 }
 
-fs_status_t fat_mount(struct block_device *bdev, struct superblock **sb_out) {
+kerrno_t fat_mount(struct block_device *bdev, struct superblock **sb_out) {
     if (!sb_out) {
-        return FS_ERR_INVAL;
+        return OPAL_EINVAL;
     }
 
-    fs_status_t result = FS_ERR_NOMEM;
+    kerrno_t result = OPAL_ENOMEM;
 
     struct fat_sb *sb = kzalloc(sizeof(*sb));
     if (!sb) {
@@ -134,18 +134,18 @@ fs_status_t fat_mount(struct block_device *bdev, struct superblock **sb_out) {
     } vbr;
 
     result = fat_read_sectors(bdev, 0, 1, vbr.buffer);
-    if (result != FS_OK) {
+    if (result != OPAL_OK) {
         goto err_alloc;
     }
 
     if (!parse_bpb(bdev->sectors, &vbr.bpb, &sb->layout)) {
-        result = FS_ERR_NOENT;
+        result = OPAL_ENOENT;
         goto err_alloc;
     }
 
     init_sb_from_layout(bdev, sb);
     *sb_out = &sb->sb;
-    return FS_OK;
+    return OPAL_OK;
 
 err_alloc:
     kfree(sb, sizeof(*sb));
@@ -273,10 +273,10 @@ static bool calc_fat_layout(
     return false;
 }
 
-static fs_status_t setup_layout(fs_size_t sectors, struct fat_layout *layout) {
+static kerrno_t setup_layout(fs_size_t sectors, struct fat_layout *layout) {
     int8_t spc_i = recommended_sectors_per_cluster(sectors);
     if (spc_i < 0) {
-        return FS_ERR_TOOBIG;
+        return OPAL_ETOOBIG;
     }
     uint8_t spc = (uint8_t)spc_i;
 
@@ -289,10 +289,10 @@ static fs_status_t setup_layout(fs_size_t sectors, struct fat_layout *layout) {
     }
 
     if (bits_idx >= 3) {
-        return FS_ERR_TOOBIG;
+        return OPAL_ETOOBIG;
     }
 
-    return FS_OK;
+    return OPAL_OK;
 }
 
 static void setup_bpb(const struct fat_layout *layout, struct fat_bpb *bpb) {
@@ -328,7 +328,7 @@ static void setup_bpb(const struct fat_layout *layout, struct fat_bpb *bpb) {
     }
 }
 
-static fs_status_t write_vbr(struct block_device *bdev, const struct fat_layout *layout, uint8_t *media) {
+static kerrno_t write_vbr(struct block_device *bdev, const struct fat_layout *layout, uint8_t *media) {
     union {
         unsigned char buffer[DISK_SECTOR_SIZE];
         struct fat_bpb bpb;
@@ -340,22 +340,22 @@ static fs_status_t write_vbr(struct block_device *bdev, const struct fat_layout 
     vbr.buffer[510] = 0x55;
     vbr.buffer[511] = 0xaa;
 
-    fs_status_t result = fat_write_sectors(bdev, 0, 1, vbr.buffer);
-    if (result != FS_OK) {
+    kerrno_t result = fat_write_sectors(bdev, 0, 1, vbr.buffer);
+    if (result != OPAL_OK) {
         return result;
     }
 
     if (layout->bits == 32) {
         result = fat_write_sectors(bdev, FAT32_BACKUP_BOOT_SECTOR, 1, vbr.buffer);
-        if (result != FS_OK) {
+        if (result != OPAL_OK) {
             return result;
         }
     }
 
-    return FS_OK;
+    return OPAL_OK;
 }
 
-static fs_status_t write_fsinfo(struct block_device *bdev) {
+static kerrno_t write_fsinfo(struct block_device *bdev) {
     union {
         unsigned char buffer[DISK_SECTOR_SIZE];
         struct fat32_fsinfo fsinfo;
@@ -369,15 +369,15 @@ static fs_status_t write_fsinfo(struct block_device *bdev) {
     sec.fsinfo.signature3[2] = 0x55;
     sec.fsinfo.signature3[3] = 0xaa;
 
-    fs_status_t result = fat_write_sectors(bdev, FAT32_FSINFO_SECTOR, 1, sec.buffer);
-    if (result != FS_OK) {
+    kerrno_t result = fat_write_sectors(bdev, FAT32_FSINFO_SECTOR, 1, sec.buffer);
+    if (result != OPAL_OK) {
         return result;
     }
 
     return fat_write_sectors(bdev, FAT32_BACKUP_FSINFO_SECTOR, 1, sec.buffer);
 }
 
-static fs_status_t write_fats(struct block_device *bdev, const struct fat_layout *layout, uint8_t media) {
+static kerrno_t write_fats(struct block_device *bdev, const struct fat_layout *layout, uint8_t media) {
     unsigned char first[DISK_SECTOR_SIZE] = { };
     unsigned char empty[DISK_SECTOR_SIZE] = { };
 
@@ -392,23 +392,23 @@ static fs_status_t write_fats(struct block_device *bdev, const struct fat_layout
 
     uint32_t fat_offset = layout->reserved_sectors;
     for (uint8_t fati = 0; fati < layout->num_fats; fati++) {
-        fs_status_t result = fat_write_sectors(bdev, fat_offset++, 1, first);
-        if (result != FS_OK) {
+        kerrno_t result = fat_write_sectors(bdev, fat_offset++, 1, first);
+        if (result != OPAL_OK) {
             return result;
         }
 
         for (uint32_t i = 1; i < layout->fat_sectors; i++) {
             result = fat_write_sectors(bdev, fat_offset++, 1, empty);
-            if (result != FS_OK) {
+            if (result != OPAL_OK) {
                 return result;
             }
         }
     }
 
-    return FS_OK;
+    return OPAL_OK;
 }
 
-static fs_status_t write_root(struct block_device *bdev, const struct fat_layout *layout) {
+static kerrno_t write_root(struct block_device *bdev, const struct fat_layout *layout) {
     unsigned char empty[DISK_SECTOR_SIZE] = { };
 
     uint32_t offset;
@@ -423,21 +423,21 @@ static fs_status_t write_root(struct block_device *bdev, const struct fat_layout
     }
 
     for (uint32_t sec = 0; sec < sectors; sec++) {
-        fs_status_t result = fat_write_sectors(bdev, offset + sec, 1, empty);
-        if (result != FS_OK) {
+        kerrno_t result = fat_write_sectors(bdev, offset + sec, 1, empty);
+        if (result != OPAL_OK) {
             return result;
         }
     }
 
-    return FS_OK;
+    return OPAL_OK;
 }
 
-fs_status_t fat_format(struct block_device *bdev, struct superblock **sb_out) {
+kerrno_t fat_format(struct block_device *bdev, struct superblock **sb_out) {
     if (!sb_out) {
-        return FS_ERR_INVAL;
+        return OPAL_EINVAL;
     }
 
-    fs_status_t result = FS_ERR_NOMEM;
+    kerrno_t result = OPAL_ENOMEM;
 
     struct fat_sb *sb = kzalloc(sizeof(*sb));
     if (!sb) {
@@ -445,41 +445,41 @@ fs_status_t fat_format(struct block_device *bdev, struct superblock **sb_out) {
     }
 
     if (bdev->sectors > UINT32_MAX) {
-        result = FS_ERR_TOOBIG;
+        result = OPAL_ETOOBIG;
         goto err_alloc;
     }
 
     result = setup_layout(bdev->sectors, &sb->layout);
-    if (result != FS_OK) {
+    if (result != OPAL_OK) {
         goto err_alloc;
     }
 
     uint8_t media;
     result = write_vbr(bdev, &sb->layout, &media);
-    if (result != FS_OK) {
+    if (result != OPAL_OK) {
         goto err_alloc;
     }
 
     if (sb->layout.bits == 32) {
         result = write_fsinfo(bdev);
-        if (result != FS_OK) {
+        if (result != OPAL_OK) {
             goto err_alloc;
         }
     }
 
     result = write_fats(bdev, &sb->layout, media);
-    if (result != FS_OK) {
+    if (result != OPAL_OK) {
         goto err_alloc;
     }
 
     result = write_root(bdev, &sb->layout);
-    if (result != FS_OK) {
+    if (result != OPAL_OK) {
         goto err_alloc;
     }
 
     init_sb_from_layout(bdev, sb);
     *sb_out = &sb->sb;
-    return FS_OK;
+    return OPAL_OK;
 
 err_alloc:
     kfree(sb, sizeof(*sb));

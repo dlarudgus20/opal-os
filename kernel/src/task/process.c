@@ -220,14 +220,14 @@ static void free_mapped_range(struct process *proc, virt_addr_t addr, virt_size_
     }
 }
 
-static enum pload_status map_section(struct process *proc, void *data, size_t filesz, virt_addr_t addr, virt_size_t memsz, uint32_t flags) {
+static kerrno_t map_section(struct process *proc, void *data, size_t filesz, virt_addr_t addr, virt_size_t memsz, uint32_t flags) {
     irqlock_t irqlock = irqlock_acquire();
-    enum pload_status result = PLOAD_NOMEM;
+    kerrno_t result = OPAL_ENOMEM;
 
     vmtree_status_t insertion = vmtree_insert(&proc->vmtree, addr, addr + memsz, proc);
     if (insertion != VMTREE_OK) {
         if (insertion == VMTREE_ERR_EXISTS) {
-            result = PLOAD_BAD_IMAGE;
+            result = OPAL_EBADIMAGE;
             goto err;
         }
         goto err;
@@ -290,7 +290,7 @@ static enum pload_status map_section(struct process *proc, void *data, size_t fi
     }
 
     irqlock_release(&irqlock);
-    return PLOAD_OK;
+    return OPAL_OK;
 
 err_alloc:
     free_mapped_range(proc, addr, current_addr - addr);
@@ -322,9 +322,9 @@ taskptr_t process_create_usertask(
     return task;
 }
 
-enum pload_status process_load_elf(struct process *proc, void *elf, size_t size, taskptr_t *out) {
+kerrno_t process_load_elf(struct process *proc, void *elf, size_t size, taskptr_t *out) {
     if (size < sizeof(struct elf64_header)) {
-        return PLOAD_BAD_IMAGE;
+        return OPAL_EBADIMAGE;
     }
 
     struct elf64_header *hdr = elf;
@@ -336,41 +336,41 @@ enum pload_status process_load_elf(struct process *proc, void *elf, size_t size,
         .os_abi = ELF_OSABI_NONE,
     };
     if (memcmp(&hdr->ident, &ident, sizeof(ident)) != 0) {
-        return PLOAD_BAD_IMAGE;
+        return OPAL_EBADIMAGE;
     }
 
     if (hdr->version != ELF_VERSION) {
-        return PLOAD_BAD_IMAGE;
+        return OPAL_EBADIMAGE;
     }
     if (hdr->eh_size < sizeof(*hdr)) {
-        return PLOAD_BAD_IMAGE;
+        return OPAL_EBADIMAGE;
     }
 
     if (hdr->type != ELF_ET_EXEC) {
-        return PLOAD_NO_EXEC;
+        return OPAL_ENOEXEC;
     }
     if (hdr->machine != ELF_X86_64) {
-        return PLOAD_NO_EXEC;
+        return OPAL_ENOEXEC;
     }
 
     if (hdr->ph_ent_size < sizeof(struct elf64_phdr)) {
-        return PLOAD_BAD_IMAGE;
+        return OPAL_EBADIMAGE;
     }
     if (hdr->ph_off >= size) {
-        return PLOAD_BAD_IMAGE;
+        return OPAL_EBADIMAGE;
     }
     if (hdr->ph_num > (size - hdr->ph_off) / hdr->ph_ent_size) {
-        return PLOAD_BAD_IMAGE;
+        return OPAL_EBADIMAGE;
     }
     if (hdr->ph_ent_size % alignof(struct elf64_phdr) != 0) {
-        return PLOAD_BAD_IMAGE;
+        return OPAL_EBADIMAGE;
     }
 
     unsigned char *bytes = elf;
     virt_addr_t ustack_bottom = 0x0000400000000000;
 
     if (hdr->entry >= ustack_bottom) {
-        return PLOAD_NO_EXEC;
+        return OPAL_ENOEXEC;
     }
 
     for (uint32_t i = 0; i < hdr->ph_num; i++) {
@@ -387,49 +387,49 @@ enum pload_status process_load_elf(struct process *proc, void *elf, size_t size,
             case ELF_PT_SHLIB:
             case ELF_PT_TLS:
             default:
-                return PLOAD_NO_EXEC;
+                return OPAL_ENOEXEC;
         }
 
         if (phdr->filesz > phdr->memsz) {
-            return PLOAD_BAD_IMAGE;
+            return OPAL_EBADIMAGE;
         }
         if (phdr->offset > size) {
-            return PLOAD_BAD_IMAGE;
+            return OPAL_EBADIMAGE;
         }
         if (phdr->filesz > size - phdr->offset) {
-            return PLOAD_BAD_IMAGE;
+            return OPAL_EBADIMAGE;
         }
         if (phdr->vaddr + phdr->memsz < phdr->vaddr) {
-            return PLOAD_BAD_IMAGE;
+            return OPAL_EBADIMAGE;
         }
         if (phdr->align != 0 && !ispower2(phdr->align)) {
-            return PLOAD_BAD_IMAGE;
+            return OPAL_EBADIMAGE;
         }
         if (phdr->align > 1 && (phdr->vaddr % phdr->align != phdr->offset % phdr->align)) {
-            return PLOAD_BAD_IMAGE;
+            return OPAL_EBADIMAGE;
         }
         if (phdr->vaddr % PAGE_SIZE != 0 || phdr->offset % PAGE_SIZE != 0) {
-            return PLOAD_NO_EXEC;
+            return OPAL_ENOEXEC;
         }
         if (phdr->vaddr + phdr->memsz >= ustack_bottom) {
-            return PLOAD_NO_EXEC;
+            return OPAL_ENOEXEC;
         }
 
-        enum pload_status result = map_section(proc, bytes + phdr->offset, phdr->filesz, phdr->vaddr, phdr->memsz, phdr->flags);
-        if (result != PLOAD_OK) {
+        kerrno_t result = map_section(proc, bytes + phdr->offset, phdr->filesz, phdr->vaddr, phdr->memsz, phdr->flags);
+        if (result != OPAL_OK) {
             return result;
         }
     }
 
-    enum pload_status result =  map_section(proc, NULL, 0, ustack_bottom, PAGE_SIZE, ELF_PF_R | ELF_PF_W);
-    if (result != PLOAD_OK) {
+    kerrno_t result =  map_section(proc, NULL, 0, ustack_bottom, PAGE_SIZE, ELF_PF_R | ELF_PF_W);
+    if (result != OPAL_OK) {
         return result;
     }
 
     *out = process_create_usertask(proc, hdr->entry, ustack_bottom, PAGE_SIZE, TASK_PRIORITY_NORMAL);
     if (!out->ptr) {
-        return PLOAD_NOMEM;
+        return OPAL_ENOMEM;
     }
 
-    return PLOAD_OK;
+    return OPAL_OK;
 }

@@ -42,12 +42,12 @@
 1. FAT 디렉터리 생성 실패 시 클러스터 누수
    - 위치: `kernel/src/fs/fat/inode.c:240`, `kernel/src/fs/fat/inode.c:261`, `kernel/src/fs/fat/inode.c:287`
    - 내용: `table_alloc()` 성공 후 부모 dentry 쓰기 실패 시 할당된 `first_cluster`를 FAT에서 해제하지 않고 종료한다.
-   - 영향: I/O 오류 경로에서 클러스터 누적으로 장기적으로 `FS_ERR_NOSPC`를 유발할 수 있다.
+   - 영향: I/O 오류 경로에서 클러스터 누적으로 장기적으로 `OPAL_ENOSPC`를 유발할 수 있다.
    - 개선점: best-effort 롤백 추가, fsck 필요 로그.
 
 2. 새 디렉터리 초기화 쓰기 실패를 무시하고 성공 반환
    - 위치: `kernel/src/fs/fat/inode.c:275`, `kernel/src/fs/fat/inode.c:276`, `kernel/src/fs/fat/inode.c:279`, `kernel/src/fs/fat/inode.c:281`, `kernel/src/fs/fat/inode.c:285`
-   - 내용: `.`/`..`/end-marker dentry 쓰기 결과를 확인하지 않아 일부 실패해도 `FS_OK`로 반환한다.
+   - 내용: `.`/`..`/end-marker dentry 쓰기 결과를 확인하지 않아 일부 실패해도 `OPAL_OK`로 반환한다.
    - 영향: 부분 초기화된 디렉터리가 생성되어 이후 lookup/ls 동작이 비결정적으로 깨질 수 있다.
    - 개선점: ./.. 기록 후 부모 dentry 변경으로 broken directory 방지. fsck 필요 로그.
 
@@ -61,4 +61,4 @@
    - 위치: `kernel/src/fs/fat/sb.c:136`, `kernel/src/fs/fat/sb.c:141`, `kernel/src/fs/fat/sb.c:37`
    - 내용: `fat_mount()`는 VBR를 읽고 `parse_bpb()`만 수행하며, `vbr.buffer[510..511] == 0x55,0xAA` 확인이 없다.
    - 영향: 손상/비정상 섹터가 BPB 필드만 우연히 맞으면 FAT로 오인 마운트될 수 있다.
-   - 개선점: `fat_mount()`에서 `parse_bpb()` 이전에 시그니처를 먼저 검증하고, 불일치 시 `FS_ERR_NOENT` 반환.
+   - 개선점: `fat_mount()`에서 `parse_bpb()` 이전에 시그니처를 먼저 검증하고, 불일치 시 `OPAL_ENOENT` 반환.

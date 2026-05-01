@@ -208,7 +208,7 @@ int klog_format(uint16_t level, const char *fmt, ...) {
     va_list args;
     va_start(args, fmt);
 
-    int written = vsnprintf_s(buf, sizeof(buf), fmt, args);
+    int written = kvsnprintf(buf, sizeof(buf), fmt, args);
 
     if (written >= 0) {
         if ((size_t)written + 1 >= sizeof(buf)) {

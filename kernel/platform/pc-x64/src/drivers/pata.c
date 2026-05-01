@@ -321,7 +321,7 @@ static void complete_request(struct pata_port *port, bool success) {
     assert(port->active_req);
     assert(port->active_disk);
 
-    disk_req_queue_pop_fetched(&port->req_queue, success ? FS_OK : FS_ERR_IO);
+    disk_req_queue_pop_fetched(&port->req_queue, success ? OPAL_OK : OPAL_EIO);
 
     port->active_req = NULL;
     port->active_disk = NULL;

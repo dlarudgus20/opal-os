@@ -91,12 +91,12 @@ size_t bdev_list_count(void) {
     return count;
 }
 
-fs_status_t bdev_list_get(size_t index, struct block_device **dev_out) {
+kerrno_t bdev_list_get(size_t index, struct block_device **dev_out) {
     irqlock_t irqlock = irqlock_acquire();
 
     if (index >= g_devices_count) {
         irqlock_release(&irqlock);
-        return FS_ERR_NOENT;
+        return OPAL_ENOENT;
     }
 
     size_t rindex = g_devices_count - index - 1;
@@ -111,7 +111,7 @@ fs_status_t bdev_list_get(size_t index, struct block_device **dev_out) {
         dev->refcount++;
         irqlock_release(&irqlock);
         *dev_out = dev;
-        return FS_OK;
+        return OPAL_OK;
     }
 
     panic("unreachable!");

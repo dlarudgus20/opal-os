@@ -22,9 +22,9 @@ static void format_panic(
     char *buffer, size_t bufsz,
     const char *fmt, const char *file, const char *func, unsigned line, va_list args
 ) {
-    int prefix = snprintf_s(buffer, bufsz, "[%s:%u %s()] ", file, line, func);
+    int prefix = ksnprintf(buffer, bufsz, "[%s:%u %s()] ", file, line, func);
     if (0 <= prefix && (size_t)prefix < bufsz) {
-        vsnprintf_s(buffer + prefix, bufsz - prefix, fmt, args);
+        kvsnprintf(buffer + prefix, bufsz - prefix, fmt, args);
     }
 }
 
@@ -32,7 +32,7 @@ static void format_panic_basic(
     char *buffer, size_t bufsz,
     const char *fmt, const char *file, const char *func, unsigned line, const char *append
 ) {
-    snprintf_s(buffer, bufsz, "[%s:%u %s()] %s%s", file, line, func, fmt, append);
+    ksnprintf(buffer, bufsz, "[%s:%u %s()] %s%s", file, line, func, fmt, append);
 }
 
 static void print_panic(struct tty* tty, const char *msg) {
@@ -70,8 +70,8 @@ static void print_panic(struct tty* tty, const char *msg) {
 
     } else if (stage == PANICK_FORMAT_BASIC) {
         // arguments cannot be trusted
-        snprintf_s(buffer, sizeof(buffer),
-            "[panick_format] snprintf_s panicked fmt=%p file=%p func=%p line=%u",
+        ksnprintf(buffer, sizeof(buffer),
+            "[panick_format] ksnprintf panicked fmt=%p file=%p func=%p line=%u",
             fmt, file, func, line);
 
     } else if (stage == PANICK_PUTS) {

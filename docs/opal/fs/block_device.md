@@ -33,14 +33,14 @@
 - `block_device_read/write`는 범위 확인만 수행하고 실제 요청은 `disk_read/write`로 전달한다.
 - 실제 완료 대기/상태 전이는 disk 계층이 담당한다.
   - 대기: `disk_request_wait(req, timeout, &result)`
-  - 결과: `FS_OK`, `FS_ERR_IO`, `FS_ERR_BUSY`, `FS_ERR_NOMEM` 등
+  - 결과: `OPAL_OK`, `OPAL_EIO`, `OPAL_EBUSY`, `OPAL_ENOMEM` 등
 
 ## 동기화/상태 규약
 - 생성/삭제/조회와 refcount 갱신은 내부 `irqlock`으로 보호된다.
 - `refcount` 의미:
   - active 참조 개수
 - `block_device_destroy(dev)`는 `refcount == 1`일 때만 성공한다.
-- `bdev_list_get`은 `FS_OK` 시 내부적으로 retain된 포인터를 반환하며, 호출자는 `block_device_release`로 반납해야 한다.
+- `bdev_list_get`은 `OPAL_OK` 시 내부적으로 retain된 포인터를 반환하며, 호출자는 `block_device_release`로 반납해야 한다.
 
 ## 호출자 계약
 - 버퍼 수명:

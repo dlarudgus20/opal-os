@@ -5,7 +5,7 @@
 ## 기능
 - `mem*`, `str*` 계열 함수
 - `sort`
-- 포맷 엔진(`fmt`) + `snprintf_s`/`vsnprintf_s`
+- 포맷 엔진(`fmt`) + `ksnprintf`/`kvsnprintf`
 - assert/panic 매크로
 
 ## 문서
