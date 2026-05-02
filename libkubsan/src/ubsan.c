@@ -89,7 +89,7 @@ struct ubsan_vla_bound_data {
         column = loc->column;
     }
 
-    panic_format("ubsan: %s at %s:%u:%u", __FILE__, __func__, __LINE__, kind, file_name, line, column);
+    _panic_format("ubsan: %s at %s:%u:%u", __FILE__, __func__, __LINE__, kind, file_name, line, column);
 }
 
 #define UBSAN_HANDLER_LOC(name, kind, data_type) \

@@ -45,7 +45,7 @@ static void print_panic(struct tty* tty, const char *msg) {
     tty_puts(tty, "\n");
 }
 
-[[noreturn]] void panic_format(const char *fmt, const char *file, const char *func, unsigned line, ...) {
+[[noreturn]] void _panic_format(const char *fmt, const char *file, const char *func, unsigned line, ...) {
     static char buffer[4096];
     static size_t prev_len;
 

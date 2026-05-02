@@ -53,7 +53,7 @@
   - echo 경로는 `uart_suppress_tx()`로 TX IRQ 펌프를 잠시 억제해, `"\r\n"`이 쪼개져 순서가 뒤틀리는 경우를 줄인다
 
 ## panic 출력 모드
-- `panic_format`은 실제 panic 문자열 출력 직전에 `tty->ops->set_panic_mode`를 호출한다
+- `_panic_format`은 실제 panic 문자열 출력 직전에 `tty->ops->set_panic_mode`를 호출한다
 - UART TTY의 `set_panic_mode`는 `uart_enter_panic_mode()`를 호출해 UART를 polling 쓰기 경로로 전환한다
 - 이 경로는 panic 상황에서 IRQ 의존 없이 시리얼 출력이 진행되도록 하기 위한 것이다
 

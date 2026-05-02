@@ -90,7 +90,7 @@ int printf(const char *msg, ...) {
     return ret;
 }
 
-void panic_format(const char *msg, const char *file, const char *func, unsigned line, ...) {
+void _panic_format(const char *msg, const char *file, const char *func, unsigned line, ...) {
     struct fmt f = {
         .write_fn = fmt_putchar,
         .size = 0,

@@ -3,7 +3,7 @@
 #include <stdarg.h>
 #include <signal.h>
 
-[[noreturn]] void panic_format(const char *msg, const char *file, const char *func, unsigned line, ...) {
+[[noreturn]] void _panic_format(const char *msg, const char *file, const char *func, unsigned line, ...) {
     va_list args;
     va_start(args, line);
     fprintf(stderr, "[%s:%s:%d] ", file, func, line);
