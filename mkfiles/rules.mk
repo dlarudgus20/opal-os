@@ -145,6 +145,8 @@ $(REFS_STATIC_FILES) $(REFS_SHARED_FILES): .FORCE
 		$(MAKE) build -C ../$$dir IS_TEST_BUILD=$(IS_TEST) IS_TEST= || exit 1; \
 	done
 
+.NOTPARALLEL: $(REFS_STATIC_FILES) $(REFS_SHARED_FILES)
+
 clean:
 	-rm -rf $(BUILD_DIR)
 	-rm -rf res/gen
