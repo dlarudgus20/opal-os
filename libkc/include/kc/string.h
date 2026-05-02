@@ -20,11 +20,11 @@ char *strnchr(const char *s, int ch, size_t n);
 int strcmp(const char *lhs, const char *rhs);
 int strncmp(const char *lhs, const char *rhs, size_t n);
 char *strcpy(char *restrict dest, const char *restrict src);
-void strcpy_sized(char *restrict dest, size_t destsz, const char *restrict src);
-void strncpy_sized(char *restrict dest, size_t destsz, const char *restrict src, size_t n);
+void strscpy(char *restrict dest, size_t destsz, const char *restrict src);
+void strsncpy(char *restrict dest, size_t destsz, const char *restrict src, size_t n);
 char *strcat(char *restrict dest, const char *restrict src);
 char *strncat(char *restrict dest, const char *restrict src, size_t n);
-void strcat_sized(char *restrict dest, size_t destsz, const char *restrict src);
+void strscat(char *restrict dest, size_t destsz, const char *restrict src);
 
 #ifndef NO_BUILTIN_MACRO
 #define memcpy(dest, src, count)    __builtin_memcpy(dest, src, count)

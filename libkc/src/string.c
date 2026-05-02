@@ -240,7 +240,7 @@ char *strcpy(char *restrict dest, const char *restrict src) {
     return dest;
 }
 
-void strcpy_sized(char *restrict dest, size_t destsz, const char *restrict src) {
+void strscpy(char *restrict dest, size_t destsz, const char *restrict src) {
     if (destsz == 0) {
         return;
     }
@@ -253,7 +253,7 @@ void strcpy_sized(char *restrict dest, size_t destsz, const char *restrict src) 
     dest[i] = '\0';
 }
 
-void strncpy_sized(char *restrict dest, size_t destsz, const char *restrict src, size_t n) {
+void strsncpy(char *restrict dest, size_t destsz, const char *restrict src, size_t n) {
     if (destsz == 0) {
         return;
     }
@@ -295,7 +295,7 @@ char *strncat(char *restrict dest, const char *restrict src, size_t n) {
     return dest;
 }
 
-void strcat_sized(char *restrict dest, size_t destsz, const char *restrict src) {
+void strscat(char *restrict dest, size_t destsz, const char *restrict src) {
     size_t len = 0;
     for (; len < destsz && dest[len] != '\0'; len++) {}
     if (len == destsz) {

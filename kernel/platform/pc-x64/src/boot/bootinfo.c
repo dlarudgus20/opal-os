@@ -42,7 +42,7 @@ static void parse_mb2_cmdline(const struct mb_tag_string *strtag) {
     }
 
     const size_t maxsz = strtag->tag.size - offsetof(struct mb_tag_string, string);
-    strncpy_sized(g_cmdline, sizeof(g_cmdline), strtag->string, maxsz);
+    strsncpy(g_cmdline, sizeof(g_cmdline), strtag->string, maxsz);
 }
 
 static void parse_mb2_module(const struct mb_tag_module *module) {
@@ -57,7 +57,7 @@ static void parse_mb2_module(const struct mb_tag_module *module) {
     out->end = module->mod_end;
 
     const size_t maxsz = module->tag.size - offsetof(struct mb_tag_module, cmdline);
-    strncpy_sized(out->name, sizeof(out->name), module->cmdline, maxsz);
+    strsncpy(out->name, sizeof(out->name), module->cmdline, maxsz);
 }
 
 static void parse_mb2_mmap(const struct mb_tag_mmap *mmap) {

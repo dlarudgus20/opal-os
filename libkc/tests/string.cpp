@@ -122,96 +122,96 @@ TEST_F(LibkcTest, StrcpyCopiesIncludingTerminator) {
     EXPECT_STREQ(dst, "kernel");
 }
 
-TEST_F(LibkcTest, StrcpySizedCopiesAndTerminates) {
+TEST_F(LibkcTest, StrscpyCopiesAndTerminates) {
     char dst[8] = {'#', '#', '#', '#', '#', '#', '#', '#'};
-    kc.strcpy_sized(dst, sizeof(dst), "opal");
+    kc.strscpy(dst, sizeof(dst), "opal");
     EXPECT_STREQ(dst, "opal");
     EXPECT_EQ(dst[5], '#');
 }
 
-TEST_F(LibkcTest, StrcpySizedTruncatesToDestCapacity) {
+TEST_F(LibkcTest, StrscpyTruncatesToDestCapacity) {
     char dst[4] = {'#', '#', '#', '#'};
-    kc.strcpy_sized(dst, sizeof(dst), "kernel");
+    kc.strscpy(dst, sizeof(dst), "kernel");
     EXPECT_EQ(dst[0], 'k');
     EXPECT_EQ(dst[1], 'e');
     EXPECT_EQ(dst[2], 'r');
     EXPECT_EQ(dst[3], '\0');
 }
 
-TEST_F(LibkcTest, StrcpySizedNoopWhenDestSizeIsZero) {
+TEST_F(LibkcTest, StrscpyNoopWhenDestSizeIsZero) {
     char dst[3] = {'a', 'b', 'c'};
-    kc.strcpy_sized(dst, 0, "xyz");
+    kc.strscpy(dst, 0, "xyz");
     EXPECT_EQ(dst[0], 'a');
     EXPECT_EQ(dst[1], 'b');
     EXPECT_EQ(dst[2], 'c');
 }
 
-TEST_F(LibkcTest, StrncpySizedCopiesAndTerminates) {
+TEST_F(LibkcTest, StrsncpyCopiesAndTerminates) {
     char dst[8];
     for (size_t i = 0; i < sizeof(dst); i++) {
         dst[i] = '#';
     }
 
-    kc.strncpy_sized(dst, sizeof(dst), "kernel", 3);
+    kc.strsncpy(dst, sizeof(dst), "kernel", 3);
     EXPECT_STREQ(dst, "ker");
     EXPECT_EQ(dst[4], '#');
 }
 
-TEST_F(LibkcTest, StrncpySizedZeroCountWritesOnlyTerminator) {
+TEST_F(LibkcTest, StrsncpyZeroCountWritesOnlyTerminator) {
     char dst[8];
     for (size_t i = 0; i < sizeof(dst); i++) {
         dst[i] = '#';
     }
 
-    kc.strncpy_sized(dst, sizeof(dst), "kernel", 0);
+    kc.strsncpy(dst, sizeof(dst), "kernel", 0);
     EXPECT_EQ(dst[0], '\0');
     EXPECT_EQ(dst[1], '#');
 }
 
-TEST_F(LibkcTest, StrncpySizedClampsToCapacityMinusOne) {
+TEST_F(LibkcTest, StrsncpyClampsToCapacityMinusOne) {
     char dst[5] = {'#', '#', '#', '#', '#'};
 
-    kc.strncpy_sized(dst, sizeof(dst), "opal!", 8);
+    kc.strsncpy(dst, sizeof(dst), "opal!", 8);
     EXPECT_STREQ(dst, "opal");
     EXPECT_EQ(dst[4], '\0');
 }
 
-TEST_F(LibkcTest, StrncpySizedReturnsWhenDestSizeIsZero) {
+TEST_F(LibkcTest, StrsncpyReturnsWhenDestSizeIsZero) {
     char dst[3] = {'a', 'b', 'c'};
 
-    kc.strncpy_sized(dst, 0, "xyz", 3);
+    kc.strsncpy(dst, 0, "xyz", 3);
     EXPECT_EQ(dst[0], 'a');
     EXPECT_EQ(dst[1], 'b');
     EXPECT_EQ(dst[2], 'c');
 }
 
-TEST_F(LibkcTest, StrncpySizedEmptySourceWithOneByteDest) {
+TEST_F(LibkcTest, StrsncpyEmptySourceWithOneByteDest) {
     char dst[1] = {'#'};
-    kc.strncpy_sized(dst, sizeof(dst), "", 8);
+    kc.strsncpy(dst, sizeof(dst), "", 8);
     EXPECT_EQ(dst[0], '\0');
 }
 
-TEST_F(LibkcTest, StrncpySizedCopiesUntilSourceTerminatorWhenNIsLarge) {
+TEST_F(LibkcTest, StrsncpyCopiesUntilSourceTerminatorWhenNIsLarge) {
     char dst[16];
     for (size_t i = 0; i < sizeof(dst); i++) {
         dst[i] = '#';
     }
 
-    kc.strncpy_sized(dst, sizeof(dst), "opal", 32);
+    kc.strsncpy(dst, sizeof(dst), "opal", 32);
     EXPECT_STREQ(dst, "opal");
     EXPECT_EQ(dst[5], '#');
 }
 
-TEST_F(LibkcTest, StrncpySizedAllowsExactFitOfNPlusTerminator) {
+TEST_F(LibkcTest, StrsncpyAllowsExactFitOfNPlusTerminator) {
     char dst[5] = {'#', '#', '#', '#', '#'};
-    kc.strncpy_sized(dst, sizeof(dst), "opal!", 4);
+    kc.strsncpy(dst, sizeof(dst), "opal!", 4);
     EXPECT_STREQ(dst, "opal");
 }
 
-TEST_F(LibkcTest, StrncpySizedTruncatesWithoutPanic) {
+TEST_F(LibkcTest, StrsncpyTruncatesWithoutPanic) {
     char dst[4] = {'#', '#', '#', '#'};
 
-    kc.strncpy_sized(dst, sizeof(dst), "abcde", 5);
+    kc.strsncpy(dst, sizeof(dst), "abcde", 5);
     EXPECT_EQ(dst[0], 'a');
     EXPECT_EQ(dst[1], 'b');
     EXPECT_EQ(dst[2], 'c');
@@ -234,22 +234,22 @@ TEST_F(LibkcTest, StrncatRespectsCountAndTerminates) {
     EXPECT_STREQ(dst, "opalk");
 }
 
-TEST_F(LibkcTest, StrcatSizedAppendsWithinCapacity) {
+TEST_F(LibkcTest, StrscatAppendsWithinCapacity) {
     char dst[8] = "opa";
-    kc.strcat_sized(dst, sizeof(dst), "l");
+    kc.strscat(dst, sizeof(dst), "l");
     EXPECT_STREQ(dst, "opal");
 }
 
-TEST_F(LibkcTest, StrcatSizedTruncatesSafely) {
+TEST_F(LibkcTest, StrscatTruncatesSafely) {
     char dst[8] = "opal";
-    kc.strcat_sized(dst, sizeof(dst), "-kernel");
+    kc.strscat(dst, sizeof(dst), "-kernel");
     EXPECT_STREQ(dst, "opal-ke");
     EXPECT_EQ(dst[7], '\0');
 }
 
-TEST_F(LibkcTest, StrcatSizedNoTerminatorInDestLeavesBufferUntouched) {
+TEST_F(LibkcTest, StrscatNoTerminatorInDestLeavesBufferUntouched) {
     char dst[4] = {'a', 'b', 'c', 'd'};
-    kc.strcat_sized(dst, sizeof(dst), "x");
+    kc.strscat(dst, sizeof(dst), "x");
     EXPECT_EQ(dst[0], 'a');
     EXPECT_EQ(dst[1], 'b');
     EXPECT_EQ(dst[2], 'c');

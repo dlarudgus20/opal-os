@@ -19,11 +19,11 @@ struct LibkcApi {
     int (*strcmp)(const char *, const char *);
     int (*strncmp)(const char *, const char *, size_t);
     char *(*strcpy)(char *, const char *);
-    void (*strcpy_sized)(char *, size_t, const char *);
-    void (*strncpy_sized)(char *, size_t, const char *, size_t);
+    void (*strscpy)(char *, size_t, const char *);
+    void (*strsncpy)(char *, size_t, const char *, size_t);
     char *(*strcat)(char *, const char *);
     char *(*strncat)(char *, const char *, size_t);
-    void (*strcat_sized)(char *, size_t, const char *);
+    void (*strscat)(char *, size_t, const char *);
     int (*ksnprintf)(char *, size_t, const char *, ...);
 };
 

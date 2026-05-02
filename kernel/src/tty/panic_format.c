@@ -92,7 +92,7 @@ static void print_panic(struct tty* tty, const char *msg) {
     } else {
         // PANICK_PUTS_FORMAT: rollback
         buffer[prev_len] = '\0';
-        strcat_sized(buffer + prev_len, sizeof(buffer) - prev_len,
+        strscat(buffer + prev_len, sizeof(buffer) - prev_len,
             "\n+ [panick_format] formatting panicked");
     }
 
