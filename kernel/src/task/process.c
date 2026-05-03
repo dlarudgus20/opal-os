@@ -363,13 +363,13 @@ kerrno_t process_load_elf(struct process *proc, void *elf, size_t size, taskptr_
         }
 
         kerrno_t result = map_section(proc, bytes + phdr->offset, phdr->filesz, phdr->vaddr, phdr->memsz, phdr->flags);
-        if (result != OPAL_OK) {
+        if (!kerrno_ok(result)) {
             return result;
         }
     }
 
     kerrno_t result =  map_section(proc, NULL, 0, ustack_bottom, PAGE_SIZE, ELF_PF_R | ELF_PF_W);
-    if (result != OPAL_OK) {
+    if (!kerrno_ok(result)) {
         return result;
     }
 

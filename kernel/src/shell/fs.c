@@ -15,13 +15,13 @@
 
 static bool parse_bdev_arg(const char *cmd, const char *arg, struct block_device **dev_out) {
     unsigned long bdev_ul = 0;
-    if (kstrtoul_exact(arg, 10, ULONG_MAX, &bdev_ul) != OPAL_OK) {
+    if (!kerrno_ok(kstrtoul_exact(arg, 10, ULONG_MAX, &bdev_ul))) {
         tty0_printf("%s: invalid bdev '%s'\n", cmd, arg);
         return false;
     }
 
     kerrno_t result = bdev_list_get((size_t)bdev_ul, dev_out);
-    if (result != OPAL_OK) {
+    if (!kerrno_ok(result)) {
         tty0_printf("%s: invalid bdev '%s'\n", cmd, arg);
         return false;
     }
@@ -32,14 +32,14 @@ static bool parse_bdev_arg(const char *cmd, const char *arg, struct block_device
 static kerrno_t mount_fat(struct block_device *dev, const char *mount_path) {
     struct superblock *sb = NULL;
     kerrno_t result = fat_mount(dev, &sb);
-    if (result != OPAL_OK) {
+    if (!kerrno_ok(result)) {
         block_device_release(dev);
         return result;
     }
 
     struct path_entry *mounted;
     result = vfs_mount_path(NULL, mount_path, sb, &mounted);
-    if (result != OPAL_OK) {
+    if (!kerrno_ok(result)) {
         sb->ops->umount(sb);
         return result;
     }
@@ -62,13 +62,13 @@ static kerrno_t mount_cpio(const char *source, const char *mount_path) {
 
     struct superblock *sb = NULL;
     kerrno_t result = cpio_mount(cpio, len, &sb);
-    if (result != OPAL_OK) {
+    if (!kerrno_ok(result)) {
         return result;
     }
 
     struct path_entry *mounted;
     result = vfs_mount_path(NULL, mount_path, sb, &mounted);
-    if (result != OPAL_OK) {
+    if (!kerrno_ok(result)) {
         sb->ops->umount(sb);
         return result;
     }
@@ -79,7 +79,7 @@ static kerrno_t mount_cpio(const char *source, const char *mount_path) {
 static kerrno_t mkfs_fat(struct block_device *dev, bool auto_mount, const char *mount_path) {
     struct superblock *sb = NULL;
     kerrno_t result = fat_format(dev, &sb);
-    if (result != OPAL_OK) {
+    if (!kerrno_ok(result)) {
         block_device_release(dev);
         return result;
     }
@@ -87,7 +87,7 @@ static kerrno_t mkfs_fat(struct block_device *dev, bool auto_mount, const char *
     if (auto_mount) {
         struct path_entry *mounted;
         result = vfs_mount_path(NULL, mount_path, sb, &mounted);
-        if (result != OPAL_OK) {
+        if (!kerrno_ok(result)) {
             sb->ops->umount(sb);
             return result;
         }
@@ -133,12 +133,12 @@ int shell_cmd_cat(int argc, char **argv) {
     kerrno_t result;
     if (write_mode) {
         result = vfs_create_path(NULL, path, 0, true, &file);
-        if (result != OPAL_OK) {
+        if (!kerrno_ok(result)) {
             return print_cat_error("lookup/create", result);
         }
     } else {
         result = vfs_open_path(NULL, path, &file);
-        if (result != OPAL_OK) {
+        if (!kerrno_ok(result)) {
             return print_cat_error("open", result);
         }
     }
@@ -166,7 +166,7 @@ int shell_cmd_cat(int argc, char **argv) {
             rc = print_cat_error("truncate", OPAL_ENOTSUPP);
         } else {
             result = file->ops->truncate(file, 0);
-            if (result != OPAL_OK) {
+            if (!kerrno_ok(result)) {
                 rc = print_cat_error("truncate", result);
             }
         }
@@ -219,7 +219,7 @@ int shell_cmd_ls(int argc, char **argv) {
     int ec = 0;
     struct path_entry *pe = NULL;
     kerrno_t result = vfs_lookup_path(NULL, path, &pe, NULL);
-    if (result != OPAL_OK) {
+    if (!kerrno_ok(result)) {
         ec = print_ls_error("lookup_path", result);
         goto end;
     }
@@ -237,7 +237,7 @@ int shell_cmd_ls(int argc, char **argv) {
     }
 
     result = pe->inode->ops->lookup(pe->inode, pe);
-    if (result != OPAL_OK) {
+    if (!kerrno_ok(result)) {
         ec = print_ls_error("lookup", result);
         goto end;
     }
@@ -267,7 +267,7 @@ int shell_cmd_mkdir(int argc, char **argv) {
 
     struct file *file = NULL;
     kerrno_t result = vfs_create_path(NULL, argv[1], FS_INODE_DIR, false, &file);
-    if (result != OPAL_OK) {
+    if (!kerrno_ok(result)) {
         return print_mkdir_error("create", result);
     }
 
@@ -295,7 +295,7 @@ int shell_cmd_mount(int argc, char **argv) {
         return 1;
     }
 
-    if (result != OPAL_OK) {
+    if (!kerrno_ok(result)) {
         tty0_printf("mount: error %s (%d)\n", kerrno_str(result), result);
         return 1;
     }
@@ -332,7 +332,7 @@ int shell_cmd_mkfs(int argc, char **argv) {
         return 1;
     }
 
-    if (result != OPAL_OK) {
+    if (!kerrno_ok(result)) {
         tty0_printf("mkfs: error %s (%d)\n", kerrno_str(result), result);
         return 1;
     }

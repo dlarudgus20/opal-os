@@ -98,7 +98,7 @@ kerrno_t kstrtoul(const char *str, int base, char **endptr, unsigned long *resul
 kerrno_t kstrtoul_exact(const char *str, int base, unsigned long max, unsigned long *result) {
     char *endptr;
     kerrno_t err = kstrtoul(str, base, &endptr, result);
-    if (err == OPAL_OK) {
+    if (kerrno_ok(err)) {
         if (*endptr != '\0') {
             return OPAL_EINVAL;
         }

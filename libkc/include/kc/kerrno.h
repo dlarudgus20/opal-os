@@ -28,4 +28,7 @@ typedef enum kerrno kerrno_t;
 
 const char *kerrno_str(kerrno_t err);
 
+// implemented as macro to comfort gcc analyzer
+#define kerrno_ok(err) ((err) >= 0)
+
 #endif

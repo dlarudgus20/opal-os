@@ -35,7 +35,7 @@ static sysret_t syscall(enum syscall_index index, uint64_t arg0, uint64_t arg1, 
 
 void task_exit(void) {
     syscall(SYS_TASK_EXIT, 0, 0, 0);
-    while (1) {}
+    unreachable();
 }
 
 int putchar(int ch) {

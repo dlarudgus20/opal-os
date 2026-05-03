@@ -39,10 +39,10 @@ int shell_cmd_rwsec(int argc, char **argv) {
 
     int expected_argc = is_write ? 5 : 4;
     if (argc != expected_argc
-        || kstrtoul_exact(argv[1], 10, ULONG_MAX, &drive_ul) != OPAL_OK
-        || kstrtoul_exact(argv[2], 10, ULONG_MAX, &lba_ul) != OPAL_OK
-        || kstrtoul_exact(argv[3], 10, ULONG_MAX, &count_ul) != OPAL_OK
-        || (is_write && kstrtoul_exact(argv[4], 0, ULONG_MAX, &fill_ul) != OPAL_OK)
+        || !kerrno_ok(kstrtoul_exact(argv[1], 10, ULONG_MAX, &drive_ul))
+        || !kerrno_ok(kstrtoul_exact(argv[2], 10, ULONG_MAX, &lba_ul))
+        || !kerrno_ok(kstrtoul_exact(argv[3], 10, ULONG_MAX, &count_ul))
+        || (is_write && !kerrno_ok(kstrtoul_exact(argv[4], 0, ULONG_MAX, &fill_ul)))
     ) {
         tty0_puts("usage: readsec [drive] [index] [count]\n");
         tty0_puts("       writesec [drive] [index] [count] [value]\n");
@@ -50,7 +50,7 @@ int shell_cmd_rwsec(int argc, char **argv) {
     }
 
     struct block_device *dev;
-    if (bdev_list_get((size_t)drive_ul, &dev) != OPAL_OK) {
+    if (!kerrno_ok(bdev_list_get((size_t)drive_ul, &dev))) {
         size_t count = bdev_list_count();
         tty0_printf("%s: invalid device %lu (expected 0..%zu)\n",
             is_write ? "writesec" : "readsec", drive_ul, count ? count - 1 : 0);
@@ -114,7 +114,7 @@ int shell_cmd_rwsec(int argc, char **argv) {
         tty0_printf("%s: timeout\n", is_write ? "writesec" : "readsec");
         goto err_buf;
     }
-    if (io_result != OPAL_OK) {
+    if (!kerrno_ok(io_result)) {
         tty0_printf("%s: io failed (dev=%lu lba=%u count=%u status=%s (%d))\n",
             is_write ? "writesec" : "readsec", drive_ul, lba, count, kerrno_str(io_result), io_result);
         goto err_buf;
@@ -161,7 +161,7 @@ static int submit_and_wait(
         tty0_printf("%s: %s timeout\n", cmd_name, phase);
         return 1;
     }
-    if (io_result != OPAL_OK) {
+    if (!kerrno_ok(io_result)) {
         tty0_printf("%s: %s io failed (dev=%lu lba=%u count=%u status=%s (%d))\n",
             cmd_name, phase, dev_index, lba, count, kerrno_str(io_result), io_result);
         return 1;
@@ -195,17 +195,17 @@ int shell_cmd_testrwsec(int argc, char **argv) {
         return 1;
     }
 
-    if (kstrtoul_exact(argv[1], 10, ULONG_MAX, &drive_ul) != OPAL_OK) {
+    if (!kerrno_ok(kstrtoul_exact(argv[1], 10, ULONG_MAX, &drive_ul))) {
         tty0_printf("testrwsec: invalid drive\n");
         return 1;
     }
-    if (argc == 3 && kstrtoul_exact(argv[2], 10, ULONG_MAX, &lba_ul) != OPAL_OK) {
+    if (argc == 3 && !kerrno_ok(kstrtoul_exact(argv[2], 10, ULONG_MAX, &lba_ul))) {
         tty0_printf("testrwsec: invalid LBA\n");
         return 1;
     }
 
     struct block_device *dev;
-    if (bdev_list_get((size_t)drive_ul, &dev) != OPAL_OK) {
+    if (!kerrno_ok(bdev_list_get((size_t)drive_ul, &dev))) {
         size_t count = bdev_list_count();
         tty0_printf("testrwsec: invalid device %lu (expected 0..%zu)\n",
             drive_ul, count ? count - 1 : 0);

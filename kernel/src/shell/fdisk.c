@@ -12,7 +12,7 @@
 
 static struct disk *parse_disk_arg(const char *cmd, const char *arg, unsigned long *disk_ul_out) {
     unsigned long disk_ul = 0;
-    if (kstrtoul_exact(arg, 10, ULONG_MAX, &disk_ul) != OPAL_OK) {
+    if (!kerrno_ok(kstrtoul_exact(arg, 10, ULONG_MAX, &disk_ul))) {
         tty0_printf("%s: invalid disk\n", cmd);
         return NULL;
     }
@@ -59,13 +59,13 @@ int shell_cmd_diskreset(int argc, char **argv) {
     fs_completion_init(&comp);
     disk_reset_partition(disk, &comp);
     fs_completion_wait(&comp, TIMEOUT_INFINITY);
-    if (comp.result == OPAL_OK) {
-        tty0_puts("diskreset: done\n");
-        return 0;
-    } else {
+    if (!kerrno_ok(comp.result)) {
         tty0_printf("diskreset: error %s (%d)\n", kerrno_str(comp.result), comp.result);
         return 1;
     }
+
+    tty0_puts("diskreset: done\n");
+    return 0;
 }
 
 int shell_cmd_diskrescan(int argc, char **argv) {
@@ -85,13 +85,13 @@ int shell_cmd_diskrescan(int argc, char **argv) {
     fs_completion_init(&comp);
     disk_rescan_partition(disk, &comp);
     fs_completion_wait(&comp, TIMEOUT_INFINITY);
-    if (comp.result == OPAL_OK) {
-        tty0_printf("diskrescan: done (%s)\n", disk->name ? disk->name : "-");
-        return 0;
+    if (!kerrno_ok(comp.result)) {
+        tty0_printf("diskrescan: error %s (%d)\n", kerrno_str(comp.result), comp.result);
+        return 1;
     }
 
-    tty0_printf("diskrescan: error %s (%d)\n", kerrno_str(comp.result), comp.result);
-    return 1;
+    tty0_printf("diskrescan: done (%s)\n", disk->name ? disk->name : "-");
+    return 0;
 }
 
 static int lspart_print_disk(size_t disk_idx, struct disk *disk) {
@@ -201,10 +201,10 @@ int shell_cmd_mkpart(int argc, char **argv) {
 
     if (argc != 6
         || !parse_disk_arg("mkpart", argv[1], &disk_ul)
-        || kstrtoul_exact(argv[2], 10, ULONG_MAX, &part_ul) != OPAL_OK
-        || kstrtoul_exact(argv[3], 10, ULONG_MAX, &lba_ul) != OPAL_OK
-        || kstrtoul_exact(argv[4], 10, ULONG_MAX, &sectors_ul) != OPAL_OK
-        || kstrtoul_exact(argv[5], 0, ULONG_MAX, &type_ul) != OPAL_OK
+        || !kerrno_ok(kstrtoul_exact(argv[2], 10, ULONG_MAX, &part_ul))
+        || !kerrno_ok(kstrtoul_exact(argv[3], 10, ULONG_MAX, &lba_ul))
+        || !kerrno_ok(kstrtoul_exact(argv[4], 10, ULONG_MAX, &sectors_ul))
+        || !kerrno_ok(kstrtoul_exact(argv[5], 0, ULONG_MAX, &type_ul))
     ) {
         tty0_puts("usage: mkpart [disk] [part] [lba] [sectors] [type]\n");
         return 1;
@@ -222,7 +222,7 @@ int shell_cmd_mkpart(int argc, char **argv) {
     fs_completion_init(&comp);
     disk_create_partition(disk, (size_t)part_ul, lba_ul, sectors_ul, (uint8_t)type_ul, &comp);
     fs_completion_wait(&comp, TIMEOUT_INFINITY);
-    if (comp.result != OPAL_OK) {
+    if (!kerrno_ok(comp.result)) {
         tty0_printf("mkpart: error %s (%d)\n", kerrno_str(comp.result), comp.result);
         return 1;
     }
@@ -237,7 +237,7 @@ int shell_cmd_rmpart(int argc, char **argv) {
 
     if (argc != 3
         || !parse_disk_arg("rmpart", argv[1], &disk_ul)
-        || kstrtoul_exact(argv[2], 10, ULONG_MAX, &part_ul) != OPAL_OK
+        || !kerrno_ok(kstrtoul_exact(argv[2], 10, ULONG_MAX, &part_ul))
     ) {
         tty0_puts("usage: rmpart [disk] [part]\n");
         return 1;
@@ -250,7 +250,7 @@ int shell_cmd_rmpart(int argc, char **argv) {
     fs_completion_init(&comp);
     disk_remove_partition(disk, (size_t)part_ul, &comp);
     fs_completion_wait(&comp, TIMEOUT_INFINITY);
-    if (comp.result != OPAL_OK) {
+    if (!kerrno_ok(comp.result)) {
         tty0_printf("rmpart: error %s (%d)\n", kerrno_str(comp.result), comp.result);
         return 1;
     }

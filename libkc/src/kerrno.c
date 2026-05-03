@@ -1,7 +1,7 @@
 #include <kc/kerrno.h>
 
 const char *kerrno_str(kerrno_t err) {
-    if (err >= 0) {
+    if (kerrno_ok(err)) {
         return "OPAL_OK";
     }
 

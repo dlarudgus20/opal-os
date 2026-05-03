@@ -33,7 +33,7 @@ kerrno_t vfs_mount_path(struct path_entry *pe, const char *path, struct superblo
     }
 
     result = path_entry_mount_super(mount_pe, sb);
-    if (result != OPAL_OK) {
+    if (!kerrno_ok(result)) {
         path_entry_release(mount_pe);
         return result;
     }
@@ -90,7 +90,7 @@ kerrno_t vfs_lookup_path(struct path_entry *pe, const char *path, struct path_en
             *unresolved_path = subpath;
         }
 
-        if (result != OPAL_OK) {
+        if (!kerrno_ok(result)) {
             return result;
         }
     }
@@ -117,7 +117,7 @@ kerrno_t vfs_create_path(struct path_entry *pe, const char *path, enum inode_fla
 kerrno_t vfs_open_path(struct path_entry *pe, const char *path, struct file **file_out) {
     struct path_entry *found;
     kerrno_t result = vfs_lookup_path(pe, path, &found, NULL);
-    if (result != OPAL_OK) {
+    if (!kerrno_ok(result)) {
         if (found) {
             path_entry_release(found);
         }
@@ -245,7 +245,7 @@ kerrno_t path_entry_lookup(struct path_entry *pe, const char *name, size_t len, 
     }
 
     kerrno_t result = pe->inode->ops->lookup(pe->inode, pe);
-    if (result != OPAL_OK) {
+    if (!kerrno_ok(result)) {
         *found = NULL;
         return result;
     }
@@ -268,7 +268,7 @@ kerrno_t path_entry_create(struct path_entry *pe, enum inode_flags flags, bool t
 
         struct inode *pinode = pe->parent->inode;
         result = pinode->ops->create(pinode, pe, flags);
-        if (result != OPAL_OK) {
+        if (!kerrno_ok(result)) {
             return result;
         }
 
@@ -283,11 +283,11 @@ kerrno_t path_entry_create(struct path_entry *pe, enum inode_flags flags, bool t
         struct inode *inode = pe->inode;
         struct file *file;
         result = inode->ops->open(inode, &file);
-        if (result != OPAL_OK) {
+        if (!kerrno_ok(result)) {
             return result;
         }
         result = file->ops->truncate(file, 0);
-        if (result != OPAL_OK) {
+        if (!kerrno_ok(result)) {
             file_release(file);
             return result;
         }

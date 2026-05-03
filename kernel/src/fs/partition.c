@@ -253,7 +253,7 @@ static co_state_t co_reset_handler(struct coroutine *co) {
 
     struct disk *disk = ctx->req->disk;
     disk_request_wait(ctx->req, TIMEOUT_INFINITY, &result);
-    if (result != OPAL_OK) {
+    if (!kerrno_ok(result)) {
         kerror("reset_partition: fs error %d", result);
         goto err;
     }
@@ -372,7 +372,7 @@ static void modify_partition(
         memset(mbr_entry, 0, sizeof(*table));
     } else {
         kerrno_t r = apply_create_part(disk, table, index, lba, sectors, type);
-        if (r != OPAL_OK) {
+        if (!kerrno_ok(r)) {
             result = r;
             goto err_name;
         }
@@ -429,7 +429,7 @@ static co_state_t co_modify_handler(struct coroutine *co) {
 
     irqlock_t irqlock = irqlock_acquire();
 
-    if (result != OPAL_OK) {
+    if (!kerrno_ok(result)) {
         kerror("modify_partition: fs error %d", result);
         goto err_io;
     }

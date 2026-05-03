@@ -39,7 +39,7 @@ static intptr_t syscall_open(uintptr_t arg1) {
     struct file *file;
     fs_ssize_t result = vfs_open_path(NULL, kpath, &file);
     kfree(kpath, len + 1);
-    if (result != OPAL_OK) {
+    if (!kerrno_ok(result)) {
         return result;
     }
 

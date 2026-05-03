@@ -88,9 +88,8 @@ ifeq ($(IS_TEST_BUILD), 1)
 -include $(TEST_DEPENDS)
 endif
 
-PHONY_TARGETS += all clean fullclean gen clean-gen build-test test clean-test
-.PHONY: $(PHONY_TARGETS) .FORCE
-.FORCE:
+PHONY_TARGETS += all clean fullclean gen clean-gen build-test test clean-test refs
+.PHONY: $(PHONY_TARGETS)
 
 $(BUILD_DIR)/%.c.o: %.c
 	@mkdir -p $(dir $@)
@@ -140,12 +139,12 @@ endif
 	$(TOOLSET_NM) $(NM_FLAGS) $@ > $(BUILD_DIR)/test.nm
 endif
 
-$(REFS_STATIC_FILES) $(REFS_SHARED_FILES): .FORCE
+$(REFS_STATIC_FILES) $(REFS_SHARED_FILES): refs
+
+refs:
 	for dir in $(STATIC_REFS) $(SHARED_REFS); do \
 		$(MAKE) build -C ../$$dir IS_TEST_BUILD=$(IS_TEST) IS_TEST= || exit 1; \
 	done
-
-.NOTPARALLEL: $(REFS_STATIC_FILES) $(REFS_SHARED_FILES)
 
 clean:
 	-rm -rf $(BUILD_DIR)

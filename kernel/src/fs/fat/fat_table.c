@@ -52,7 +52,7 @@ static kerrno_t fat_table_readall(struct fat_table *file) {
     uint32_t lsec = file->sb->layout.bytes_per_sector / DISK_SECTOR_SIZE;
     uint32_t fat_offset = file->sb->layout.reserved_sectors * lsec;
     kerrno_t result = fat_read_sectors(file->sb->bdev, fat_offset, fat_sectors, file->buffer);
-    if (result != OPAL_OK) {
+    if (!kerrno_ok(result)) {
         kfree(file->buffer, fat_bytes);
         file->buffer = NULL;
     }
@@ -75,7 +75,7 @@ static fs_ssize_t fat_table_read(struct file *base, fs_size_t pos, void *buffer,
     }
 
     kerrno_t result = fat_table_readall(file);
-    if (result != OPAL_OK) {
+    if (!kerrno_ok(result)) {
         return result;
     }
 
@@ -109,7 +109,7 @@ static fs_ssize_t fat_table_write(struct file *base, fs_size_t pos, const void *
     }
 
     kerrno_t result = fat_table_readall(file);
-    if (result != OPAL_OK) {
+    if (!kerrno_ok(result)) {
         return result;
     }
 
@@ -125,7 +125,7 @@ static fs_ssize_t fat_table_write(struct file *base, fs_size_t pos, const void *
     for (uint8_t fati = 0; fati < sb->layout.num_fats; fati++) {
         uint32_t lba = fat_offset + fat_sectors * fati;
         result = fat_write_sectors(sb->bdev, lba + sector_pos, sectors, file->buffer + front_pos);
-        if (result != OPAL_OK) {
+        if (!kerrno_ok(result)) {
             return result;
         }
     }
@@ -136,7 +136,7 @@ static fs_ssize_t fat_table_write(struct file *base, fs_size_t pos, const void *
 kerrno_t fat_table_append(struct fat_table *file, uint32_t cluster, uint32_t *new_cluster) {
     uint32_t entry;
     kerrno_t result = file->ops->table_at(file, cluster, &entry);
-    if (result != OPAL_OK) {
+    if (!kerrno_ok(result)) {
         return result;
     }
 
@@ -146,12 +146,12 @@ kerrno_t fat_table_append(struct fat_table *file, uint32_t cluster, uint32_t *ne
     }
 
     result = file->ops->table_alloc(file, new_cluster);
-    if (result != OPAL_OK) {
+    if (!kerrno_ok(result)) {
         return result;
     }
 
     result = file->ops->table_set(file, cluster, *new_cluster);
-    if (result != OPAL_OK) {
+    if (!kerrno_ok(result)) {
         file->ops->table_set(file, *new_cluster, 0);
     }
     return result;
@@ -206,7 +206,7 @@ static kerrno_t fat12_table_set(struct fat_table *file, uint32_t cluster, uint32
 
 static kerrno_t fat12_table_alloc(struct fat_table *file, uint32_t *cluster_out) {
     kerrno_t result = fat_table_readall(file);
-    if (result != OPAL_OK) {
+    if (!kerrno_ok(result)) {
         return result;
     }
 
@@ -265,7 +265,7 @@ static kerrno_t fat16_table_set(struct fat_table *file, uint32_t cluster, uint32
 
 static kerrno_t fat16_table_alloc(struct fat_table *file, uint32_t *cluster_out) {
     kerrno_t result = fat_table_readall(file);
-    if (result != OPAL_OK) {
+    if (!kerrno_ok(result)) {
         return result;
     }
 
@@ -308,7 +308,7 @@ static kerrno_t fat32_table_set(struct fat_table *file, uint32_t cluster, uint32
 
 static kerrno_t fat32_table_alloc(struct fat_table *file, uint32_t *cluster_out) {
     kerrno_t result = fat_table_readall(file);
-    if (result != OPAL_OK) {
+    if (!kerrno_ok(result)) {
         return result;
     }
 

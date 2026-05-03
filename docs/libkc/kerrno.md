@@ -14,18 +14,19 @@
   - 성공
 - `OPAL_E* < 0`:
   - 실패
-- 호출자는 `OPAL_OK` 여부로 성공/실패를 판정하고, 실패 시 코드를 그대로 상위로 전파하는 패턴을 사용합니다.
+- 호출자는 `kerrno_ok(err)`로 성공/실패를 판정하고, 실패 시 코드를 그대로 상위로 전파하는 패턴을 사용합니다.
 
-## 문자열 변환
-- API: `const char *kerrno_str(kerrno_t err);`
-- 구현: `libkc/src/kerrno.c`
-- 용도:
+## API
+- `bool kerrno_ok(kerrno_t err)`
+  - `#define kerrno_ok(err) ((err) >= 0)`
+  - 성공 여부 반환
+- `const char *kerrno_str(kerrno_t err);`
   - `tty0_printf(..., kerrno_str(err), err)` 형태의 로그/진단 출력
 
 ## 사용 예시
 ```c
 kerrno_t r = some_op(...);
-if (r != OPAL_OK) {
+if (!kerrno_ok(r)) {
     tty0_printf("op failed: %s (%d)\n", kerrno_str(r), r);
 }
 ```

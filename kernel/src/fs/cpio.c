@@ -228,7 +228,7 @@ static kerrno_t add_archive_entry(
 
         if (!is_last) {
             kerrno_t result = ensure_dir_child(sb, node, path + begin, seg_len, &node);
-            if (result != OPAL_OK) {
+            if (!kerrno_ok(result)) {
                 return result;
             }
             i = next;
@@ -278,7 +278,7 @@ static kerrno_t cpio_inode_lookup(struct inode *inode, struct path_entry *pe) {
 
         struct path_entry *out = NULL;
         kerrno_t result = path_entry_add(pe, &child->inode, &hs, &out);
-        if (result != OPAL_OK) {
+        if (!kerrno_ok(result)) {
             hstr_free(&hs);
             if (result != OPAL_EEXIST) {
                 return result;
@@ -449,7 +449,7 @@ kerrno_t cpio_mount(void *cpio, size_t len, struct superblock **sb_out) {
         }
 
         result = add_archive_entry(sb, name, name_len, kind == CPIO_S_IFDIR, data, filesize);
-        if (result != OPAL_OK) {
+        if (!kerrno_ok(result)) {
             goto err;
         }
     }

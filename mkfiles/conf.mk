@@ -71,6 +71,10 @@ TOOLSET_NASM       ?= nasm
 CFLAGS             += -mno-red-zone -mcmodel=kernel -mno-mmx -mno-sse -mno-sse2 $(DEFINE_FLAGS) $(WARNING_FLAGS)
 LDFLAGS            += -nostdlib -Wl,--gc-sections -Wl,--fatal-warning
 
+ifeq ($(CONFIG), debug)
+CFLAGS             += -fanalyzer
+endif
+
 else
 
 DEFINE_FLAGS       += -DOPAL_TEST
