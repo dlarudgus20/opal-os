@@ -3,25 +3,30 @@
 #include "syscall.h"
 
 int main(void) {
-    puts("opsh readc test");
     int fd = open("/test.txt");
     if (fd < 0) {
-        puts("open failed");
+        puts("opsh: open failed");
         return 1;
     }
 
-    int c0 = readc(fd, 0);
-    int c1 = readc(fd, 1);
-    int ceof = readc(fd, 0x7fffffff);
-    printf("readc: c0=%d c1=%d eof=%d\n", c0, c1, ceof);
+    int ec = 0;
+    for (size_t pos = 0;; pos++) {
+        int ch = readc(fd, pos);
+        if (ch < 0) {
+            break;
+        }
+        if (putchar(ch) < 0) {
+            puts("\nopsh: i/o failed");
+            ec = 1;
+            goto end;
+        }
+    }
+    putchar('\n');
 
+end:
     if (close(fd) < 0) {
-        puts("close failed");
-        return 1;
+        puts("opsh: close failed");
+        ec = 1;
     }
-    int cclosed = readc(fd, 0);
-    printf("readc after close=%d\n", cclosed);
-
-    puts("good");
-    return 0;
+    return ec;
 }

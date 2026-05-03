@@ -7,17 +7,13 @@
 #include <collections/rbtree.h>
 
 #include <opal/task/task.h>
-#include <opal/utils/dynarray.h>
+#include <opal/task/filetable.h>
 #include <opal/utils/vmtree.h>
 
 #define PID_INVALID -1
-#define FD_INVALID -1
-#define FD_MAX INT32_MAX
 
 typedef int pid_t;
-typedef int fd_t;
 
-struct file;
 struct pagetable;
 
 struct process {
@@ -30,7 +26,7 @@ struct process {
     struct vmtree vmtree;
     struct pagetable *pagetable;
 
-    struct dynarray open_files;
+    struct filetable open_files;
 };
 
 void proc_tree_init(void);

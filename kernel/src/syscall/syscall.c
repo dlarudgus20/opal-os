@@ -56,7 +56,7 @@ err_file:
 }
 
 static intptr_t syscall_close(uintptr_t arg1) {
-    if (arg1 >= FD_MAX) {
+    if (arg1 > FD_MAX) {
         return OPAL_EINVAL;
     }
     bool ok = process_close_file(process_current(), (fd_t)arg1);
@@ -64,7 +64,7 @@ static intptr_t syscall_close(uintptr_t arg1) {
 }
 
 static intptr_t syscall_readc(uintptr_t arg1, uintptr_t arg2) {
-    if (arg1 >= FD_MAX) {
+    if (arg1 > FD_MAX) {
         goto err;
     }
 

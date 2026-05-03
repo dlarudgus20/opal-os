@@ -42,7 +42,7 @@ void process_init(struct process *proc, struct pagetable *ptbl) {
 
     linkedlist_init(&proc->task_list);
     vmtree_init(&proc->vmtree);
-    dynarray_init(&proc->open_files);
+    filetable_init(&proc->open_files);
     rbtree_insert_process(&g_pid_tree, proc);
 }
 
@@ -78,20 +78,11 @@ static void free_mapped_pages_all(struct process *proc) {
     }
 }
 
-static void destroy_open_files(struct process *proc) {
-    dynarray_foreach(struct file **, pfile, &proc->open_files) {
-        if (*pfile) {
-            file_release(*pfile);
-        }
-    }
-    dynarray_destroy(&proc->open_files);
-}
-
 static void process_free(struct process *proc) {
     if (!linkedlist_is_empty(&proc->task_list)) {
         panic("cannot destroy process with active tasks");
     }
-    destroy_open_files(proc);
+    filetable_destroy(&proc->open_files);
     rbtree_remove(&g_pid_tree, &proc->pid_node);
     free_mapped_pages_all(proc);
     pagetable_destroy(proc->pagetable);
@@ -147,67 +138,23 @@ pid_t process_release(procptr_t proc) {
 
 fd_t process_open_file(struct process *proc, struct file *file) {
     irqlock_t irqlock = irqlock_acquire();
-
-    size_t len = dynarray_len(&proc->open_files, sizeof(struct file *));
-    if (len >= FD_MAX) {
-        goto err;
-    }
-
-    struct file **pfile = dynarray_push_back(&proc->open_files, sizeof(*pfile));
-    if (!pfile) {
-        goto err;
-    }
-
-    file_retain(file);
-    *pfile = file;
-
+    fd_t fd = filetable_insert(&proc->open_files, file);
     irqlock_release(&irqlock);
-    return (fd_t)len;
-
-err:
-    irqlock_release(&irqlock);
-    return FD_INVALID;
+    return fd;
 }
 
 struct file *process_get_file(struct process *proc, fd_t fd) {
     irqlock_t irqlock = irqlock_acquire();
-
-    size_t len = dynarray_len(&proc->open_files, sizeof(struct file *));
-    if (fd < 0 || (size_t)fd >= len) {
-        irqlock_release(&irqlock);
-        return NULL;
-    }
-
-    struct file *file = dynarray_at(&proc->open_files, struct file *, (size_t)fd);
-    if (file) {
-        file_retain(file);
-    }
+    struct file *file = filetable_get(&proc->open_files, fd);
     irqlock_release(&irqlock);
     return file;
 }
 
 bool process_close_file(struct process *proc, fd_t fd) {
     irqlock_t irqlock = irqlock_acquire();
-
-    size_t len = dynarray_len(&proc->open_files, sizeof(struct file *));
-    if (fd < 0 || (size_t)fd >= len) {
-        goto err;
-    }
-
-    struct file **pfile = &dynarray_at(&proc->open_files, struct file *, (size_t)fd);
-    if (!*pfile) {
-        goto err;
-    }
-
-    file_release(*pfile);
-    *pfile = NULL;
-
+    bool ok = filetable_remove(&proc->open_files, fd);
     irqlock_release(&irqlock);
-    return true;
-
-err:
-    irqlock_release(&irqlock);
-    return false;
+    return ok;
 }
 
 static void free_mapped_range(struct process *proc, virt_addr_t addr, virt_size_t mapped_len) {
