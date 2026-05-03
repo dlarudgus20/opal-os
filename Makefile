@@ -28,10 +28,11 @@ endif
 
 SUBDIRS     := test-pch kernel libkubsan libkc libpanicimpl libcoll
 
+all: build
+
 .PHONY: .FORCE all build iso run mkhdds clean fullclean gen clean-gen build-test test clean-test unit-test clean-unit-test
 .FORCE:
-
-all: build
+.NOTPARALLEL:
 
 build:
 	$(MAKE) -C kernel
