@@ -12,6 +12,7 @@ qemu.log
 *~
 .DS_Store
 .codex
+.agents
 /tmp/
 
 # Python
