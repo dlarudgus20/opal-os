@@ -37,5 +37,8 @@
 ## 반복자
 - 시작: `struct vmtree_iter it = vmtree_before_begin(&tree);`
 - 진행: `vmtree_iter_next(&it, &entry)`
+- 반환값:
+  - `true`: 다음 non-hole 구간을 `entry`에 반환
+  - `false`: 반복 종료 또는 잘못된 인자, `entry`는 유효하지 않음
 - 동작:
   - hole 구간은 건너뛰고 non-hole 구간만 오름차순 순회

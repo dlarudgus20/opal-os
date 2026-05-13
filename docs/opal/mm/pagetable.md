@@ -37,3 +37,7 @@
     - `len == 0`이면 `va`를 반환
 - `pagetable_lookup(ptbl, va, &pa_out)`:
   - 매핑된 물리 주소 조회
+  - 반환값:
+    - `true`: 조회 성공, `pa_out`에 `va` offset이 반영된 물리 주소 반환
+    - `false`: `ptbl == NULL`, `pa_out == NULL`, 또는 미매핑 주소
+  - 1GiB/2MiB huge page와 4KiB page 모두 leaf 기준 물리 주소에 page offset을 더해 반환한다.

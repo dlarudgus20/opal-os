@@ -10,7 +10,7 @@
                 "OPAL_CONFIG=\"debug\"",
                 "OPAL_UNIT_TEST"
             ],
-            "compilerPath": "/home/dlaru/.local/x86_64-elf/bin/x86_64-elf-gcc",
+            "compilerPath": "~/.local/x86_64-elf/bin/x86_64-elf-gcc",
             "compilerArgs": [
                 "-ffreestanding",
                 "-pedantic",

@@ -65,15 +65,19 @@
   - `KC_ERANGE`: 값 범위 초과
 
 ## 파싱 함수 규약 (`kstrtoul*`)
-- `kstrtoul`:
+- `kerrno_t kstrtoul(const char *str, int base, char **endptr, unsigned long *result);`
   - 선행 공백을 건너뛴다.
-  - `+` 부호는 허용, `-` 부호는 `KC_EINVAL`.
+  - `+` 부호는 허용, `-` 부호는 `OPAL_EINVAL`.
   - `base=0`이면 접두사/선행 0에 따라 진법을 자동 선택한다.
-  - 유효 숫자가 하나도 없으면 `KC_EINVAL`.
-  - overflow 시 `KC_ERANGE`.
-  - 성공 시 `KC_OK`.
-- `kstrtoul_exact`:
-  - 내부적으로 `kstrtoul`을 호출한다.
-  - 파싱 이후 trailing 문자가 있으면 `KC_EINVAL`.
-  - 파싱 결과가 `max`보다 크면 `KC_ERANGE`.
-  - 정상 완료 시 `KC_OK`.
+  - 반환값:
+    - 유효 숫자가 하나도 없으면 `OPAL_EINVAL`.
+    - overflow 시 `OPAL_ERANGE`.
+    - 성공 시 `OPAL_OK`.
+  - 성공 시 `result`에 변환된 정수 값을 반환한다.
+- `kerrno_t kstrtoul_exact(const char *str, int base, unsigned long max, unsigned long *result);`
+  - `kstrtoul` 결과가 전체 문자열과 매칭되고 `max` 이하일 때만 성공한다.
+  - 반환값:
+    - 파싱 이후 trailing 문자가 있으면 `OPAL_EINVAL`.
+    - 파싱 결과가 `max`보다 크면 `OPAL_ERANGE`.
+    - 정상 완료 시 `OPAL_OK`.
+  - 성공 시 `result`에 변환된 정수 값을 반환한다.

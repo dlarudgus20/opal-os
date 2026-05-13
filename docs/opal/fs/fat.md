@@ -9,7 +9,9 @@
 
 ## 공개 API
 - `kerrno_t fat_mount(struct block_device *bdev, struct superblock **sb_out);`
+  - 성공 시 `sb_out`에 마운트 가능한 `superblock`을 반환한다.
 - `kerrno_t fat_format(struct block_device *bdev, struct superblock **sb_out);`
+  - 성공 시 포맷 완료 후 마운트 가능한 `superblock`을 `sb_out`에 반환한다.
 
 ## 마운트(`fat_mount`)
 - 동작:
@@ -103,6 +105,7 @@
 - `fat_table_append`:
   - 현재 cluster가 EOF여야 새 cluster를 붙임
   - 중간 실패 시 새 cluster 엔트리 0으로 되돌리려 시도
+  - 성공 시 새 cluster 번호를 `new_cluster`에 반환
 
 ## 제한사항/주의점
 - long filename(LFN) 미지원 (8.3만 지원)

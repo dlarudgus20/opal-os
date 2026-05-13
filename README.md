@@ -9,12 +9,19 @@
 - 커널 유닛 테스트(`make unit-test`)
 
 ## 요구 도구
-- `make`, `nasm`
-- `x86_64-elf-*` 툴체인 (`gcc`, `objcopy`, `objdump`, `gcc-ar`, `gcc-nm`)
-- `python3` (`tools/` 스크립트 실행용)
-- `cpio` (`initramfs` 생성용)
-- `qemu-system-x86_64`, `grub-mkrescue`
-- hosted 테스트용 `gcc/g++`, `gtest`
+- `make build`
+  - `make`, `nasm`
+  - `x86_64-elf-*` 툴체인 (`gcc`, `objcopy`, `objdump`, `gcc-ar`, `gcc-nm`)
+  - `python3` (`tools/` 스크립트 실행용)
+- `make iso`
+  - `cpio` (`initramfs` 생성용)
+  - `grub-mkrescue`, `xorriso`
+    - `grub-pc` for BIOS
+    - `grub-efi-amd64` for UEFI
+- `make run` / `make unit-test`
+  - `qemu-system-x86_64`
+- `make test`
+  - hosted `gcc/g++`, `libgtest-dev`
 
 ## 빠른 시작
 ### 1) 커널 빌드

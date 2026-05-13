@@ -28,7 +28,21 @@
 - 요청 제출/완료:
   - `disk_read(...)`, `disk_write(...)`
   - `disk_request_wait(req, timeout, &result)`
-  - `disk_request_release(req)` (내부적으로 `disk_request_wait`에서 사용)
+    - `req->completion`을 `timeout`까지 기다린다.
+    - timeout/미완료면 `false`를 반환한다.
+    - 완료되면 내부에서 `disk_request_release(req)`를 호출해 IO 결과를 얻어온다.
+      - `result != NULL`이면 완료 결과를 저장해준다.
+    - 완료와 release까지 끝나면 `true`를 반환한다.
+  - `disk_request_release(req)`
+    - 완료된 요청의 결과 코드를 반환하고 요청을 `RELEASED` 상태로 전환한다.
+    - 호출 전제:
+      - 요청은 `DONE` 상태여야 한다.
+      - 요청 큐에 done request가 하나 이상 있어야 한다.
+    - 큐 공간 회수:
+      - 대상 요청을 `RELEASED`로 표시한다.
+      - `rpos`부터 연속된 `RELEASED` 요청들을 제거해 ring queue 공간을 회수한다.
+      - 앞쪽에 아직 release되지 않은 done request가 있으면 대상 요청은 `RELEASED` 상태로 남고, 실제 공간 회수는 앞선 요청 release 시점까지 지연된다.
+    - 잘못된 요청 포인터 또는 큐에 속하지 않는 요청이면 assert된다.
 - 드라이버용 큐 primitive:
   - `disk_req_queue_init(queue, buffer, capacity)`
   - `disk_req_queue_fetch(queue)`
@@ -80,4 +94,5 @@
 ## 호출자 계약
 - 요청 버퍼(`disk_request.info.buffer`)는 완료 전까지 유효해야 한다.
 - `disk_request_wait(...)=false`는 timeout/미완료를 의미한다.
+- `disk_request_wait(...)=true`이면 `result`에 `OPAL_OK` 또는 I/O 실패 코드가 저장된다. 단, 호출자가 `result == NULL`을 전달하면 결과 코드는 버린다.
 - 파티션 API 호출자는 전달한 completion 객체의 수명을 완료 시점까지 보장해야 한다.

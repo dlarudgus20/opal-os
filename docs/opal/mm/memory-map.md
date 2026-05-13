@@ -39,6 +39,8 @@ virtual range                                physical range              size   
    - non-usable 타입은 원래 경계 유지
    - overlap 시 `mmap_entry_overlap_priority()` 기반으로 절단
    - usable끼리 overlap/adjacent는 병합
+   - 반환값은 없으며 결과는 `mmap_out->entries`와 `mmap_out->length`로 전달
+   - 호출자는 `mmap_out->entries`에 `max_entries`개 이상 저장 가능한 버퍼를 제공해야 함
 
 2. `init_mm_section()`
    - canonical map에서 usable만 추출

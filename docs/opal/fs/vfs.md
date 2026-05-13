@@ -18,9 +18,17 @@
   - 캐시에 없으면 `inode->ops->lookup`를 호출해 디렉터리를 재스캔
   - 재스캔 후에도 없으면 negative entry 생성 시도
   - negative 생성 메모리 부족은 `OPAL_ENOMEM`으로 전파
+  - `found` 출력값:
+    - `OPAL_OK`: positive entry를 retain해 반환
+    - `OPAL_ENOENT`: 해당 path가 없는 경우.
+      - negative entry가 없다면 생성. 그 후 negative entry를 retain해 반환.
+      - `len > VFS_MAX_NAME`일 경우 `found == NULL`
+      - inode_ops lookup이 `OPAL_ENOENT` 에러를 줬다면 `found == NULL`
+    - 그 외 실패: `found == NULL`
 - `path_entry_add(parent, inode, &name, &out)`
   - 같은 이름의 positive entry가 있으면 `OPAL_EEXIST`
   - 같은 이름의 negative entry가 있으면 재사용
+  - 성공 시 새 positive entry 또는 재사용된 entry를 retain해 `out`에 반환
 - `path_entry_create(pe, flags, truncate, &file_out)`
   - `pe->inode == NULL`(negative entry)이면:
     - `pe`가 루트라면 `OPAL_ENOENT`
@@ -29,6 +37,7 @@
   - `pe->inode != NULL`(이미 존재)이면:
     - `truncate == false`: `OPAL_EEXIST`
     - `truncate == true`: 기존 inode를 `open` 후 `truncate(0)` 수행
+  - 성공 시 열린 file 참조를 `file_out`에 반환하며 호출자가 `file_release` 해야 함
 
 ## hstr
 - `struct hstr`
@@ -61,14 +70,14 @@
 ## VFS API
 - `vfs_get_root()`
   - 루트 `path_entry`를 반환한다.
-- `vfs_mount_path(base, path, sb)`
+- `vfs_mount_path(base, path, sb, &mounted)`
   - `vfs_lookup_path(base, path, &found, &unresolved_path)`로 마운트 포인트를 해석한다.
   - `found != NULL`이고 `*unresolved_path == '\0'`일 때 `path_entry_mount_super(found, sb)`를 호출한다.
-  - `found`는 내부에서 release되며, 반환 코드는 lookup/mount 결과를 그대로 따른다.
+  - 성공 시 마운트된 path entry를 retain해 `mounted`에 반환하며 호출자가 `path_entry_release` 해야 한다.
 - `vfs_lookup_path(base, path, &found, &unresolved_path)`
   - `path`가 `/`로 시작하면 루트 기준으로 탐색
   - 상대 경로는 `base` 기준으로 탐색
-  - 반환 시 `found`는 retain된 엔트리이며 호출자가 `path_entry_release` 해야 함
+  - `found`가 `NULL`이 아니면 retain된 엔트리이며 호출자가 `path_entry_release` 해야 함
   - 반환값:
     - 경로를 끝까지 해석한 경우:
       - `OPAL_OK`
@@ -92,12 +101,14 @@
       - `unresolved_path`: 입력 `path` 그대로
 - `vfs_open_path(base, path, &file_out)`
   - 경로 해석 후 대상 inode `open` 호출
+  - 성공 시 열린 file 참조를 `file_out`에 반환하며 호출자가 `file_release` 해야 함
 - `vfs_create_path(base, path, flags, truncate, &file_out)`
   - 내부 흐름:
     - `vfs_lookup_path(base, path, &found, &unresolved_path)` 호출
     - `found == NULL` 또는 `*unresolved_path != '\0'`이면 lookup 결과 그대로 실패 반환
     - 경로가 완전히 해석되면 `path_entry_create(found, flags, truncate, &file_out)` 호출
   - 즉, 생성/기존 파일 처리 정책은 `path_entry_create`가 담당한다.
+  - 성공 시 열린 file 참조를 `file_out`에 반환하며 호출자가 `file_release` 해야 함
 - `path_entry_mount_super(pe, sb)`
   - `sb->root`가 유효한 디렉터리 inode여야 한다.
   - `pe->inode != NULL`이면 `OPAL_EBUSY`.

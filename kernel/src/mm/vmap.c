@@ -45,12 +45,11 @@ void mm_vmap_init(void) {
     g_vmap_len = 1;
 }
 
-struct span mm_vmap_alloc(void **va_out, phys_addr_t pa, phys_size_t size) {
-    kassert(va_out);
-    *va_out = NULL;
+void *mm_vmap_alloc(phys_addr_t pa, phys_size_t size, struct span *va_span_out) {
+    kassert(va_span_out);
 
     if (size == 0) {
-        return (struct span){ .ptr = NULL, .size = 0 };
+        return NULL;
     }
 
     phys_addr_t aligned_start = align_floor_sz_p2(pa, PAGE_SIZE);
@@ -59,7 +58,7 @@ struct span mm_vmap_alloc(void **va_out, phys_addr_t pa, phys_size_t size) {
 
     phys_size_t aligned_size = aligned_end - aligned_start;
     if (aligned_size == 0) {
-        return (struct span){ .ptr = 0, .size = 0 };
+        return NULL;
     }
 
     irqlock_t irqlock = irqlock_acquire();
@@ -82,15 +81,15 @@ struct span mm_vmap_alloc(void **va_out, phys_addr_t pa, phys_size_t size) {
 
         irqlock_release(&irqlock);
 
-        *va_out = (void *)(va_base + (pa - aligned_start));
-        return (struct span){
+        *va_span_out = (struct span){
             .ptr = (void *)va_base,
             .size = aligned_size,
         };
+        return (void *)(va_base + (pa - aligned_start));
     }
 
     irqlock_release(&irqlock);
-    return (struct span){ .ptr = 0, .size = 0 };
+    return NULL;
 }
 
 void mm_vmap_free(struct span span) {

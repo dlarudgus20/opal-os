@@ -5,8 +5,10 @@
 - [`tty.md`](tty.md): `tty0`, framebuffer TTY, UART TTY, 입력 버퍼 경로
 - [`shell.md`](shell.md): 커널 shell 구현
 - [`syscall.md`](syscall.md): syscall ABI와 커널 디스패치 경로
+- [`klog.md`](klog.md): 커널 로그 버퍼와 읽기/쓰기 API 계약
 - [`mm/memory-map.md`](mm/memory-map.md): 메모리 맵 요약
 - [`mm/pagetable.md`](mm/pagetable.md): 페이지테이블 map/unmap/lookup 경로
+- [`mm/vmap.md`](mm/vmap.md): 물리 주소 범위의 커널 vmap 매핑 API
 - [`mm/buddy.md`](mm/buddy.md): 버디 페이지 할당기
 - [`mm/slab.md`](mm/slab.md): 슬랩 오브젝트 할당기
 - [`utils/dynarray.md`](utils/dynarray.md): 커널 동적 배열 버퍼(kmalloc 기반)

@@ -16,6 +16,7 @@
 빌드 구성 변수:
 - `CONFIG=debug|release`
 - `PLATFORM=pc-x64`
+- `NO_ANALYZER=1`: freestanding debug 빌드에서 `-fanalyzer`를 비활성화
 - `NO_SANITIZE=1`: freestanding debug 빌드에서 `-fsanitize=undefined`를 비활성화
 
 실행 관련 변수:
@@ -38,6 +39,12 @@
 - 일반 빌드: `-DOPAL_CONFIG=... -DOPAL_PLATFORM=...`
 - hosted 테스트: `-DOPAL_TEST`
 - 커널 유닛테스트 빌드: `-DOPAL_UNIT_TEST`
+
+### analyzer 플래그 적용
+- freestanding(`IS_TEST_BUILD != 1`) + `CONFIG=debug`:
+  - 기본값으로 `-fanalyzer`를 사용
+  - `NO_ANALYZER=1`이면 해당 플래그를 제외
+- hosted 테스트(`IS_TEST_BUILD = 1`)에는 적용하지 않음
 
 ### sanitizer 플래그 적용
 - freestanding(`IS_TEST_BUILD != 1`) + `CONFIG=debug`:

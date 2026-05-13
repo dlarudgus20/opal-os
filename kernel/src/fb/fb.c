@@ -34,9 +34,9 @@ void fb_init(void) {
         return;
     }
 
-    void *fb_ptr;
-    struct span fb = mm_vmap_alloc(&fb_ptr, fbinfo->addr, (phys_size_t)fbinfo->pitch * fbinfo->height);
-    if (!fb.ptr) {
+    struct span fb_span;
+    void *fb_ptr = mm_vmap_alloc(fbinfo->addr, (phys_size_t)fbinfo->pitch * fbinfo->height, &fb_span);
+    if (!fb_ptr) {
         // kwarn("cannot allocate page table for framebuffer");
         return;
     }

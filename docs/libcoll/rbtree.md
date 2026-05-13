@@ -26,6 +26,10 @@
 - 생성 함수:
   - `rbtree_insert_<postfix>(tree, data)`
   - `rbtree_find_<postfix>(tree, key)`
+    - `struct rbtree_find_result`를 반환한다.
+    - exact match면 `lower == upper`이고 둘 다 matching node를 가리킨다.
+    - exact match가 없으면 `lower`는 key보다 작은 가장 가까운 노드, `upper`는 key보다 큰 가장 가까운 노드이다.
+    - 해당 방향의 이웃이 없으면 그 필드는 `NULL`이다.
 
 ## 중복 key 동작
 - `insert`는 `comp(...) == 0`이면 삽입하지 않고 즉시 반환합니다.

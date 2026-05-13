@@ -8,6 +8,7 @@
 
 ## 공개 API
 - `kerrno_t cpio_mount(void *cpio, size_t len, struct superblock **sb_out);`
+  - 성공 시 `sb_out`에 마운트 가능한 `superblock`을 반환한다.
 
 ## 지원 포맷/타입
 - CPIO 헤더 포맷:

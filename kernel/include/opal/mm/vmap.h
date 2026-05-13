@@ -6,7 +6,7 @@
 #include <opal/mm/types.h>
 
 void mm_vmap_init(void);
-[[nodiscard]] struct span mm_vmap_alloc(void **va_out, phys_addr_t pa, phys_size_t size);
+[[nodiscard]] void *mm_vmap_alloc(phys_addr_t pa, phys_size_t size, struct span *va_span_out);
 void mm_vmap_free(struct span span);
 
 #endif

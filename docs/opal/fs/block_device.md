@@ -41,6 +41,8 @@
   - active 참조 개수
 - `block_device_destroy(dev)`는 `refcount == 1`일 때만 성공한다.
 - `bdev_list_get`은 `OPAL_OK` 시 내부적으로 retain된 포인터를 반환하며, 호출자는 `block_device_release`로 반납해야 한다.
+- `bdev_list_get(index, &dev_out)`:
+  - 성공 시 `dev_out`에 retain된 `block_device`를 반환한다.
 
 ## 호출자 계약
 - 버퍼 수명:

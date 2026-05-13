@@ -72,7 +72,9 @@ CFLAGS             += -mno-red-zone -mcmodel=kernel -mno-mmx -mno-sse -mno-sse2 
 LDFLAGS            += -nostdlib -Wl,--gc-sections -Wl,--fatal-warning
 
 ifeq ($(CONFIG), debug)
+ifneq ($(NO_ANALYZER), 1)
 CFLAGS             += -fanalyzer
+endif
 endif
 
 else

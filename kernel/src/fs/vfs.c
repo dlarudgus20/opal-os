@@ -178,7 +178,6 @@ kerrno_t path_entry_add(struct path_entry *parent, struct inode *inode, struct h
         link = link->next;
         if (hstr_equal(name, &child->name)) {
             if (child->inode) {
-                *out = NULL;
                 return OPAL_EEXIST;
             }
             found = child;
@@ -189,7 +188,6 @@ kerrno_t path_entry_add(struct path_entry *parent, struct inode *inode, struct h
     if (!found) {
         found = kzalloc(sizeof(*found));
         if (!found) {
-            *out = NULL;
             return OPAL_ENOMEM;
         }
         path_entry_init(found);
@@ -211,10 +209,8 @@ kerrno_t path_entry_add(struct path_entry *parent, struct inode *inode, struct h
 static kerrno_t create_negative(struct path_entry *parent, const struct hstr *name, struct path_entry **out) {
     struct hstr str = hstr_clone(name);
     if (hstr_is_null(&str)) {
-        *out = NULL;
         return OPAL_ENOMEM;
     }
-
     return path_entry_add(parent, NULL, &str, out);
 }
 
@@ -230,6 +226,11 @@ static struct path_entry *find_child(struct path_entry *parent, const struct hst
 }
 
 kerrno_t path_entry_lookup(struct path_entry *pe, const char *name, size_t len, struct path_entry **found) {
+    // On error, returns with `found == NULL`
+    // except when a negative entry is created or found.
+    // In that case, returns `OPAL_ENOENT` with `found != NULL`.
+    *found = NULL;
+
     if (len == 0) {
         return OPAL_EINVAL;
     }
@@ -246,7 +247,6 @@ kerrno_t path_entry_lookup(struct path_entry *pe, const char *name, size_t len, 
 
     kerrno_t result = pe->inode->ops->lookup(pe->inode, pe);
     if (!kerrno_ok(result)) {
-        *found = NULL;
         return result;
     }
 
@@ -256,7 +256,8 @@ kerrno_t path_entry_lookup(struct path_entry *pe, const char *name, size_t len, 
         return child->inode ? OPAL_OK : OPAL_ENOENT;
     }
 
-    return create_negative(pe, &hs, found);
+    result = create_negative(pe, &hs, found);
+    return kerrno_ok(result) ? OPAL_ENOENT : result;
 }
 
 kerrno_t path_entry_create(struct path_entry *pe, enum inode_flags flags, bool truncate, struct file **file_out) {
