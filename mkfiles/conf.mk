@@ -39,6 +39,12 @@ TEST_WARNING_FLAGS := -Wno-unused-parameter
 
 DEFINE_FLAGS       := -DOPAL_CONFIG=\"$(CONFIG)\" -DOPAL_PLATFORM=\"$(PLATFORM)\"
 
+# TODO: keep libkc builtin-backed symbols live for LTO-generated libcalls.
+LIBKC_BUILTIN_SYMBOLS ?= \
+	memcpy memmove memset memcmp memchr \
+	strlen strspn strcspn strchr strrchr \
+	strcmp strncmp strcpy strcat strncat
+
 ifneq ($(IS_TEST_BUILD), 1)
 
 BUILD_PREFIX       := build
@@ -70,6 +76,11 @@ TOOLSET_NASM       ?= nasm
 
 CFLAGS             += -mno-red-zone -mcmodel=kernel -mno-mmx -mno-sse -mno-sse2 $(DEFINE_FLAGS) $(WARNING_FLAGS)
 LDFLAGS            += -nostdlib -Wl,--gc-sections -Wl,--fatal-warning
+
+ifeq ($(TARGET_TYPE), executable)
+COMMA := ,
+LDFLAGS += $(addprefix -Wl$(COMMA)-u$(COMMA),$(LIBKC_BUILTIN_SYMBOLS))
+endif
 
 ifeq ($(CONFIG), debug)
 ifneq ($(NO_ANALYZER), 1)

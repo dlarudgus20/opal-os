@@ -20,6 +20,8 @@
     - `grub-efi-amd64` for UEFI
 - `make run` / `make unit-test`
   - `qemu-system-x86_64`
+- `make disk-images`
+  - `qemu-img` (`qemu-utils`)
 - `make test`
   - hosted `gcc/g++`, `libgtest-dev`
 
@@ -40,6 +42,13 @@ make run
 # UEFI 펌웨어로 실행
 make run UEFI=1
 ```
+
+### 4) 디스크 이미지 생성(선택)
+```bash
+make disk-images
+```
+
+생성된 `hda.img`, `hdb.img`, `hdd.img`는 `make run` 시 자동 연결됩니다.
 
 ## 테스트
 ### 전체 테스트

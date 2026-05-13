@@ -7,6 +7,7 @@
 - `make build`: `kernel/` 빌드
 - `make iso`: `kernel.sys` + `grub.cfg` + `initramfs`로 ISO 생성
 - `make run`: QEMU 실행
+- `make disk-images`: QEMU용 qcow2 디스크 이미지 생성
 - `make test`: 각 서브프로젝트 테스트 순회
 - `make unit-test`: `UNIT_TEST=1`로 커널 유닛테스트 실행
 - `make clean`: 현재 구성 빌드(make) 결과물 정리
@@ -21,6 +22,7 @@
 
 실행 관련 변수:
 - `QEMU_FLAGS`: `make run`, `make unit-test`에서 QEMU 실행 인자에 추가
+- `QEMU_HDDS`: 루트의 `hda.img`, `hdb.img`, `hdd.img` 존재 여부에 따라 QEMU 디스크 인자 자동 구성
 - `QEMU_DISPNONE=1`: `QEMU_FLAGS`에 `-display none`을 자동 추가
 - `UEFI=1`: `-bios $(UEFI_FIRMWARE)`를 추가해 UEFI 펌웨어로 실행
 - `UEFI_FIRMWARE`: 기본값 `/usr/share/ovmf/OVMF.fd`
@@ -33,6 +35,16 @@
   - 빌드된 사용자 프로그램을 `$(INITRAMFS_DIR)`에 복사
   - `cpio -H newc`로 `$(BUILD_DIR)/iso/boot/initramfs` 이미지 생성
 - 결과적으로 ISO의 `/boot/initramfs`에는 소스 `initramfs/`와 빌드된 사용자 프로그램이 함께 포함됩니다.
+
+### 1.2 디스크 이미지 생성/연결
+- `make disk-images`는 루트에 QEMU용 qcow2 디스크 이미지를 생성합니다.
+  - `hda.img`: 32M
+  - `hdb.img`: 16M
+  - `hdd.img`: 8M
+- `make run`은 루트에 존재하는 디스크 이미지만 QEMU에 연결합니다.
+  - `hda.img`: `-hda hda.img`
+  - `hdb.img`: `-hdb hdb.img`
+  - `hdd.img`: `-hdd hdd.img`
 
 ## 2. 공통 설정 (`mkfiles/conf.mk`)
 ### C 전처리 매크로
@@ -120,6 +132,7 @@ make CONFIG=debug PLATFORM=pc-x64
 make CONFIG=release PLATFORM=pc-x64
 make gen
 make clean-gen
+make disk-images
 make test CONFIG=debug PLATFORM=pc-x64
 make -C kernel test CONFIG=debug PLATFORM=pc-x64
 make unit-test CONFIG=debug PLATFORM=pc-x64

@@ -30,7 +30,7 @@ SUBDIRS     := test-pch kernel libkubsan libkc libpanicimpl libcoll
 
 all: build
 
-.PHONY: .FORCE all build iso run mkhdds clean fullclean gen clean-gen build-test test clean-test unit-test clean-unit-test
+.PHONY: .FORCE all build iso run disk-images clean fullclean gen clean-gen build-test test clean-test unit-test clean-unit-test
 .FORCE:
 .NOTPARALLEL:
 
@@ -58,7 +58,7 @@ $(INITRAMFS): .FORCE
 run: iso
 	qemu-system-x86_64 $(QEMU_FLAGS) $(QEMU_HDDS) -cdrom $(ISO_FILE) -D qemu.log
 
-mkhdds:
+disk-images:
 	qemu-img create -f qcow2 hda.img 32M
 	qemu-img create -f qcow2 hdb.img 16M
 	qemu-img create -f qcow2 hdd.img 8M
