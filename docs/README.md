@@ -6,6 +6,7 @@
 - [`testing.md`](testing.md): hosted 테스트/커널 유닛 테스트 실행 가이드
 - [`dev-start.md`](dev-start.md): 새 환경에서 작업 세션 컨텍스트 복구 가이드
 - [`kernel-unit-test.md`](kernel-unit-test.md): 커널 유닛 테스트 프레임워크 상세
+- [`rust/README.md`](rust/README.md): Rust 커널 포팅 문서
 - [`troubleshooting.md`](troubleshooting.md): 자주 발생하는 빌드/테스트 이슈
 - [`todo.md`](todo.md): 다음 작업 TODO
 - [`opal/README.md`](opal/README.md): 커널 내부 동작 문서
