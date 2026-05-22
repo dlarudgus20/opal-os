@@ -17,6 +17,7 @@
 빌드 구성 변수:
 - `CONFIG=debug|release`
 - `PLATFORM=pc-x64`
+- `RUST=1`: 루트 빌드/ISO/실행 경로에서 Rust 커널(`opalkrnl`) 사용
 - `NO_ANALYZER=1`: freestanding debug 빌드에서 `-fanalyzer`를 비활성화
 - `NO_SANITIZE=1`: freestanding debug 빌드에서 `-fsanitize=undefined`를 비활성화
 
@@ -72,6 +73,9 @@
 - 커널 유닛테스트: `build/unit-test/<platform>/<config>`
 
 ## 3. 공통 규칙 (`mkfiles/rules.mk`)
+Cargo 기반 Rust 서브프로젝트는 [`mkfiles/rules-cargo.mk`](../mkfiles/rules-cargo.mk)를 사용합니다.
+현재 `opalkrnl/`은 이 규칙으로 Cargo를 실행하고, `opal-kernel`은 `opalkrnl`의 dependency로 함께 빌드됩니다.
+
 ### 소스 자동 수집
 - `src`, `platform/$(PLATFORM)/src`에서 `*.c`, `*.asm` 자동 탐색
 - `.d` dependency 파일 생성 및 `-include`로 반영

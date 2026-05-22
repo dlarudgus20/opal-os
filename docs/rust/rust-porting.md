@@ -28,7 +28,8 @@
 부트 ASM이 호출하는 C ABI 심볼도 `opal-kernel`이 export합니다.
 
 ## 3. 빌드 시스템
-- Rust toolchain은 루트 `rust-toolchain.toml`로 nightly를 고정합니다.
+- Rust toolchain은 `opalkrnl/rust-toolchain.toml`로 nightly를 고정합니다.
+- Cargo의 custom target, `build-std`, `.json` target spec 설정은 `opalkrnl/.cargo/config.toml`에 둡니다.
 - Cargo crate용 공통 규칙으로 `mkfiles/rules-cargo.mk`를 추가합니다.
 - `rules-cargo.mk`는 복잡한 빌드 로직을 갖지 않는 Cargo wrapper입니다.
   - `build`: `cargo build` 실행
@@ -42,8 +43,9 @@
 ### 3.1 부트 ASM과 링크
 - 기존 NASM 부트 코드는 Rust 포팅 초기에도 유지합니다.
 - 부트 ASM 파일과 조립 책임은 `opal-kernel`이 소유합니다.
-- `opal-kernel/build.rs`가 NASM을 호출해 부트 오브젝트를 생성합니다.
-- `opalkrnl` 링크 단계는 `opal-kernel`이 만든 ASM artifact와 linker script를 사용합니다.
+- `opal-kernel/build.rs`는 `opal-build`의 `NasmBuild`를 사용해 `opal-kernel/src/**/*.asm`을 정적 archive로 조립합니다.
+- `opal-kernel/src/platform/<platform>/**/*.asm`은 `PLATFORM`과 일치하는 플랫폼만 조립합니다.
+- `opalkrnl` 링크 단계는 `opal-kernel`이 만든 ASM artifact와 `opalkrnl`의 linker script를 사용합니다.
 - linker script는 기존 higher-half 배치, `.startup`, `.text`, `.rodata`, `.data`, `.bss`, `.unittest` 섹션 의미를 보존합니다.
 
 ## 4. Rust 런타임 정책
@@ -68,12 +70,12 @@
 
 ### 6.1 빌드 골격과 smoke boot
 - 상세 문서: `docs/rust/01-build-smoke-boot.md`
-- `rust-toolchain.toml`을 추가합니다.
+- `opalkrnl/rust-toolchain.toml`을 추가합니다.
 - `opal-kernel` rlib crate와 `opalkrnl` executable wrapper crate를 추가합니다.
 - `mkfiles/rules-cargo.mk`를 추가합니다.
 - 루트 `Makefile`에 `RUST=1` 분기를 추가합니다.
 - `opal-kernel`이 `kmain`과 panic handler를 제공합니다.
-- `opal-kernel/build.rs`가 부트 ASM을 조립합니다.
+- `opal-build` crate를 추가하고, `opal-kernel/build.rs`가 `NasmBuild`로 `opal-kernel/src/**/*.asm`을 조립합니다.
 - `make RUST=1 run QEMU_DISPNONE=1`로 Rust `kmain` 진입과 serial 출력까지 확인합니다.
 
 ### 6.2 Rust kernel unit-test

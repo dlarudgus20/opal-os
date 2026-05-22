@@ -3,8 +3,14 @@ PLATFORM    := pc-x64
 
 include mkfiles/conf.mk
 
-KERNEL_ELF  := kernel/$(BUILD_DIR)/kernel.elf
-KERNEL_BIN  := kernel/$(BUILD_DIR)/kernel.sys
+ifeq ($(RUST), 1)
+KERNEL := opalkrnl
+else
+KERNEL := kernel
+endif
+
+KERNEL_ELF  := $(KERNEL)/$(BUILD_DIR)/$(KERNEL).elf
+KERNEL_BIN  := $(KERNEL)/$(BUILD_DIR)/$(KERNEL).sys
 
 ISO_DIR     := $(BUILD_DIR)/iso
 ISO_FILE    := $(BUILD_DIR)/opal-os.iso
@@ -27,6 +33,7 @@ QEMU_FLAGS += -display none
 endif
 
 SUBDIRS     := test-pch kernel libkubsan libkc libpanicimpl libcoll
+CLEAN_SUBDIRS := $(SUBDIRS) opalkrnl
 
 all: build
 
@@ -35,7 +42,7 @@ all: build
 .NOTPARALLEL:
 
 build:
-	$(MAKE) -C kernel
+	$(MAKE) -C $(KERNEL)
 
 iso: $(ISO_FILE)
 
@@ -64,13 +71,13 @@ disk-images:
 	qemu-img create -f qcow2 hdd.img 8M
 
 clean:
-	for dir in $(SUBDIRS); do \
+	for dir in $(CLEAN_SUBDIRS); do \
 		$(MAKE) clean -C $$dir || exit 1; \
 	done
 	-rm -rf $(BUILD_DIR)
 
 fullclean:
-	for dir in $(SUBDIRS); do \
+	for dir in $(CLEAN_SUBDIRS); do \
 		$(MAKE) fullclean -C $$dir || exit 1; \
 	done
 	-rm -rf build
@@ -101,7 +108,15 @@ clean-test:
 	done
 
 unit-test:
+ifeq ($(RUST), 1)
+	$(MAKE) -C opalkrnl unit-test
+else
 	$(MAKE) run UNIT_TEST=1
+endif
 
 clean-unit-test:
+ifeq ($(RUST), 1)
+	$(MAKE) clean -C opalkrnl UNIT_TEST=1
+else
 	$(MAKE) clean -C kernel UNIT_TEST=1
+endif
