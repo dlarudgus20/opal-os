@@ -1,4 +1,5 @@
 TARGET_NAME := opalkrnl
+TARGET_TYPE := executable
 CARGO_TARGET := x86_64-unknown-none
 
 TARGET_STRIPPED = $(BUILD_DIR)/$(TARGET_NAME).sys

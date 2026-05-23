@@ -3,17 +3,5 @@
 version = 4
 
 [[package]]
-name = "opal-build"
-version = "0.1.0"
-
-[[package]]
-name = "opal-kernel"
-version = "0.1.0"
-dependencies = [
- "opal-build",
- "opal-ktest",
-]
-
-[[package]]
 name = "opal-ktest"
 version = "0.1.0"

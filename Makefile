@@ -31,6 +31,9 @@ endif
 ifeq ($(QEMU_DISPNONE), 1)
 QEMU_FLAGS += -display none
 endif
+ifeq ($(QEMU_DEBUG_EXIT), 1)
+QEMU_FLAGS += -device isa-debug-exit,iobase=0xf4,iosize=0x04
+endif
 
 SUBDIRS     := test-pch kernel libkubsan libkc libpanicimpl libcoll
 CLEAN_SUBDIRS := $(SUBDIRS) opalkrnl
@@ -63,7 +66,13 @@ $(INITRAMFS): .FORCE
 	(cd $(INITRAMFS_DIR); find .) | cpio -o -H newc -D $(INITRAMFS_DIR) > $(INITRAMFS)
 
 run: iso
-	qemu-system-x86_64 $(QEMU_FLAGS) $(QEMU_HDDS) -cdrom $(ISO_FILE) -D qemu.log
+	qemu-system-x86_64 $(QEMU_FLAGS) $(QEMU_HDDS) -cdrom $(ISO_FILE) -D qemu.log; \
+	status=$$?; \
+	if [ "$(QEMU_DEBUG_EXIT)" = "1" ]; then \
+		if [ $$status -eq 33 ]; then exit 0; fi; \
+		exit 1; \
+	fi; \
+	exit $$status
 
 disk-images:
 	qemu-img create -f qcow2 hda.img 32M
@@ -109,7 +118,7 @@ clean-test:
 
 unit-test:
 ifeq ($(RUST), 1)
-	$(MAKE) -C opalkrnl unit-test
+	$(MAKE) run UNIT_TEST=1 QEMU_DEBUG_EXIT=1
 else
 	$(MAKE) run UNIT_TEST=1
 endif

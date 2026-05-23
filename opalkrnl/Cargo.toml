@@ -9,6 +9,9 @@ opal-kernel = { path = "../opal-kernel" }
 [[bin]]
 name = "opalkrnl"
 path = "src/main.rs"
+test = false
+bench = false
+harness = false
 
 [profile.dev]
 panic = "abort"
@@ -17,3 +20,11 @@ panic = "abort"
 panic = "abort"
 lto = true
 codegen-units = 1
+
+[profile.ktest-debug]
+inherits = "dev"
+panic = "abort"
+
+[profile.ktest-release]
+inherits = "release"
+panic = "abort"

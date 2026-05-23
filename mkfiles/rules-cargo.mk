@@ -8,11 +8,17 @@ endif
 
 CARGO_BIN_NAME ?= $(TARGET_NAME)
 
-ifeq ($(CONFIG), release)
+CARGO_PROFILE := $(CONFIG)
+
+ifeq ($(UNIT_TEST), 1)
+CARGO_PROFILE := ktest-$(CONFIG)
+CARGO_BUILD_FLAGS += --profile $(CARGO_PROFILE)
+CARGO_RUSTFLAGS += --cfg opal_kernel_test
+else ifeq ($(CONFIG), release)
 CARGO_BUILD_FLAGS += --release
 endif
 
-CARGO_PROFILE_DIR := target/$(CARGO_TARGET)/$(CONFIG)
+CARGO_PROFILE_DIR := target/$(CARGO_TARGET)/$(CARGO_PROFILE)
 
 CARGO_ELF := $(CARGO_PROFILE_DIR)/$(CARGO_BIN_NAME)
 TARGET_ELF := $(BUILD_DIR)/$(TARGET_NAME).elf
@@ -24,6 +30,7 @@ PHONY_TARGETS += .FORCE all build clean fullclean unit-test
 $(CARGO_ELF): .FORCE
 	TOOLSET_NASM="$(TOOLSET_NASM)" \
 	TOOLSET_AR="$(TOOLSET_AR)" \
+	RUSTFLAGS="$(strip $(RUSTFLAGS) $(CARGO_RUSTFLAGS))" \
 	cargo build $(CARGO_BUILD_FLAGS)
 
 $(TARGET_ELF): $(CARGO_ELF)
@@ -41,5 +48,5 @@ clean:
 fullclean:
 	-rm -rf build target
 
-unit-test: build
-	@echo "Rust kernel #[test] unit-test runner is planned for rust porting stage 2."
+unit-test:
+	$(MAKE) build UNIT_TEST=1

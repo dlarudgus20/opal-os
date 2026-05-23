@@ -34,11 +34,12 @@
 - `rules-cargo.mk`는 복잡한 빌드 로직을 갖지 않는 Cargo wrapper입니다.
   - `build`: `cargo build` 실행
   - `clean`: 해당 Cargo target/build 출력 정리
-  - `unit-test`: Rust kernel `#[test]` 기반 테스트 이미지 빌드/실행
+  - `unit-test`: Rust kernel `#[ktest]` 기반 테스트 이미지 빌드/실행
 - 기존 `rules.mk`는 C/ASM 프로젝트용으로 유지합니다.
 - 루트 `Makefile`은 `RUST=1`일 때 `make -C opalkrnl`을 호출합니다.
 - `RUST=1`일 때 `KERNEL_ELF`, `KERNEL_BIN`은 `opalkrnl` 산출물을 가리켜야 합니다.
 - `make iso`, `make run`, `make unit-test`의 사용자 인터페이스는 기존과 동일하게 유지합니다.
+- `UNIT_TEST=1` Rust 빌드는 Cargo `ktest-debug`/`ktest-release` profile을 사용해 일반 `debug`/`release` 산출물과 겹치지 않게 합니다.
 
 ### 3.1 부트 ASM과 링크
 - 기존 NASM 부트 코드는 Rust 포팅 초기에도 유지합니다.
@@ -46,7 +47,8 @@
 - `opal-kernel/build.rs`는 `opal-build`의 `NasmBuild`를 사용해 `opal-kernel/src/**/*.asm`을 정적 archive로 조립합니다.
 - `opal-kernel/src/platform/<platform>/**/*.asm`은 `PLATFORM`과 일치하는 플랫폼만 조립합니다.
 - `opalkrnl` 링크 단계는 `opal-kernel`이 만든 ASM artifact와 `opalkrnl`의 linker script를 사용합니다.
-- linker script는 기존 higher-half 배치, `.startup`, `.text`, `.rodata`, `.data`, `.bss`, `.unittest` 섹션 의미를 보존합니다.
+- linker script는 기존 higher-half 배치, `.startup`, `.text`, `.rodata`, `.data`, `.bss` 섹션 의미를 보존합니다.
+- Rust 테스트 등록 영역은 기존 `.unittest` 영역을 `.ktest`로 개명해 사용합니다.
 
 ## 4. Rust 런타임 정책
 - 1단계 런타임은 `core`만 사용합니다.
@@ -56,8 +58,9 @@
 - 포맷팅, 문자열, 자료구조는 `opal-kernel` 내부 Rust 구현으로 단계적으로 마련합니다.
 
 ## 5. 테스트 정책
-- Rust 서브프로젝트의 `unit-test`는 Rust `#[test]` 기반 커널 테스트로 취급합니다.
+- Rust 서브프로젝트의 `unit-test`는 Rust `#[ktest]` 기반 커널 테스트로 취급합니다.
 - 테스트는 hosted `cargo test`가 아니라 QEMU에서 실행되는 kernel test image를 목표로 합니다.
+- 테스트 이미지는 `CONFIG`에 맞는 Cargo `ktest-*` profile 산출물에서 복사합니다.
 - `make RUST=1 unit-test QEMU_DISPNONE=1`이 공식 실행 경로입니다.
 - 기존 C hosted/gtest 테스트와 C 커널 unit-test는 Rust 포팅 중에도 회귀 확인용으로 유지합니다.
 
@@ -80,9 +83,9 @@
 
 ### 6.2 Rust kernel unit-test
 - 상세 문서: `docs/rust/02-kernel-unit-test.md`
-- nightly custom test framework 기반으로 kernel `#[test]` 수집 경로를 만듭니다.
+- `opal-ktest` proc macro crate의 `#[ktest]`로 kernel test 등록 경로를 만듭니다.
 - 테스트 엔트리와 결과 출력은 `opal-kernel`에 둡니다.
-- `make RUST=1 unit-test QEMU_DISPNONE=1`로 QEMU 테스트를 실행합니다.
+- `make RUST=1 unit-test QEMU_DISPNONE=1`로 QEMU 테스트를 실행하고 `isa-debug-exit`로 자동 종료합니다.
 - 테스트 성공/실패 로그 형식은 기존 커널 유닛테스트 로그와 최대한 맞춥니다.
 
 ### 6.3 Platform primitives
@@ -138,6 +141,6 @@ ASAN_OPTIONS=detect_leaks=0 make test CONFIG=debug PLATFORM=pc-x64
 - `opal-kernel`은 커널 본체를 소유하는 `rlib` crate입니다.
 - `opalkrnl`은 링크용 껍데기 crate이며 런타임 코드를 넣지 않습니다.
 - `kmain`과 부트 ASM은 `opal-kernel` 쪽에 둡니다.
-- Rust unit-test는 kernel `#[test]`로 QEMU에서 실행합니다.
+- Rust unit-test는 kernel `#[ktest]`로 QEMU에서 실행합니다.
 - `rules-cargo.mk`는 단순 Cargo wrapper로 유지합니다.
 - 각 포팅 단계는 `docs/rust/nn-some-step-name.md` 상세 문서를 먼저 작성합니다.

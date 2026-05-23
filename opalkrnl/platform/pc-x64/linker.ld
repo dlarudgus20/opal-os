@@ -34,9 +34,9 @@ SECTIONS {
         *(.rodata* .gnu.linkonce.r.*)
 
         . = ALIGN(8);
-        unit_test_start__ = .;
-        KEEP(*(.unittest))
-        unit_test_end__ = .;
+        __ktest_start = .;
+        KEEP(*(.ktest))
+        __ktest_end = .;
     } >HIGH
 
     __rodata_end_lma = ALIGN(LOADADDR(.rodata) + SIZEOF(.rodata), 4K);
