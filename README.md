@@ -24,9 +24,6 @@
   - `qemu-img` (`qemu-utils`)
 - `make test`
   - hosted `gcc/g++`, `libgtest-dev`
-- `make RUST=1`
-  - `rustup`, `cargo`
-  - `opalkrnl/rust-toolchain.toml`에 고정된 `nightly-2026-04-14` toolchain with `rust-src`
 
 ## 빠른 시작
 ### 1) 커널 빌드
@@ -72,12 +69,10 @@ make unit-test
 ## make 주요 변수
 - `CONFIG=debug|release`
 - `PLATFORM=pc-x64`
-- `RUST=1` (Rust 커널 빌드 경로 사용)
 
 예시:
 ```bash
 make CONFIG=release
-make RUST=1 CONFIG=debug PLATFORM=pc-x64
 make -C kernel build CONFIG=debug PLATFORM=pc-x64
 ```
 

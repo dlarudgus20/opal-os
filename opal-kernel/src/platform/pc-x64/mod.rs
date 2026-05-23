@@ -1,47 +1,25 @@
-use core::arch::asm;
+use crate::arch::{in8, out8};
 
-#[cfg(opal_kernel_test)]
+#[cfg(opal_ktest)]
 pub mod qemu;
 
-pub fn halt_loop() -> ! {
-    loop {
-        unsafe {
-            asm!("cli; hlt", options(nomem, nostack, preserves_flags));
-        }
+const COM1: u16 = 0x3f8;
+
+pub fn console_init() {
+    unsafe {
+        out8(COM1 + 1, 0x00);
+        out8(COM1 + 3, 0x80);
+        out8(COM1, 0x01);
+        out8(COM1 + 1, 0x00);
+        out8(COM1 + 3, 0x03);
+        out8(COM1 + 2, 0xc7);
+        out8(COM1 + 4, 0x0b);
     }
 }
 
-pub unsafe fn out8(port: u16, value: u8) {
+pub fn console_write_byte(byte: u8) {
+    while unsafe { in8(COM1 + 5) } & 0x20 == 0 {}
     unsafe {
-        asm!(
-            "out dx, al",
-            in("dx") port,
-            in("al") value,
-            options(nomem, nostack, preserves_flags)
-        );
+        out8(COM1, byte);
     }
-}
-
-pub unsafe fn out32(port: u16, value: u32) {
-    unsafe {
-        asm!(
-            "out dx, eax",
-            in("dx") port,
-            in("eax") value,
-            options(nomem, nostack, preserves_flags)
-        );
-    }
-}
-
-pub unsafe fn in8(port: u16) -> u8 {
-    let value: u8;
-    unsafe {
-        asm!(
-            "in al, dx",
-            in("dx") port,
-            out("al") value,
-            options(nomem, nostack, preserves_flags)
-        );
-    }
-    value
 }

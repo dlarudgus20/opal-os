@@ -3,20 +3,20 @@ export PLATFORM    ?= pc-x64
 
 ifeq ($(CONFIG), debug)
 else ifeq ($(CONFIG), release)
-else
+else # CONFIG
 $(error "Invalid build configuration: $(CONFIG). Use 'debug' or 'release'.")
-endif
+endif # CONFIG
 
 ifeq ($(PLATFORM), pc-x64)
-else
+else # PLATFORM
 $(error "Invalid platform: $(PLATFORM). Supported platform: pc-x64.")
-endif
+endif # PLATFORM
 
 TEST_DIR           := tests
 
 ifneq ($(wildcard $(TEST_DIR)/*), )
 HAS_TEST           := 1
-endif
+endif # TEST_DIR/*
 
 ifeq ($(IS_TEST), 1)
 IS_TEST_BUILD := 1
@@ -24,8 +24,8 @@ ifneq ($(filter $(TARGET_TYPE), executable static-lib), )
 TARGET_TYPE := shared-lib
 else ifneq ($(TARGET_TYPE), shared-lib)
 $(error "Test is unsupported for $(TARGET_TYPE) targets.")
-endif
-endif
+endif # TARGET_TYPE
+endif # IS_TEST
 
 PYTHON             := python3
 
@@ -56,14 +56,14 @@ ifeq ($(TARGET_TYPE), root)
 export UNIT_TEST
 else ifeq ($(TARGET_TYPE), executable)
 unexport UNIT_TEST
-endif
+endif # TARGET_TYPE
 
 ifneq ($(filter $(TARGET_TYPE), executable root), )
 BUILD_PREFIX       := build/unit-test
 DEFINE_FLAGS       += -DOPAL_UNIT_TEST
-endif
+endif # TARGET_TYPE
 
-endif
+endif # UNIT_TEST
 
 TOOLSET_PREFIX     ?= x86_64-elf
 TOOLSET_CC         ?= $(TOOLSET_PREFIX)-gcc
@@ -80,15 +80,15 @@ LDFLAGS            += -nostdlib -Wl,--gc-sections -Wl,--fatal-warning
 ifeq ($(TARGET_TYPE), executable)
 COMMA := ,
 LDFLAGS += $(addprefix -Wl$(COMMA)-u$(COMMA),$(LIBKC_BUILTIN_SYMBOLS))
-endif
+endif # TARGET_TYPE
 
 ifeq ($(CONFIG), debug)
 ifneq ($(NO_ANALYZER), 1)
 CFLAGS             += -fanalyzer
-endif
-endif
+endif # NO_ANALYZER
+endif # CONFIG
 
-else
+else # IS_TEST_BUILD
 
 DEFINE_FLAGS       += -DOPAL_TEST
 
@@ -113,16 +113,16 @@ ifeq ($(CONFIG), debug)
 TEST_CXXFLAGS      += -DDEBUG -fsanitize=address,undefined -fno-omit-frame-pointer
 else ifeq ($(CONFIG), release)
 TEST_CXXFLAGS      += -DNDEBUG -O3 -flto=auto
-endif
+endif # CONFIG
 
-endif
+endif # IS_TEST_BUILD
 
 ifeq ($(TARGET_TYPE), shared-lib)
 ifneq ($(IS_TEST_BUILD), 1)
 CFLAGS             += -fPIC
-endif
+endif # IS_TEST_BUILD
 LDFLAGS            += -shared
-endif
+endif # TARGET_TYPE
 
 ifeq ($(CONFIG), debug)
 CFLAGS             += -DDEBUG
@@ -130,13 +130,13 @@ ifneq ($(IS_TEST_BUILD), 1)
 CFLAGS             += -fno-omit-frame-pointer
 ifneq ($(NO_SANITIZE), 1)
 CFLAGS             += -fsanitize=undefined
-endif
-else
+endif # NO_SANITIZE
+else # IS_TEST_BUILD
 CFLAGS             += -fsanitize=address,undefined -fno-omit-frame-pointer
-endif
+endif # IS_TEST_BUILD
 else ifeq ($(CONFIG), release)
 CFLAGS             += -DNDEBUG -O3 -flto=auto
-endif
+endif # CONFIG
 
 BUILD_DIR          := $(BUILD_PREFIX)/$(PLATFORM)/$(CONFIG)
 BUILD_DIR_REF      := $(BUILD_PREFIX_REF)/$(PLATFORM)/$(CONFIG)

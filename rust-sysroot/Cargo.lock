@@ -3,5 +3,5 @@
 version = 4
 
 [[package]]
-name = "opal-build"
+name = "rust-sysroot"
 version = "0.1.0"

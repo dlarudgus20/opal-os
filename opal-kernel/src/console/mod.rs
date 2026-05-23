@@ -1,17 +1,7 @@
-use crate::platform::{in8, out8};
-
-const COM1: u16 = 0x3f8;
+use crate::platform;
 
 pub fn init() {
-    unsafe {
-        out8(COM1 + 1, 0x00);
-        out8(COM1 + 3, 0x80);
-        out8(COM1, 0x01);
-        out8(COM1 + 1, 0x00);
-        out8(COM1 + 3, 0x03);
-        out8(COM1 + 2, 0xc7);
-        out8(COM1 + 4, 0x0b);
-    }
+    platform::console_init();
 }
 
 pub fn write_str(s: &str) {
@@ -21,10 +11,7 @@ pub fn write_str(s: &str) {
 }
 
 fn write_byte(byte: u8) {
-    while unsafe { in8(COM1 + 5) } & 0x20 == 0 {}
-    unsafe {
-        out8(COM1, byte);
-    }
+    platform::console_write_byte(byte);
 }
 
 pub fn write_fmt(args: core::fmt::Arguments) {

@@ -1,7 +1,10 @@
 # Build outputs
 build/
-target/
 **/res/gen/
+
+# Rust
+target/
+/rust-project.json
 
 # qemu artifacts
 /hd[a-d].img

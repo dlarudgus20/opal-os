@@ -20,15 +20,15 @@ pub fn ktest(attr: TokenStream, item: TokenStream) -> TokenStream {
     let run_name = format!("__opal_ktest_run_{}", name);
     let expanded = format!(
         r#"
-#[cfg(opal_kernel_test)]
+#[cfg(opal_ktest)]
 {item}
 
-#[cfg(opal_kernel_test)]
+#[cfg(opal_ktest)]
 extern "C" fn {run_name}() {{
     {name}();
 }}
 
-#[cfg(opal_kernel_test)]
+#[cfg(opal_ktest)]
 #[used]
 #[unsafe(link_section = ".ktest")]
 static {static_name}: ::opal_kernel::ktest::KernelTest = ::opal_kernel::ktest::KernelTest {{

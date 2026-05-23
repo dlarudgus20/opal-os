@@ -2,10 +2,11 @@
 
 extern crate self as opal_kernel;
 
+pub mod arch;
 pub mod console;
 pub mod platform;
 
-#[cfg(opal_kernel_test)]
+#[cfg(opal_ktest)]
 pub mod ktest;
 
 use core::panic::PanicInfo;
@@ -16,15 +17,15 @@ use opal_ktest::ktest;
 pub extern "C" fn kmain() -> ! {
     console::init();
 
-    #[cfg(opal_kernel_test)]
+    #[cfg(opal_ktest)]
     {
         ktest::run();
     }
 
-    #[cfg(not(opal_kernel_test))]
+    #[cfg(not(opal_ktest))]
     {
         console::write_str("opal rust kernel: smoke boot\n");
-        platform::halt_loop();
+        arch::halt_loop();
     }
 }
 
@@ -32,11 +33,11 @@ pub extern "C" fn kmain() -> ! {
 fn panic(_info: &PanicInfo) -> ! {
     console::write_str("opal rust kernel: panic\n");
 
-    #[cfg(opal_kernel_test)]
+    #[cfg(opal_ktest)]
     ktest::exit_failure();
 
-    #[cfg(not(opal_kernel_test))]
-    platform::halt_loop();
+    #[cfg(not(opal_ktest))]
+    arch::halt_loop();
 }
 
 #[ktest]

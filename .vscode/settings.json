@@ -1,6 +1,6 @@
 {
     "testMate.cpp.test.executables": "**/{build,Build,BUILD,out,Out,OUT}/**/*{test,Test,TEST}*",
-    "rust-analyzer.cargo.extraEnv": {
-        "PLATFORM": "pc-x64"
-    }
+    "rust-analyzer.linkedProjects": [
+        "rust-project.json"
+    ]
 }

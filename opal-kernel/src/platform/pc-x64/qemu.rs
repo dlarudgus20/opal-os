@@ -1,4 +1,4 @@
-use crate::platform::*;
+use crate::arch::{halt_loop, out32};
 
 pub const EXIT_SUCCESS: u32 = 0x10;
 pub const EXIT_FAILURE: u32 = 0x11;

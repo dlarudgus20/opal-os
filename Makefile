@@ -1,13 +1,12 @@
 TARGET_TYPE := root
-PLATFORM    := pc-x64
-
-include mkfiles/conf.mk
 
 ifeq ($(RUST), 1)
+include mkfiles/config-rust.mk
 KERNEL := opalkrnl
-else
+else # RUST
+include mkfiles/conf.mk
 KERNEL := kernel
-endif
+endif # RUST
 
 KERNEL_ELF  := $(KERNEL)/$(BUILD_DIR)/$(KERNEL).elf
 KERNEL_BIN  := $(KERNEL)/$(BUILD_DIR)/$(KERNEL).sys
@@ -26,21 +25,30 @@ QEMU_HDDS   := \
 
 ifeq ($(UEFI), 1)
 UEFI_FIRMWARE ?= /usr/share/ovmf/OVMF.fd
-QEMU_FLAGS += -bios $(UEFI_FIRMWARE)
-endif
-ifeq ($(QEMU_DISPNONE), 1)
-QEMU_FLAGS += -display none
-endif
-ifeq ($(QEMU_DEBUG_EXIT), 1)
-QEMU_FLAGS += -device isa-debug-exit,iobase=0xf4,iosize=0x04
-endif
+QEMU_FLAGS  += -bios $(UEFI_FIRMWARE)
+endif # UEFI
 
+ifeq ($(QEMU_DISPNONE), 1)
+QEMU_FLAGS  += -display none
+endif # QEMU_DISPNONE
+
+ifeq ($(QEMU_DEBUG_EXIT), 1)
+QEMU_FLAGS  += -device isa-debug-exit,iobase=0xf4,iosize=0x04
+endif # QEMU_DEBUG_EXIT
+
+ifeq ($(RUST), 1)
+SUBDIRS     :=
+CLEAN_SUBDIRS := opal-ktest opal-kernel opalkrnl rust-sysroot
+else # RUST
 SUBDIRS     := test-pch kernel libkubsan libkc libpanicimpl libcoll
-CLEAN_SUBDIRS := $(SUBDIRS) opalkrnl
+CLEAN_SUBDIRS := $(SUBDIRS)
+endif # RUST
 
 all: build
 
-.PHONY: .FORCE all build iso run disk-images clean fullclean gen clean-gen build-test test clean-test unit-test clean-unit-test
+.PHONY: .FORCE all build run clean clean-root fullclean \
+	gen clean-gen build-test test clean-test unit-test clean-unit-test \
+	iso disk-images rust-project.json
 .FORCE:
 .NOTPARALLEL:
 
@@ -58,10 +66,12 @@ $(ISO_FILE): build
 	grub-mkrescue -o $(ISO_FILE) $(ISO_DIR)
 
 $(INITRAMFS): .FORCE
-	$(MAKE) -C opsh
 	rm -rf $(INITRAMFS_DIR)
 	cp -rT initramfs $(INITRAMFS_DIR)
+ifneq ($(RUST), 1)
+	$(MAKE) -C opsh
 	cp opsh/$(BUILD_DIR)/opsh.elf $(INITRAMFS_DIR)/opsh.elf
+endif
 	@mkdir -p $(dir $@)
 	(cd $(INITRAMFS_DIR); find .) | cpio -o -H newc -D $(INITRAMFS_DIR) > $(INITRAMFS)
 
@@ -79,10 +89,27 @@ disk-images:
 	qemu-img create -f qcow2 hdb.img 16M
 	qemu-img create -f qcow2 hdd.img 8M
 
+ifeq ($(RUST), 1)
+
+rust-project.json:
+	$(MAKE) build -C opal-ktest
+	RUSTC="$(RUSTC)" RUST_TARGET_NAME="$(RUST_TARGET_NAME)" RUST_EDITION="$(RUST_EDITION)" \
+		tools/gen-rust-project.sh
+
+else # RUST
+
+rust-project.json:
+	$(error $@ requires RUST=1)
+
+endif # RUST
+
 clean:
 	for dir in $(CLEAN_SUBDIRS); do \
 		$(MAKE) clean -C $$dir || exit 1; \
 	done
+	$(MAKE) clean-root
+
+clean-root:
 	-rm -rf $(BUILD_DIR)
 
 fullclean:
@@ -118,7 +145,7 @@ clean-test:
 
 unit-test:
 ifeq ($(RUST), 1)
-	$(MAKE) run UNIT_TEST=1 QEMU_DEBUG_EXIT=1
+	$(MAKE) run UNIT_TEST=1 QEMU_DISPNONE=1 QEMU_DEBUG_EXIT=1
 else
 	$(MAKE) run UNIT_TEST=1
 endif
@@ -126,6 +153,8 @@ endif
 clean-unit-test:
 ifeq ($(RUST), 1)
 	$(MAKE) clean -C opalkrnl UNIT_TEST=1
+	$(MAKE) clean -C opal-kernel UNIT_TEST=1
 else
 	$(MAKE) clean -C kernel UNIT_TEST=1
 endif
+	$(MAKE) clean-root UNIT_TEST=1

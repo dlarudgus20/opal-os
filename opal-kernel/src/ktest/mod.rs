@@ -45,15 +45,15 @@ pub fn run() -> ! {
 }
 
 fn exit(_success: bool) -> ! {
-    #[cfg(opal_kernel_test)]
+    #[cfg(opal_ktest)]
     {
         use crate::platform::qemu;
         qemu::debug_exit(if _success { qemu::EXIT_SUCCESS } else { qemu::EXIT_FAILURE });
     }
 
-    #[cfg(not(opal_kernel_test))]
+    #[cfg(not(opal_ktest))]
     {
-        use crate::platform::halt_loop;
+        use crate::arch::halt_loop;
         halt_loop();
     }
 }
