@@ -39,8 +39,3 @@ fn panic(_info: &PanicInfo) -> ! {
     #[cfg(not(opal_ktest))]
     arch::halt_loop();
 }
-
-#[ktest]
-fn smoke_test() {
-    assert_eq!(1, 1);
-}

@@ -98,11 +98,11 @@
 - Rust source 경로를 `src/`, `src/arch/`, `src/platform/` 정책으로 정리합니다.
 - VSCode rust-analyzer는 `make rust-project.json RUST=1`로 생성한 `rust-project.json`으로 연결합니다.
 
-### 6.4 Platform primitives
-- 상세 문서: `docs/rust/04-platform-primitives.md`
-- 포트 I/O, MSR, CPUID, interrupt enable/disable, halt 같은 platform primitive를 Rust로 옮깁니다.
-- panic/log 초기 경로를 정리합니다.
-- IRQ lock과 기본 error/type 체계를 도입합니다.
+### 6.4 Arch primitives
+- 상세 문서: `docs/rust/04-arch-primitives.md`
+- 포트 I/O, RFLAGS, interrupt enable/disable, halt, CPUID, control register, TLB flush, MSR 같은 x86_64 asm primitive를 `arch/`에 둡니다.
+- `platform/`은 serial, QEMU debug-exit 같은 장치 의미만 소유합니다.
+- GDT/IDT/TSS, FPU/SIMD, context switch, syscall/interrupt dispatch는 이후 단계에서 다룹니다.
 
 ### 6.5 Memory manager
 - 상세 문서: `docs/rust/05-memory-manager.md`
