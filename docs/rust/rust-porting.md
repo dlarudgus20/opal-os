@@ -104,26 +104,32 @@
 - `platform/`은 serial, QEMU debug-exit 같은 장치 의미만 소유합니다.
 - GDT/IDT/TSS, FPU/SIMD, context switch, syscall/interrupt dispatch는 이후 단계에서 다룹니다.
 
-### 6.5 Memory manager
-- 상세 문서: `docs/rust/05-memory-manager.md`
+### 6.5 Spin mutexes
+- 상세 문서: `docs/rust/05-spin-mutexes.md`
+- memory manager와 interrupt/task 포팅 전에 사용할 `spin::Mutex`와 `irqspin::Mutex`를 추가합니다.
+- `spin::Mutex`는 CPU 간 공유 상태 보호용으로 사용합니다.
+- `irqspin::Mutex`는 local IRQ를 끈 뒤 spin mutex를 획득해 interrupt handler와 공유될 수 있는 상태를 보호합니다.
+
+### 6.6 Memory manager
+- 상세 문서: `docs/rust/06-memory-manager.md`
 - memory map 정규화와 section map 생성을 포팅합니다.
 - paging, PFN, buddy, kmalloc, slab, vmap 순서로 옮깁니다.
 - allocator 안정화 후 `alloc` crate를 활성화합니다.
 
-### 6.6 IRQ, timer, task
-- 상세 문서: `docs/rust/06-irq-timer-task.md`
+### 6.7 IRQ, timer, task
+- 상세 문서: `docs/rust/07-irq-timer-task.md`
 - IDT/GDT/TSS와 exception/IRQ dispatch를 Rust 경로로 옮깁니다.
 - PIT/timer와 scheduler tick 경로를 연결합니다.
 - task, process, coroutine, wait primitive를 단계적으로 포팅합니다.
 
-### 6.7 Drivers and filesystems
-- 상세 문서: `docs/rust/07-drivers-filesystems.md`
+### 6.8 Drivers and filesystems
+- 상세 문서: `docs/rust/08-drivers-filesystems.md`
 - UART, PS/2, framebuffer, HID, PATA를 포팅합니다.
 - disk, block device, partition, FAT, VFS를 포팅합니다.
 - kernel shell 명령은 Rust 커널 내부 명령으로 재구성합니다.
 
-### 6.8 기본 경로 전환
-- 상세 문서: `docs/rust/08-default-rust-kernel.md`
+### 6.9 기본 경로 전환
+- 상세 문서: `docs/rust/09-default-rust-kernel.md`
 - Rust 커널의 주요 부팅/테스트/파일시스템 기능을 완성하면 기본 `make` 경로 전환 여부를 별도 결정합니다.
 
 ## 7. 검증 명령

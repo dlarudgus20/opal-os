@@ -5,13 +5,12 @@ extern crate self as opal_kernel;
 pub mod arch;
 pub mod console;
 pub mod platform;
+pub mod sync;
 
 #[cfg(opal_ktest)]
 pub mod ktest;
 
 use core::panic::PanicInfo;
-
-use opal_ktest::ktest;
 
 #[unsafe(no_mangle)]
 pub extern "C" fn kmain() -> ! {

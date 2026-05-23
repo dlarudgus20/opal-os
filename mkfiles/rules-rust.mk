@@ -52,8 +52,9 @@ REFS                := $(strip $(RUST_OBJ_REFS) $(RUST_MACRO_REFS) $(RUST_SYSROO
 
 NASM_INCLUDE_FLAGS  := $(foreach inc,$(INCLUDES),-I$(inc)/)
 
-PHONY_TARGETS += all build clean fullclean refs
+PHONY_TARGETS += .FORCE all build clean fullclean
 .PHONY: $(PHONY_TARGETS)
+.FORCE:
 
 all: build
 
@@ -89,9 +90,7 @@ else
 $(error [rules-rust.mk] '$(TARGET_TYPE)': unknown target type.)
 endif
 
-$(RUST_OBJ_REF_FILES) $(ORDER_REF_FILES): | refs
-
-refs:
+$(RUST_OBJ_REF_FILES) $(ORDER_REF_FILES) &: .FORCE
 	for dir in $(REFS); do \
 		$(MAKE) -C ../$$dir || exit 1; \
 	done
