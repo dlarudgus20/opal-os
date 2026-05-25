@@ -1,10 +1,10 @@
 RESOURCES := res/gen/font.psf
 
-ifeq ($(KERNEL_PSF), )
+ifeq ($(KERNEL_PSF),)
 PSF_FILE_FLAG := --psf-system
-else
+else # KERNEL_PSF
 PSF_FILE_FLAG := --psf "$(KERNEL_PSF)"
-endif
+endif # KERNEL_PSF
 
 src/res.c: $(RESOURCES)
 

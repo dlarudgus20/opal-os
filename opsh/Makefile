@@ -5,9 +5,9 @@ STATIC_REFS := libkc
 TEST_SHARED_REFS := libpanicimpl
 LDFLAGS_ON_TEST := -Wl,--exclude-libs=libkc
 
-ifneq ($(IS_TEST), 1)
+ifneq ($(IS_TEST),1)
 STATIC_REFS += libkubsan
-endif
+endif # IS_TEST
 
 LD_SCRIPT := src/linker.ld
 

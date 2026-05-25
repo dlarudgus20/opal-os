@@ -14,17 +14,17 @@ INITRAMFS   := $(BUILD_DIR)/iso/boot/initramfs
 
 QEMU_FLAGS  += -m 128 -serial stdio -no-reboot -boot order=dc
 QEMU_HDDS   := \
-	$(if $(wildcard hda.img), -hda hda.img) \
-	$(if $(wildcard hdb.img), -hdb hdb.img) \
-	$(if $(wildcard hdd.img), -hdd hdd.img)
+	$(if $(wildcard hda.img),-hda hda.img) \
+	$(if $(wildcard hdb.img),-hdb hdb.img) \
+	$(if $(wildcard hdd.img),-hdd hdd.img)
 
-ifeq ($(UEFI), 1)
+ifeq ($(UEFI),1)
 UEFI_FIRMWARE ?= /usr/share/ovmf/OVMF.fd
 QEMU_FLAGS += -bios $(UEFI_FIRMWARE)
-endif
-ifeq ($(QEMU_DISPNONE), 1)
+endif # UEFI
+ifeq ($(QEMU_DISPNONE),1)
 QEMU_FLAGS += -display none
-endif
+endif # QEMU_DISPNONE
 
 SUBDIRS     := test-pch kernel libkubsan libkc libpanicimpl libcoll
 
