@@ -6,6 +6,7 @@ pub mod arch;
 pub mod console;
 pub mod platform;
 pub mod sync;
+pub mod utils;
 
 #[cfg(opal_ktest)]
 pub mod ktest;

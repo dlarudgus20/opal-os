@@ -1,28 +1,44 @@
-use crate::platform;
+use core::fmt::{self, Write};
 
-pub fn init() {
-    platform::console_init();
+use crate::utils::singlylist::{List, Node};
+use crate::sync::{UnsafeOnce, irqspin::Mutex};
+
+pub struct ConsoleWriter {
+    node: Node,
+    writer: fn (&str),
 }
 
-pub fn write_str(s: &str) {
-    for byte in s.bytes() {
-        write_byte(byte);
+struct Console {
+    list: List,
+}
+
+static CONSOLE: UnsafeOnce<Mutex<Console>> = UnsafeOnce::uninit();
+
+pub fn init() {
+    unsafe {
+        CONSOLE.init(Mutex::new(Console { list: List::new() }));
     }
 }
 
-fn write_byte(byte: u8) {
-    platform::console_write_byte(byte);
+pub fn register_writer(writer: &mut ConsoleWriter) {
+    let cons = unsafe { CONSOLE.get() }.lock();
+    cons.list.push_front(&mut writer.node);
 }
 
-pub fn write_fmt(args: core::fmt::Arguments) {
-    use core::fmt::Write;
-    ConsoleWriter.write_fmt(args).unwrap();
+pub fn write_str(s: &str) {
+    let cons = unsafe { CONSOLE.get() }.lock();
+    for writer in cons.list.iter() {
+        writer.writer(s);
+    }
 }
 
-pub struct ConsoleWriter;
+pub fn write_fmt(args: fmt::Arguments) {
+    let cons = unsafe { CONSOLE.get() }.lock();
+    cons.write_fmt(args).unwrap();
+}
 
-impl core::fmt::Write for ConsoleWriter {
-    fn write_str(&mut self, s: &str) -> core::fmt::Result {
+impl Write for Console {
+    fn write_str(&mut self, s: &str) -> fmt::Result {
         write_str(s);
         Ok(())
     }

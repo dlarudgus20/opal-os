@@ -1,7 +1,9 @@
-use crate::arch::{in8, out8};
+pub mod earlyserial;
 
 #[cfg(opal_ktest)]
 pub mod qemu;
+
+use crate::arch::{in8, out8};
 
 const COM1: u16 = 0x3f8;
 
