@@ -25,11 +25,11 @@ static sysret_t syscall(enum syscall_index index, uint64_t arg0, uint64_t arg1, 
     register int64_t rax __asm__("rax") = (int64_t)index;
     register int64_t rcx __asm__("rcx");
     register int64_t r11 __asm__("r11");
-    __asm__ volatile (
+    /* clang-format off */ __asm__ volatile (
         "int 0x80\n"
         : "+r"(rax), "=r"(rcx), "=r"(r11)
         : "D"(arg0), "S"(arg1), "d"(arg2)
-    );
+    ); // clang-format on
     return (sysret_t){ rax, rcx, r11 };
 }
 
@@ -77,12 +77,7 @@ static bool fmt_putchar(struct fmt *, char ch) {
 }
 
 int printf(const char *msg, ...) {
-    struct fmt f = {
-        .write_fn = fmt_putchar,
-        .size = 0,
-        .count = 0,
-        .error = false
-    };
+    struct fmt f = { .write_fn = fmt_putchar, .size = 0, .count = 0, .error = false };
     va_list args;
     va_start(args, msg);
     int ret = fmt_vsprintf(&f, msg, args);
@@ -91,12 +86,7 @@ int printf(const char *msg, ...) {
 }
 
 void _panic_format(const char *msg, const char *file, const char *func, unsigned line, ...) {
-    struct fmt f = {
-        .write_fn = fmt_putchar,
-        .size = 0,
-        .count = 0,
-        .error = false
-    };
+    struct fmt f = { .write_fn = fmt_putchar, .size = 0, .count = 0, .error = false };
     va_list args;
     va_start(args, line);
     printf("[%s:%s:%d] ", file, func, line);

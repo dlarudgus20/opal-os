@@ -90,7 +90,8 @@ static bool expand_hugepage(page_entry_t *pde) {
     return true;
 }
 
-static struct pagetable *get_or_alloc_table(struct pagetable *parent, size_t index, page_entry_t flags, bool allow_huge) {
+static struct pagetable *get_or_alloc_table(
+    struct pagetable *parent, size_t index, page_entry_t flags, bool allow_huge) {
     page_entry_t *const entry = &parent->entries[index];
 
     if (*entry & PTE_FLAG_PRESENT) {
@@ -110,7 +111,8 @@ static struct pagetable *get_or_alloc_table(struct pagetable *parent, size_t ind
     struct pagetable *child = (struct pagetable *)phys_to_virt_table(child_pa);
 
     memset(child, 0, sizeof(*child));
-    parent->entries[index] = (page_entry_t)(child_pa | PTE_FLAG_PRESENT | PTE_FLAG_WRITABLE | flags);
+    parent->entries[index] =
+        (page_entry_t)(child_pa | PTE_FLAG_PRESENT | PTE_FLAG_WRITABLE | flags);
     return child;
 }
 
@@ -165,7 +167,8 @@ static bool map_2m(struct pagetable *ptbl, virt_addr_t va, phys_addr_t pa, page_
     return true;
 }
 
-static virt_addr_t map_range_len(struct pagetable *ptbl, virt_addr_t va, phys_addr_t pa, phys_size_t len, page_entry_t flags) {
+static virt_addr_t map_range_len(
+    struct pagetable *ptbl, virt_addr_t va, phys_addr_t pa, phys_size_t len, page_entry_t flags) {
     kassert(pa % PAGE_SIZE == 0);
     kassert(len % PAGE_SIZE == 0);
     kassert(va % PAGE_SIZE == 0);
@@ -178,10 +181,8 @@ static virt_addr_t map_range_len(struct pagetable *ptbl, virt_addr_t va, phys_ad
     phys_addr_t pa_cur = pa;
 
     while (len > 0) {
-        bool can_use_huge =
-            (len >= HUGE_PAGE_SIZE) &&
-            ((va_cur & (HUGE_PAGE_SIZE - 1)) == 0) &&
-            ((pa_cur & (HUGE_PAGE_SIZE - 1)) == 0);
+        bool can_use_huge = (len >= HUGE_PAGE_SIZE) && ((va_cur & (HUGE_PAGE_SIZE - 1)) == 0)
+            && ((pa_cur & (HUGE_PAGE_SIZE - 1)) == 0);
 
         if (can_use_huge) {
             if (!map_2m(ptbl, va_cur, pa_cur, flags)) {
@@ -207,7 +208,8 @@ err:
     return 0;
 }
 
-static virt_addr_t map_range(struct pagetable *ptbl, virt_addr_t va, phys_addr_t pa_start, phys_addr_t pa_end, page_entry_t flags) {
+static virt_addr_t map_range(struct pagetable *ptbl, virt_addr_t va, phys_addr_t pa_start,
+    phys_addr_t pa_end, page_entry_t flags) {
     return map_range_len(ptbl, va, pa_start, pa_end - pa_start, flags);
 }
 
@@ -259,7 +261,8 @@ static virt_addr_t unmap_next(struct pagetable *ptbl, virt_addr_t va, virt_addr_
 
     page_entry_t *const pml4e = &ptbl->entries[i4];
     kassert(!(*pml4e & PTE_FLAG_HUGE), "unexpected huge page");
-    if (va + bits4 <= end && (*pml4e & PTE_FLAG_PRESENT) && deallocate_pdpt(*pml4e & PTE_MASK_ADDR)) {
+    if (va + bits4 <= end && (*pml4e & PTE_FLAG_PRESENT)
+        && deallocate_pdpt(*pml4e & PTE_MASK_ADDR)) {
         *pml4e = 0;
     }
     if (!(*pml4e & PTE_FLAG_PRESENT)) {
@@ -295,7 +298,8 @@ static virt_addr_t unmap_next(struct pagetable *ptbl, virt_addr_t va, virt_addr_
     return va + bits1;
 }
 
-static virt_addr_t unmap_range_len(struct pagetable *ptbl, virt_addr_t va, virt_size_t len, bool flush_tlb) {
+static virt_addr_t unmap_range_len(
+    struct pagetable *ptbl, virt_addr_t va, virt_size_t len, bool flush_tlb) {
     kassert(va % PAGE_SIZE == 0);
     kassert(len % PAGE_SIZE == 0);
 
@@ -341,11 +345,13 @@ void pagetable_apply(struct pagetable *ptbl) {
     write_cr3(virt_to_phys_direct((virt_addr_t)ptbl));
 }
 
-virt_addr_t pagetable_map(struct pagetable *ptbl, virt_addr_t va, phys_addr_t pa, phys_size_t len, page_entry_t flags) {
+virt_addr_t pagetable_map(
+    struct pagetable *ptbl, virt_addr_t va, phys_addr_t pa, phys_size_t len, page_entry_t flags) {
     return map_range_len(ptbl, va, pa, len, flags);
 }
 
-virt_addr_t pagetable_unmap(struct pagetable *ptbl, virt_addr_t va, virt_size_t len, bool flush_tlb) {
+virt_addr_t pagetable_unmap(
+    struct pagetable *ptbl, virt_addr_t va, virt_size_t len, bool flush_tlb) {
     return unmap_range_len(ptbl, va, len, flush_tlb);
 }
 
@@ -411,12 +417,16 @@ void mm_kptbl_init(struct tmpalloc *ta) {
 
     // kernel image
     virt_addr_t va = KERNEL_START_VIRT;
-    va = map_range(ptbl, va, (phys_addr_t)__kernel_start_lba, (phys_addr_t)__rodata_end_lba, PTE_FLAG_PRESENT);
-    va = map_range(ptbl, va, (phys_addr_t)__rodata_end_lba, (phys_addr_t)__before_stack_lba, PTE_FLAG_PRESENT | PTE_FLAG_WRITABLE);
-    map_range(ptbl, KSTACK_START_VIRT, (phys_addr_t)__stack_bottom_lba, (phys_addr_t)__kernel_end_lba, PTE_FLAG_PRESENT | PTE_FLAG_WRITABLE);
+    va = map_range(
+        ptbl, va, (phys_addr_t)__kernel_start_lba, (phys_addr_t)__rodata_end_lba, PTE_FLAG_PRESENT);
+    va = map_range(ptbl, va, (phys_addr_t)__rodata_end_lba, (phys_addr_t)__before_stack_lba,
+        PTE_FLAG_PRESENT | PTE_FLAG_WRITABLE);
+    map_range(ptbl, KSTACK_START_VIRT, (phys_addr_t)__stack_bottom_lba,
+        (phys_addr_t)__kernel_end_lba, PTE_FLAG_PRESENT | PTE_FLAG_WRITABLE);
 
     // direct map (bootstrap)
-    map_range(ptbl, DIRECT_MAP_START_VIRT, 0, BOOTSTRAP_MAP_END_PHYS, PTE_FLAG_PRESENT | PTE_FLAG_WRITABLE);
+    map_range(ptbl, DIRECT_MAP_START_VIRT, 0, BOOTSTRAP_MAP_END_PHYS,
+        PTE_FLAG_PRESENT | PTE_FLAG_WRITABLE);
     g_direct_ready = true;
 
     // update cr3
@@ -428,7 +438,7 @@ void mm_kptbl_init(struct tmpalloc *ta) {
     // remaining direct map
     const struct mmap *sec = mm_get_section_map();
     for (size_t i = 0; i < sec->length; i++) {
-        const struct mmap_entry* entry = &sec->entries[i];
+        const struct mmap_entry *entry = &sec->entries[i];
 
         phys_addr_t addr = entry->addr;
         phys_size_t len = entry->len;
@@ -496,9 +506,8 @@ static page_entry_t get_leaf_flags(page_entry_t entry) {
     return (entry & ~PTE_MASK_ADDR) & ~(PTE_FLAG_ACCESSED | PTE_FLAG_DIRTY);
 }
 
-static void print_pagetable_recur(struct pagetable *table,
-    const char *names[], unsigned depth, uintptr_t pagesize, uintptr_t va
-) {
+static void print_pagetable_recur(struct pagetable *table, const char *names[], unsigned depth,
+    uintptr_t pagesize, uintptr_t va) {
     int leaf_begin = -1;
     for (int idx = 0; idx <= PAGETABLE_LENGTH; idx++) {
         bool present = idx < PAGETABLE_LENGTH && (table->entries[idx] & PTE_FLAG_PRESENT);
@@ -524,7 +533,7 @@ static void print_pagetable_recur(struct pagetable *table,
                 virt_addr_t v_raw = (va << 9 | (virt_addr_t)leaf_begin) << shifts[depth];
                 virt_addr_t v_ext = v_raw & sign ? v_raw | sign : v_raw;
 
-                tty0_printf("%s %#018"PRIvirt"-%#018"PRIvirt" to %#"PRIphys"-%#"PRIphys": ",
+                tty0_printf("%s %#018" PRIvirt "-%#018" PRIvirt " to %#" PRIphys "-%#" PRIphys ": ",
                     names[depth], v_ext, v_ext + len, pa, pa + len);
                 print_pte_flags(prev_flags);
                 tty0_printf("\n");
@@ -544,7 +553,7 @@ static void print_pagetable_recur(struct pagetable *table,
         page_entry_t entry = table->entries[idx];
         phys_addr_t pa = entry & PTE_MASK_ADDR;
 
-        tty0_printf("%s %#7x to %#"PRIphys": ", names[depth], idx, pa);
+        tty0_printf("%s %#7x to %#" PRIphys ": ", names[depth], idx, pa);
         print_pte_flags(entry);
         tty0_printf("\n");
 

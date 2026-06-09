@@ -1,8 +1,6 @@
 #ifndef OPAL_PLATFORM_MM_TYPES_H
 #define OPAL_PLATFORM_MM_TYPES_H
 
-#include <limits.h>
-
 #include <kc/inttypes.h>
 
 #define PHYS_ADDR_MAX UINTPTR_MAX

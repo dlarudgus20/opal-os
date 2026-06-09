@@ -19,7 +19,8 @@ kerrno_t fat_read_sectors(struct block_device *bdev, uint32_t lba, uint32_t sect
     return result;
 }
 
-kerrno_t fat_write_sectors(struct block_device *bdev, uint32_t lba, uint32_t sectors, const void *buffer) {
+kerrno_t fat_write_sectors(
+    struct block_device *bdev, uint32_t lba, uint32_t sectors, const void *buffer) {
     struct disk_request *req = block_device_write(bdev, lba, sectors, buffer);
     if (!req) {
         return OPAL_EBUSY;
@@ -34,7 +35,8 @@ static bool is_valid_bps(uint16_t bps) {
     return bps == 512 || bps == 1024 || bps == 2048 || bps == 4096;
 }
 
-static bool parse_bpb(fs_size_t bdev_sectors, const struct fat_bpb *bpb, struct fat_layout *layout) {
+static bool parse_bpb(
+    fs_size_t bdev_sectors, const struct fat_bpb *bpb, struct fat_layout *layout) {
     uint16_t bps = bpb->bytes_per_sector;
     uint8_t spc = bpb->sectors_per_cluster;
 
@@ -196,9 +198,7 @@ static bool is_valid_clusters(uint8_t bits, uint32_t cluster_count) {
 }
 
 static bool calc_fat_layout(
-    uint8_t bits, uint32_t sectors, uint16_t bps, uint8_t spc,
-    struct fat_layout *layout
-) {
+    uint8_t bits, uint32_t sectors, uint16_t bps, uint8_t spc, struct fat_layout *layout) {
     uint16_t reserved_sectors = FAT32_RESERVED_SECTORS;
     uint16_t root_entries = 0;
 
@@ -283,7 +283,8 @@ static kerrno_t setup_layout(fs_size_t sectors, struct fat_layout *layout) {
     uint8_t bits_list[] = { 12, 16, 32 };
     uint8_t bits_idx = 0;
     for (; bits_idx < 3; bits_idx++) {
-        if (calc_fat_layout(bits_list[bits_idx], (uint32_t)sectors, DISK_SECTOR_SIZE, spc, layout)) {
+        if (calc_fat_layout(
+                bits_list[bits_idx], (uint32_t)sectors, DISK_SECTOR_SIZE, spc, layout)) {
             break;
         }
     }
@@ -302,7 +303,8 @@ static void setup_bpb(const struct fat_layout *layout, struct fat_bpb *bpb) {
     bpb->sectors_per_cluster = layout->sectors_per_cluster;
     bpb->reserved_sectors = layout->reserved_sectors;
     bpb->num_fats = layout->num_fats;
-    bpb->total_sectors_16 = layout->total_sectors >= UINT16_MAX ? 0 : (uint16_t)layout->total_sectors;
+    bpb->total_sectors_16 =
+        layout->total_sectors >= UINT16_MAX ? 0 : (uint16_t)layout->total_sectors;
     bpb->media = 0xf8;
     bpb->fat_size_16 = layout->bits == 32 ? 0 : (uint16_t)layout->fat_sectors;
     bpb->sectors_per_track = 0x3f;
@@ -328,7 +330,8 @@ static void setup_bpb(const struct fat_layout *layout, struct fat_bpb *bpb) {
     }
 }
 
-static kerrno_t write_vbr(struct block_device *bdev, const struct fat_layout *layout, uint8_t *media) {
+static kerrno_t write_vbr(
+    struct block_device *bdev, const struct fat_layout *layout, uint8_t *media) {
     union {
         unsigned char buffer[DISK_SECTOR_SIZE];
         struct fat_bpb bpb;
@@ -377,9 +380,10 @@ static kerrno_t write_fsinfo(struct block_device *bdev) {
     return fat_write_sectors(bdev, FAT32_BACKUP_FSINFO_SECTOR, 1, sec.buffer);
 }
 
-static kerrno_t write_fats(struct block_device *bdev, const struct fat_layout *layout, uint8_t media) {
-    unsigned char first[DISK_SECTOR_SIZE] = { };
-    unsigned char empty[DISK_SECTOR_SIZE] = { };
+static kerrno_t write_fats(
+    struct block_device *bdev, const struct fat_layout *layout, uint8_t media) {
+    unsigned char first[DISK_SECTOR_SIZE] = {};
+    unsigned char empty[DISK_SECTOR_SIZE] = {};
 
     first[0] = media;
     if (layout->bits == 12) {
@@ -409,7 +413,7 @@ static kerrno_t write_fats(struct block_device *bdev, const struct fat_layout *l
 }
 
 static kerrno_t write_root(struct block_device *bdev, const struct fat_layout *layout) {
-    unsigned char empty[DISK_SECTOR_SIZE] = { };
+    unsigned char empty[DISK_SECTOR_SIZE] = {};
 
     uint32_t offset;
     uint32_t sectors;

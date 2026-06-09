@@ -54,7 +54,7 @@ static union gdt g_gdt[7];
 static struct idt g_idt[256];
 static struct tss g_tss;
 
-static void init_gdt(union gdt* gdt, uint32_t base, uint32_t limit, uint8_t flags, uint8_t flags2) {
+static void init_gdt(union gdt *gdt, uint32_t base, uint32_t limit, uint8_t flags, uint8_t flags2) {
     gdt->limit_low = limit & 0xffff;
     gdt->base_low = base & 0xffffff;
     gdt->flags1 = flags;
@@ -63,13 +63,14 @@ static void init_gdt(union gdt* gdt, uint32_t base, uint32_t limit, uint8_t flag
     gdt->base_high = (base >> 24) & 0xff;
 }
 
-static void init_tss(union gdt* gdt, struct tss* tss) {
-    init_gdt(gdt, (uint64_t)tss, sizeof(struct tss) - 1,
-        GDT_FLAG_PRESENT | GDT_FLAG_TSS_AVAIL, TSS_FLAG2);
+static void init_tss(union gdt *gdt, struct tss *tss) {
+    init_gdt(gdt, (uint64_t)tss, sizeof(struct tss) - 1, GDT_FLAG_PRESENT | GDT_FLAG_TSS_AVAIL,
+        TSS_FLAG2);
     gdt[1].descriptor = (uint64_t)tss >> 32;
 }
 
-static void init_idt(struct idt* idt, uint16_t segment, void (*handler)(), uint8_t dpl, uint8_t ist) {
+static void init_idt(
+    struct idt *idt, uint16_t segment, void (*handler)(), uint8_t dpl, uint8_t ist) {
     idt->offset_low = (uint64_t)handler & 0xffff;
     idt->segment = segment;
     idt->ist = ist;
@@ -95,8 +96,10 @@ void descriptors_init(void) {
     static_assert(KERNEL_DATA_SEGMENT == 2 * 8);
     init_gdt(g_gdt + 1, 0, 0xffffffff, GDT_FLAG_PRESENT | GDT_FLAG_USER | GDT_FLAG_CODE, GDT_FLAG2);
     init_gdt(g_gdt + 2, 0, 0xffffffff, GDT_FLAG_PRESENT | GDT_FLAG_USER | GDT_FLAG_RW, GDT_FLAG2);
-    init_gdt(g_gdt + 3, 0, 0xffffffff, GDT_FLAG_PRESENT | GDT_FLAG_USER | GDT_FLAG_DPL3 | GDT_FLAG_CODE, GDT_FLAG2);
-    init_gdt(g_gdt + 4, 0, 0xffffffff, GDT_FLAG_PRESENT | GDT_FLAG_USER | GDT_FLAG_DPL3 | GDT_FLAG_RW, GDT_FLAG2);
+    init_gdt(g_gdt + 3, 0, 0xffffffff,
+        GDT_FLAG_PRESENT | GDT_FLAG_USER | GDT_FLAG_DPL3 | GDT_FLAG_CODE, GDT_FLAG2);
+    init_gdt(g_gdt + 4, 0, 0xffffffff,
+        GDT_FLAG_PRESENT | GDT_FLAG_USER | GDT_FLAG_DPL3 | GDT_FLAG_RW, GDT_FLAG2);
     init_tss(g_gdt + 5, &g_tss);
     load_gdt(g_gdt, sizeof(g_gdt));
     load_tss(5 * 8);

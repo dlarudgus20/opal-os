@@ -39,11 +39,7 @@ static struct meta_ranges meta_ranges_for_entry(const struct mmap_entry *entry) 
 }
 
 static virt_addr_t allocate_pages(
-    struct tmpalloc *ta,
-    virt_addr_t va,
-    virt_size_t pages_needed,
-    virt_addr_t allocated_end
-) {
+    struct tmpalloc *ta, virt_addr_t va, virt_size_t pages_needed, virt_addr_t allocated_end) {
     if (allocated_end > va) {
         size_t pages_allocated = (allocated_end - va) / PAGE_SIZE;
         if (pages_needed <= pages_allocated) {
@@ -58,7 +54,8 @@ static virt_addr_t allocate_pages(
         size_t pages_allocated;
         phys_addr_t pa = tmpalloc_alloc_pages(ta, pages_needed, &pages_allocated);
 
-        pagetable_map(mm_kptbl_get(), va, pa, pages_allocated * PAGE_SIZE, PTE_FLAG_WRITABLE | PTE_FLAG_PRESENT);
+        pagetable_map(mm_kptbl_get(), va, pa, pages_allocated * PAGE_SIZE,
+            PTE_FLAG_WRITABLE | PTE_FLAG_PRESENT);
 
         va += pages_allocated * PAGE_SIZE;
         pages_needed -= pages_allocated;
@@ -83,7 +80,8 @@ static void initialize_pages(pfn_t pfn_start, pfn_t pfn_end, bool is_metadata) {
 
 enum build_stage { STAGE_ALLOC, STAGE_INIT };
 
-static void build_metadata(struct tmpalloc *ta, const struct mmap *section_map, enum build_stage stage) {
+static void build_metadata(
+    struct tmpalloc *ta, const struct mmap *section_map, enum build_stage stage) {
     virt_addr_t allocated_end = PAGES_START_VIRT;
 
     for (uint32_t i = 0; i < section_map->length; i++) {
@@ -193,8 +191,8 @@ phys_addr_t direct_ptr_to_phys(void *ptr) {
 #include <opal/tty.h>
 
 static void print_pfns(pfn_t pfn_start, pfn_t pfn_end, uint16_t flags) {
-    tty0_printf("PFN [%#015"PRIpfn", %#015"PRIpfn")%s\n",
-        pfn_start, pfn_end, flags & PAGE_FLAG_METADATA ? " (metadata)" : "");
+    tty0_printf("PFN [%#015" PRIpfn ", %#015" PRIpfn ")%s\n", pfn_start, pfn_end,
+        flags & PAGE_FLAG_METADATA ? " (metadata)" : "");
 }
 
 void pfn_print_all(void) {

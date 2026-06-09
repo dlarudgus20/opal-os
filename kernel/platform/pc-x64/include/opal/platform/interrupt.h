@@ -1,8 +1,6 @@
 #ifndef OPAL_PLATFORM_INTERRUPT_H
 #define OPAL_PLATFORM_INTERRUPT_H
 
-#pragma once
-
 #include <stdint.h>
 
 #include <opal/attributes.h>
@@ -26,7 +24,7 @@
     uint64_t rcx; \
     uint64_t rbx; \
     uint64_t rax; \
-    uint64_t rbp; \
+    uint64_t rbp;
 
 #define ISR_STACKFRAME_IRETQ \
     uint64_t rip; \
@@ -91,25 +89,25 @@ void isr_simd_floating_point();
 void isr_unknown();
 void isr_int80();
 
-void isr_impl_divide_by_zero(struct isr_stackframe* frame);
-void isr_impl_debug(struct isr_stackframe* frame);
-void isr_impl_nmi(struct isr_stackframe* frame);
-void isr_impl_breakpoint(struct isr_stackframe* frame);
-void isr_impl_overflow(struct isr_stackframe* frame);
-void isr_impl_bound_range_exceeded(struct isr_stackframe* frame);
-void isr_impl_invalid_opcode(struct isr_stackframe* frame);
-void isr_impl_device_not_available(struct isr_stackframe* frame);
-void isr_impl_double_fault(struct isr_stackframe_ec* frame);
-void isr_impl_invalid_tss(struct isr_stackframe_ec* frame);
-void isr_impl_segment_not_present(struct isr_stackframe_ec* frame);
-void isr_impl_stack_segment_fault(struct isr_stackframe_ec* frame);
-void isr_impl_general_protection_fault(struct isr_stackframe_ec* frame);
-void isr_impl_page_fault(struct isr_stackframe_ec* frame);
-void isr_impl_x87_floating_point(struct isr_stackframe* frame);
-void isr_impl_alignment_check(struct isr_stackframe_ec* frame);
-void isr_impl_machine_check(struct isr_stackframe* frame);
-void isr_impl_simd_floating_point(struct isr_stackframe* frame);
-void isr_impl_unknown(struct isr_stackframe* frame);
-void isr_impl_int80(struct isr_stackframe* frame);
+void isr_impl_divide_by_zero(struct isr_stackframe *frame);
+void isr_impl_debug(struct isr_stackframe *frame);
+void isr_impl_nmi(struct isr_stackframe *frame);
+void isr_impl_breakpoint(struct isr_stackframe *frame);
+void isr_impl_overflow(struct isr_stackframe *frame);
+void isr_impl_bound_range_exceeded(struct isr_stackframe *frame);
+void isr_impl_invalid_opcode(struct isr_stackframe *frame);
+void isr_impl_device_not_available(struct isr_stackframe *frame);
+void isr_impl_double_fault(struct isr_stackframe_ec *frame);
+void isr_impl_invalid_tss(struct isr_stackframe_ec *frame);
+void isr_impl_segment_not_present(struct isr_stackframe_ec *frame);
+void isr_impl_stack_segment_fault(struct isr_stackframe_ec *frame);
+void isr_impl_general_protection_fault(struct isr_stackframe_ec *frame);
+void isr_impl_page_fault(struct isr_stackframe_ec *frame);
+void isr_impl_x87_floating_point(struct isr_stackframe *frame);
+void isr_impl_alignment_check(struct isr_stackframe_ec *frame);
+void isr_impl_machine_check(struct isr_stackframe *frame);
+void isr_impl_simd_floating_point(struct isr_stackframe *frame);
+void isr_impl_unknown(struct isr_stackframe *frame);
+void isr_impl_int80(struct isr_stackframe *frame);
 
 #endif

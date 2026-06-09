@@ -142,7 +142,7 @@ static void update_end_fd(struct filetable *table) {
 }
 
 void filetable_init(struct filetable *table) {
-    *table = (struct filetable){ };
+    *table = (struct filetable){};
     table->files = table->inline_files;
     table->bitmap = table->inline_bitmap;
     table->capacity = FDTBL_INLINE_SIZE;

@@ -7,7 +7,6 @@
 #include <opal/mm/buddy.h>
 #include <opal/mm/slab.h>
 #include <opal/mm/slab_metadata.h>
-#include <opal/platform/mm/defines.h>
 
 static size_t max_size(size_t a, size_t b) {
     return a > b ? a : b;
@@ -17,7 +16,8 @@ static struct slab_page *page_from_link(struct linkedlist_link *link) {
     return container_of(link, struct slab_page, link);
 }
 
-static struct slab_obj_hdr *slot_object(const struct slab *slab, const struct slab_page *page, uint32_t slot_idx) {
+static struct slab_obj_hdr *slot_object(
+    const struct slab *slab, const struct slab_page *page, uint32_t slot_idx) {
     size_t offset = slab->slot_offset + slab->slot_stride * slot_idx;
     return (struct slab_obj_hdr *)((char *)page + offset);
 }
@@ -82,7 +82,8 @@ static void fill_unused_payload(const struct slab *slab, struct slab_obj_hdr *hd
 }
 
 static void check_unused_payload(const struct slab *slab, const struct slab_obj_hdr *hdr) {
-    void *const unused_bad = memchr_not(payload_ptr(slab, hdr), SLAB_UNUSED_PATTERN, slab->object_size);
+    void *const unused_bad =
+        memchr_not(payload_ptr(slab, hdr), SLAB_UNUSED_PATTERN, slab->object_size);
     kassert(!unused_bad, "slab unused payload corrupted");
 }
 
@@ -157,7 +158,8 @@ void slab_create(struct slab *slab, size_t object_size, size_t object_align) {
     slab->object_align = (uint16_t)object_align;
 
     const size_t slot_align = max_size(object_align, alignof(struct slab_obj_hdr));
-    const size_t prefix_end = align_ceil_sz_p2(sizeof(struct slab_obj_hdr) + SLAB_REDZONE_SIZE, object_align);
+    const size_t prefix_end =
+        align_ceil_sz_p2(sizeof(struct slab_obj_hdr) + SLAB_REDZONE_SIZE, object_align);
     const size_t slot_data_size = prefix_end + object_size + SLAB_REDZONE_SIZE;
     const size_t slot_stride = align_ceil_sz_p2(slot_data_size, slot_align);
 

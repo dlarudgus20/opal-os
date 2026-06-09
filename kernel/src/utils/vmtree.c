@@ -184,7 +184,8 @@ static vmtree_status_t promote_leaf_to_internal(uintptr_t *tagged_ref) {
     return VMTREE_OK;
 }
 
-static vmtree_status_t insert_leaf_boundary(struct vmtree_node *node, uintptr_t lo, uintptr_t hi, uintptr_t x) {
+static vmtree_status_t insert_leaf_boundary(
+    struct vmtree_node *node, uintptr_t lo, uintptr_t hi, uintptr_t x) {
     const size_t n = pivot_count(node);
     const size_t slot = slot_for_addr(node, x);
     const uintptr_t left = slot_lo(node, slot, lo);
@@ -209,7 +210,8 @@ static vmtree_status_t insert_leaf_boundary(struct vmtree_node *node, uintptr_t 
     return VMTREE_OK;
 }
 
-static vmtree_status_t ensure_boundary_rec(uintptr_t *tagged_ref, uintptr_t lo, uintptr_t hi, uintptr_t x) {
+static vmtree_status_t ensure_boundary_rec(
+    uintptr_t *tagged_ref, uintptr_t lo, uintptr_t hi, uintptr_t x) {
     if (x <= lo || x >= hi) {
         return VMTREE_OK;
     }
@@ -237,7 +239,8 @@ static vmtree_status_t ensure_boundary_rec(uintptr_t *tagged_ref, uintptr_t lo, 
     return ensure_boundary_rec(&node->slots[slot], child_lo, child_hi, x);
 }
 
-static bool any_nonhole_rec(uintptr_t tagged, uintptr_t lo, uintptr_t hi, uintptr_t start, uintptr_t end) {
+static bool any_nonhole_rec(
+    uintptr_t tagged, uintptr_t lo, uintptr_t hi, uintptr_t start, uintptr_t end) {
     if (end <= lo || hi <= start) {
         return false;
     }
@@ -272,7 +275,8 @@ static bool any_nonhole_rec(uintptr_t tagged, uintptr_t lo, uintptr_t hi, uintpt
     return false;
 }
 
-static bool any_hole_rec(uintptr_t tagged, uintptr_t lo, uintptr_t hi, uintptr_t start, uintptr_t end) {
+static bool any_hole_rec(
+    uintptr_t tagged, uintptr_t lo, uintptr_t hi, uintptr_t start, uintptr_t end) {
     if (end <= lo || hi <= start) {
         return false;
     }
@@ -338,9 +342,8 @@ static void normalize_rec(uintptr_t *tagged_ref) {
     while (i < n) {
         uintptr_t left_entry = 0;
         uintptr_t right_entry = 0;
-        if (!child_is_uniform(node->slots[i], &left_entry) ||
-            !child_is_uniform(node->slots[i + 1], &right_entry) ||
-            left_entry != right_entry) {
+        if (!child_is_uniform(node->slots[i], &left_entry)
+            || !child_is_uniform(node->slots[i + 1], &right_entry) || left_entry != right_entry) {
             i++;
             continue;
         }
@@ -359,9 +362,8 @@ static void normalize_rec(uintptr_t *tagged_ref) {
     }
 }
 
-static void write_range_rec(
-    uintptr_t *tagged_ref, uintptr_t lo, uintptr_t hi, uintptr_t start, uintptr_t end, uintptr_t entry
-) {
+static void write_range_rec(uintptr_t *tagged_ref, uintptr_t lo, uintptr_t hi, uintptr_t start,
+    uintptr_t end, uintptr_t entry) {
     if (end <= lo || hi <= start) {
         return;
     }
@@ -397,7 +399,8 @@ static void write_range_rec(
     }
 }
 
-static vmtree_status_t validate_range(uintptr_t root, uintptr_t start, uintptr_t end, enum vmtree_write_mode mode) {
+static vmtree_status_t validate_range(
+    uintptr_t root, uintptr_t start, uintptr_t end, enum vmtree_write_mode mode) {
     if (mode == VMTREE_WRITE_REMOVE) {
         return VMTREE_OK;
     }
@@ -413,9 +416,8 @@ static vmtree_status_t insert_validate(uintptr_t root, uintptr_t start, uintptr_
     return any_nonhole_rec(root, 0, UINTPTR_MAX, start, end) ? VMTREE_ERR_EXISTS : VMTREE_OK;
 }
 
-static vmtree_status_t write_range(
-    struct vmtree *tree, uintptr_t start, uintptr_t end, uintptr_t entry, enum vmtree_write_mode mode
-) {
+static vmtree_status_t write_range(struct vmtree *tree, uintptr_t start, uintptr_t end,
+    uintptr_t entry, enum vmtree_write_mode mode) {
     if (start > end) {
         return VMTREE_ERR_INVAL;
     }

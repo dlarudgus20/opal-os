@@ -1,7 +1,6 @@
 #ifndef OPAL_KLOG_H
 #define OPAL_KLOG_H
 
-#include <limits.h>
 #include <stddef.h>
 #include <stdint.h>
 
@@ -32,15 +31,15 @@ void klog_write(uint16_t level, const char *msg, uint16_t msglen);
 [[nodiscard]] bool klog_read(struct klog_record_header *header_out, char *msg_out, size_t msg_size);
 void klog_print_all_tty0(bool seq);
 
-int klog_format(uint16_t level, const char *fmt, ...) PRINTF_ATTR(2, 3);
+PRINTF_ATTR(2, 3) int klog_format(uint16_t level, const char *fmt, ...);
 
-#define klogf(level, fmt, ...) klog_format(level, fmt, ##__VA_ARGS__)
+#define klogf(level, fmt, ...) klog_format(level, fmt __VA_OPT__(,) __VA_ARGS__)
 
-#define kcritical(fmt, ...) klogf(KLOG_CRITICAL, fmt, ##__VA_ARGS__)
-#define kerror(fmt, ...)    klogf(KLOG_ERROR, fmt, ##__VA_ARGS__)
-#define kwarn(fmt, ...)     klogf(KLOG_WARNING, fmt, ##__VA_ARGS__)
-#define knotice(fmt, ...)   klogf(KLOG_NOTICE, fmt, ##__VA_ARGS__)
-#define kinfo(fmt, ...)     klogf(KLOG_INFO, fmt, ##__VA_ARGS__)
-#define kdebug(fmt, ...)    klogf(KLOG_DEBUG, fmt, ##__VA_ARGS__)
+#define kcritical(fmt, ...) klogf(KLOG_CRITICAL, fmt __VA_OPT__(,) __VA_ARGS__)
+#define kerror(fmt, ...)    klogf(KLOG_ERROR, fmt __VA_OPT__(,) __VA_ARGS__)
+#define kwarn(fmt, ...)     klogf(KLOG_WARNING, fmt __VA_OPT__(,) __VA_ARGS__)
+#define knotice(fmt, ...)   klogf(KLOG_NOTICE, fmt __VA_OPT__(,) __VA_ARGS__)
+#define kinfo(fmt, ...)     klogf(KLOG_INFO, fmt __VA_OPT__(,) __VA_ARGS__)
+#define kdebug(fmt, ...)    klogf(KLOG_DEBUG, fmt __VA_OPT__(,) __VA_ARGS__)
 
 #endif

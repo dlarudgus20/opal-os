@@ -14,6 +14,7 @@
 #define panicf(msg, ...) (_panic_format("panic : " msg, __FILE__, __func__, __LINE__, __VA_ARGS__))
 #define kassertf(exp, msg, ...) ((void)((exp) || (_panic_format(msg " : %s", __FILE__, __func__, __LINE__, __VA_ARGS__, #exp), 1)))
 
-[[noreturn]] void _panic_format(const char *fmt, const char *file, const char *func, unsigned line, ...) PRINTF_ATTR(1, 5);
+[[noreturn]] PRINTF_ATTR(1, 5) void _panic_format(
+    const char *fmt, const char *file, const char *func, unsigned line, ...);
 
 #endif

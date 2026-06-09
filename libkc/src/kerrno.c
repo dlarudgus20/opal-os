@@ -5,6 +5,7 @@ const char *kerrno_str(kerrno_t err) {
         return "OPAL_OK";
     }
 
+    // clang-format off
     switch (err) {
         case OPAL_EIO: return "OPAL_EIO";
         case OPAL_ENOMEM: return "OPAL_ENOMEM";
@@ -25,4 +26,5 @@ const char *kerrno_str(kerrno_t err) {
 
         default: return "OPAL_EUNKNOWN";
     }
+    // clang-format on
 }

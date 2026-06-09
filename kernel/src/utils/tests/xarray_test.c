@@ -91,7 +91,8 @@ DEFINE_UNIT_TEST(xarray_sparse_disjoint_ranges_keep_holes) {
 
     TEST_ASSERT_TRUE(xarray_set_range(&xa, 3, 2, (void *)(uintptr_t)0x0000000012345000ull));
     TEST_ASSERT_TRUE(xarray_set_range(&xa, 4096, 3, (void *)(uintptr_t)0x00007fff0000a000ull));
-    TEST_ASSERT_TRUE(xarray_set_range(&xa, (1ull << 20) + 7, 2, (void *)(uintptr_t)0xffff900000123000ull));
+    TEST_ASSERT_TRUE(
+        xarray_set_range(&xa, (1ull << 20) + 7, 2, (void *)(uintptr_t)0xffff900000123000ull));
 
     TEST_EXPECT_EQ((uint64_t)0x0000000012345000ull, (uint64_t)(uintptr_t)xarray_get(&xa, 3));
     TEST_EXPECT_EQ((uint64_t)0x0000000012345008ull, (uint64_t)(uintptr_t)xarray_get(&xa, 4));
@@ -101,8 +102,10 @@ DEFINE_UNIT_TEST(xarray_sparse_disjoint_ranges_keep_holes) {
     TEST_EXPECT_EQ((uint64_t)0x00007fff0000a010ull, (uint64_t)(uintptr_t)xarray_get(&xa, 4098));
     TEST_EXPECT_EQ((uint64_t)0, (uint64_t)(uintptr_t)xarray_get(&xa, 4099));
 
-    TEST_EXPECT_EQ((uint64_t)0xffff900000123000ull, (uint64_t)(uintptr_t)xarray_get(&xa, (1ull << 20) + 7));
-    TEST_EXPECT_EQ((uint64_t)0xffff900000123008ull, (uint64_t)(uintptr_t)xarray_get(&xa, (1ull << 20) + 8));
+    TEST_EXPECT_EQ(
+        (uint64_t)0xffff900000123000ull, (uint64_t)(uintptr_t)xarray_get(&xa, (1ull << 20) + 7));
+    TEST_EXPECT_EQ(
+        (uint64_t)0xffff900000123008ull, (uint64_t)(uintptr_t)xarray_get(&xa, (1ull << 20) + 8));
     TEST_EXPECT_EQ((uint64_t)0, (uint64_t)(uintptr_t)xarray_get(&xa, (1ull << 20) + 9));
     xarray_destroy(&xa);
 }
@@ -114,7 +117,8 @@ DEFINE_UNIT_TEST(xarray_sparse_set_and_range_interleave) {
     TEST_ASSERT_TRUE(xarray_set(&xa, 1, (void *)(uintptr_t)0x00000000abc01000ull));
     TEST_ASSERT_TRUE(xarray_set(&xa, 5000, (void *)(uintptr_t)0x0000008000005000ull));
     TEST_ASSERT_TRUE(xarray_set_range(&xa, 4998, 2, (void *)(uintptr_t)0xffffb00000007000ull));
-    TEST_ASSERT_TRUE(xarray_set_range(&xa, 1ull << 24, 1, (void *)(uintptr_t)0x00007ffffff09000ull));
+    TEST_ASSERT_TRUE(
+        xarray_set_range(&xa, 1ull << 24, 1, (void *)(uintptr_t)0x00007ffffff09000ull));
 
     TEST_EXPECT_EQ((uint64_t)0x00000000abc01000ull, (uint64_t)(uintptr_t)xarray_get(&xa, 1));
     TEST_EXPECT_EQ((uint64_t)0, (uint64_t)(uintptr_t)xarray_get(&xa, 2));
@@ -124,7 +128,8 @@ DEFINE_UNIT_TEST(xarray_sparse_set_and_range_interleave) {
     TEST_EXPECT_EQ((uint64_t)0x0000008000005000ull, (uint64_t)(uintptr_t)xarray_get(&xa, 5000));
     TEST_EXPECT_EQ((uint64_t)0, (uint64_t)(uintptr_t)xarray_get(&xa, 5001));
 
-    TEST_EXPECT_EQ((uint64_t)0x00007ffffff09000ull, (uint64_t)(uintptr_t)xarray_get(&xa, 1ull << 24));
+    TEST_EXPECT_EQ(
+        (uint64_t)0x00007ffffff09000ull, (uint64_t)(uintptr_t)xarray_get(&xa, 1ull << 24));
     TEST_EXPECT_EQ((uint64_t)0, (uint64_t)(uintptr_t)xarray_get(&xa, (1ull << 24) + 1));
     xarray_destroy(&xa);
 }
@@ -141,7 +146,8 @@ DEFINE_UNIT_TEST(xarray_set_range_very_large_span) {
     TEST_ASSERT_TRUE(xarray_set_range(&xa, start_index, len, (void *)(uintptr_t)start_value));
 
     TEST_EXPECT_EQ(start_value, (uint64_t)(uintptr_t)xarray_get(&xa, start_index));
-    TEST_EXPECT_EQ(start_value + ((len / 2) * 8), (uint64_t)(uintptr_t)xarray_get(&xa, start_index + (len / 2)));
+    TEST_EXPECT_EQ(start_value + ((len / 2) * 8),
+        (uint64_t)(uintptr_t)xarray_get(&xa, start_index + (len / 2)));
     TEST_EXPECT_EQ(start_value + ((len - 1) * 8), (uint64_t)(uintptr_t)xarray_get(&xa, last_index));
 
     TEST_EXPECT_EQ((uint64_t)0, (uint64_t)(uintptr_t)xarray_get(&xa, start_index - 1));
@@ -163,16 +169,20 @@ DEFINE_UNIT_TEST(xarray_set_range_unaligned_across_upper_slots) {
 
     TEST_ASSERT_TRUE(xarray_set_range(&xa, start_index, len, (void *)(uintptr_t)start_value));
 
-    TEST_EXPECT_EQ((uint64_t)0x0000000000001110ull, (uint64_t)(uintptr_t)xarray_get(&xa, start_index - 2));
+    TEST_EXPECT_EQ(
+        (uint64_t)0x0000000000001110ull, (uint64_t)(uintptr_t)xarray_get(&xa, start_index - 2));
     TEST_EXPECT_EQ((uint64_t)0, (uint64_t)(uintptr_t)xarray_get(&xa, start_index - 1));
     TEST_EXPECT_EQ(start_value, (uint64_t)(uintptr_t)xarray_get(&xa, start_index));
     TEST_EXPECT_EQ(start_value + (59 * 8), (uint64_t)(uintptr_t)xarray_get(&xa, start_index + 59));
     TEST_EXPECT_EQ(start_value + (60 * 8), (uint64_t)(uintptr_t)xarray_get(&xa, start_index + 60));
-    TEST_EXPECT_EQ(start_value + (4091 * 8), (uint64_t)(uintptr_t)xarray_get(&xa, start_index + 4091));
-    TEST_EXPECT_EQ(start_value + (4092 * 8), (uint64_t)(uintptr_t)xarray_get(&xa, start_index + 4092));
+    TEST_EXPECT_EQ(
+        start_value + (4091 * 8), (uint64_t)(uintptr_t)xarray_get(&xa, start_index + 4091));
+    TEST_EXPECT_EQ(
+        start_value + (4092 * 8), (uint64_t)(uintptr_t)xarray_get(&xa, start_index + 4092));
     TEST_EXPECT_EQ(start_value + ((len - 1) * 8), (uint64_t)(uintptr_t)xarray_get(&xa, last_index));
     TEST_EXPECT_EQ((uint64_t)0, (uint64_t)(uintptr_t)xarray_get(&xa, last_index + 1));
-    TEST_EXPECT_EQ((uint64_t)0x0000000000002220ull, (uint64_t)(uintptr_t)xarray_get(&xa, last_index + 2));
+    TEST_EXPECT_EQ(
+        (uint64_t)0x0000000000002220ull, (uint64_t)(uintptr_t)xarray_get(&xa, last_index + 2));
 
     xarray_destroy(&xa);
 }

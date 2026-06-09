@@ -1,3 +1,5 @@
+#include <limits.h>
+
 #include <kc/string.h>
 #include <kc/inttypes.h>
 #include <kc/stdlib.h>
@@ -38,12 +40,10 @@ int shell_cmd_rwsec(int argc, char **argv) {
     }
 
     int expected_argc = is_write ? 5 : 4;
-    if (argc != expected_argc
-        || !kerrno_ok(kstrtoul_exact(argv[1], 10, ULONG_MAX, &drive_ul))
+    if (argc != expected_argc || !kerrno_ok(kstrtoul_exact(argv[1], 10, ULONG_MAX, &drive_ul))
         || !kerrno_ok(kstrtoul_exact(argv[2], 10, ULONG_MAX, &lba_ul))
         || !kerrno_ok(kstrtoul_exact(argv[3], 10, ULONG_MAX, &count_ul))
-        || (is_write && !kerrno_ok(kstrtoul_exact(argv[4], 0, ULONG_MAX, &fill_ul)))
-    ) {
+        || (is_write && !kerrno_ok(kstrtoul_exact(argv[4], 0, ULONG_MAX, &fill_ul)))) {
         tty0_puts("usage: readsec [drive] [index] [count]\n");
         tty0_puts("       writesec [drive] [index] [count] [value]\n");
         return 1;
@@ -52,13 +52,14 @@ int shell_cmd_rwsec(int argc, char **argv) {
     struct block_device *dev;
     if (!kerrno_ok(bdev_list_get((size_t)drive_ul, &dev))) {
         size_t count = bdev_list_count();
-        tty0_printf("%s: invalid device %lu (expected 0..%zu)\n",
-            is_write ? "writesec" : "readsec", drive_ul, count ? count - 1 : 0);
+        tty0_printf("%s: invalid device %lu (expected 0..%zu)\n", is_write ? "writesec" : "readsec",
+            drive_ul, count ? count - 1 : 0);
         return 1;
     }
 
     if (dev->sectors == 0) {
-        tty0_printf("%s: invalid sector size for dev=%lu\n", is_write ? "writesec" : "readsec", drive_ul);
+        tty0_printf(
+            "%s: invalid sector size for dev=%lu\n", is_write ? "writesec" : "readsec", drive_ul);
         goto err_dev;
     }
     const size_t max_count = KMALLOC_MAX_SIZE / DISK_SECTOR_SIZE;
@@ -69,8 +70,8 @@ int shell_cmd_rwsec(int argc, char **argv) {
     }
 
     if (count_ul == 0 || count_ul > max_count) {
-        tty0_printf("%s: invalid count %lu (expected 1..%zu)\n",
-            is_write ? "writesec" : "readsec", count_ul, max_count);
+        tty0_printf("%s: invalid count %lu (expected 1..%zu)\n", is_write ? "writesec" : "readsec",
+            count_ul, max_count);
         goto err_dev;
     }
 
@@ -91,7 +92,8 @@ int shell_cmd_rwsec(int argc, char **argv) {
     size_t bytes = (size_t)count * DISK_SECTOR_SIZE;
     void *buf = kzalloc(bytes);
     if (!buf) {
-        tty0_printf("%s: allocation failed (%zu bytes)\n", is_write ? "writesec" : "readsec", bytes);
+        tty0_printf(
+            "%s: allocation failed (%zu bytes)\n", is_write ? "writesec" : "readsec", bytes);
         goto err_dev;
     }
 
@@ -116,13 +118,14 @@ int shell_cmd_rwsec(int argc, char **argv) {
     }
     if (!kerrno_ok(io_result)) {
         tty0_printf("%s: io failed (dev=%lu lba=%u count=%u status=%s (%d))\n",
-            is_write ? "writesec" : "readsec", drive_ul, lba, count, kerrno_str(io_result), io_result);
+            is_write ? "writesec" : "readsec", drive_ul, lba, count, kerrno_str(io_result),
+            io_result);
         goto err_buf;
     }
 
     if (is_write) {
-        tty0_printf("writesec: wrote %u sector(s) to dev=%lu lba=%u with %#02x\n",
-            count, drive_ul, lba, fill);
+        tty0_printf("writesec: wrote %u sector(s) to dev=%lu lba=%u with %#02x\n", count, drive_ul,
+            lba, fill);
     } else {
         tty0_printf("readsec: dev=%lu lba=%u count=%u (%zu bytes)\n", drive_ul, lba, count, bytes);
         shell_hexdump((const unsigned char *)buf, bytes);
@@ -137,22 +140,18 @@ err_dev:
     return ret;
 }
 
-static int submit_and_wait(
-    const char *cmd_name,
-    const char *phase,
-    bool is_write,
-    struct block_device *dev,
-    unsigned long dev_index,
-    uint32_t lba,
-    void *buf,
-    uint32_t count
-) {
-    struct disk_request *req = is_write
-        ? block_device_write(dev, lba, count, buf)
-        : block_device_read(dev, lba, count, buf);
+static int submit_and_wait(const char *cmd_name, const char *phase, bool is_write,
+    struct block_device *dev, unsigned long dev_index, uint32_t lba, void *buf, uint32_t count) {
+    struct disk_request *req;
+    if (is_write) {
+        req = block_device_write(dev, lba, count, buf);
+    } else {
+        req = block_device_read(dev, lba, count, buf);
+    }
+
     if (!req) {
-        tty0_printf("%s: %s submit failed (dev=%lu lba=%u count=%u)\n",
-            cmd_name, phase, dev_index, lba, count);
+        tty0_printf("%s: %s submit failed (dev=%lu lba=%u count=%u)\n", cmd_name, phase, dev_index,
+            lba, count);
         return 1;
     }
 
@@ -162,15 +161,16 @@ static int submit_and_wait(
         return 1;
     }
     if (!kerrno_ok(io_result)) {
-        tty0_printf("%s: %s io failed (dev=%lu lba=%u count=%u status=%s (%d))\n",
-            cmd_name, phase, dev_index, lba, count, kerrno_str(io_result), io_result);
+        tty0_printf("%s: %s io failed (dev=%lu lba=%u count=%u status=%s (%d))\n", cmd_name, phase,
+            dev_index, lba, count, kerrno_str(io_result), io_result);
         return 1;
     }
 
     return 0;
 }
 
-[[nodiscard]] static bool verify_pattern(const unsigned char *buf, size_t len, uint8_t pattern, size_t *bad_idx, uint8_t *bad_val) {
+[[nodiscard]] static bool verify_pattern(
+    const unsigned char *buf, size_t len, uint8_t pattern, size_t *bad_idx, uint8_t *bad_val) {
     for (size_t i = 0; i < len; i++) {
         if (buf[i] != pattern) {
             if (bad_idx) {
@@ -207,8 +207,8 @@ int shell_cmd_testrwsec(int argc, char **argv) {
     struct block_device *dev;
     if (!kerrno_ok(bdev_list_get((size_t)drive_ul, &dev))) {
         size_t count = bdev_list_count();
-        tty0_printf("testrwsec: invalid device %lu (expected 0..%zu)\n",
-            drive_ul, count ? count - 1 : 0);
+        tty0_printf(
+            "testrwsec: invalid device %lu (expected 0..%zu)\n", drive_ul, count ? count - 1 : 0);
         return 1;
     }
     if (lba_ul >= dev->sectors) {
@@ -237,11 +237,13 @@ int shell_cmd_testrwsec(int argc, char **argv) {
     tty0_printf("testrwsec: dev=%lu lba=%u count=%u bytes=%zu\n", drive_ul, lba, count, bytes);
 
     memset(buf, TESTRWSEC_PATTERN_A, bytes);
-    if (submit_and_wait("testrwsec", "write pattern A", true, dev, drive_ul, lba, buf, count) != 0) {
+    if (submit_and_wait("testrwsec", "write pattern A", true, dev, drive_ul, lba, buf, count)
+        != 0) {
         goto err_buf;
     }
     memset(buf, 0, bytes);
-    if (submit_and_wait("testrwsec", "read pattern A", false, dev, drive_ul, lba, buf, count) != 0) {
+    if (submit_and_wait("testrwsec", "read pattern A", false, dev, drive_ul, lba, buf, count)
+        != 0) {
         goto err_buf;
     }
     size_t bad_idx = 0;
@@ -253,11 +255,13 @@ int shell_cmd_testrwsec(int argc, char **argv) {
     }
 
     memset(buf, TESTRWSEC_PATTERN_B, bytes);
-    if (submit_and_wait("testrwsec", "write pattern B", true, dev, drive_ul, lba, buf, count) != 0) {
+    if (submit_and_wait("testrwsec", "write pattern B", true, dev, drive_ul, lba, buf, count)
+        != 0) {
         goto err_buf;
     }
     memset(buf, 0, bytes);
-    if (submit_and_wait("testrwsec", "read pattern B", false, dev, drive_ul, lba, buf, count) != 0) {
+    if (submit_and_wait("testrwsec", "read pattern B", false, dev, drive_ul, lba, buf, count)
+        != 0) {
         goto err_buf;
     }
     if (!verify_pattern(buf, bytes, TESTRWSEC_PATTERN_B, &bad_idx, &bad_val)) {

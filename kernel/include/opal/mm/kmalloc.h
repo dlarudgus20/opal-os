@@ -2,6 +2,7 @@
 #define OPAL_MM_KMALLOC_H
 
 #include <stddef.h>
+#include <stdint.h>
 
 #include <kc/span.h>
 

@@ -4,6 +4,7 @@
 #include <opal/irq.h>
 #include <opal/timer.h>
 #include <opal/kargs.h>
+#include <opal/kmodule.h>
 #include <opal/mm/mm.h>
 #include <opal/fb/fb.h>
 #include <opal/hid/hid.h>
@@ -24,9 +25,7 @@ static void drivers_init(void) {
 }
 
 static void run_user(void) {
-#ifdef OPAL_UNIT_TEST
     unit_test_run();
-#endif
     shell_start();
 }
 
@@ -60,6 +59,7 @@ void kmain(void) {
     irq_enable_intr();
     interrupts_enable();
 
+    kmodule_init();
     kargs_postboot();
     run_user();
 

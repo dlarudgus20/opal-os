@@ -179,8 +179,8 @@ static void postboot_initramfs(void) {
         return;
     }
     if (module->end <= module->begin) {
-        kwarn("kargs: invalid initramfs range [%#018"PRIphys", %#018"PRIphys")",
-            module->begin, module->end);
+        kwarn("kargs: invalid initramfs range [%#018" PRIphys ", %#018" PRIphys ")", module->begin,
+            module->end);
         return;
     }
 
@@ -213,8 +213,8 @@ void kargs_postboot(void) {
 void kargs_print_log(void) {
     kinfo("boot args: %s", bootinfo_get_cmdline());
     if (g_kargs.initramfs) {
-        kinfo(" initramfs: [%#018"PRIphys", %#018"PRIphys") %s",
-            g_kargs.initramfs->begin, g_kargs.initramfs->end, g_kargs.initramfs->name);
+        kinfo(" initramfs: [%#018" PRIphys ", %#018" PRIphys ") %s", g_kargs.initramfs->begin,
+            g_kargs.initramfs->end, g_kargs.initramfs->name);
     } else {
         kinfo(" initramfs: (null)");
     }

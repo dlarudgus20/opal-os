@@ -49,7 +49,6 @@ undo:
     return false;
 }
 
-
 static void unlock_partitions(struct disk *disk) {
     dynarray_foreach(struct partition_entry *, entry, &disk->partitions) {
         block_device_release(entry->bdev);
@@ -118,7 +117,8 @@ static void build_part_table(struct disk *disk) {
             break;
         }
 
-        struct block_device *dev = block_device_create(disk, partname.ptr, table[i].lba, table[i].sectors);
+        struct block_device *dev =
+            block_device_create(disk, partname.ptr, table[i].lba, table[i].sectors);
         if (!dev) {
             kerror("disk_rescan_partition: out of block_device memory");
             dynarray_pop_back(&disk->partitions, sizeof(*entry));
@@ -131,14 +131,13 @@ static void build_part_table(struct disk *disk) {
     }
 }
 
-[[nodiscard]] static bool is_range_overlap(fs_size_t a_start, fs_size_t a_end, fs_size_t b_start, fs_size_t b_end) {
+[[nodiscard]] static bool is_range_overlap(
+    fs_size_t a_start, fs_size_t a_end, fs_size_t b_start, fs_size_t b_end) {
     return a_start < b_end && b_start < a_end;
 }
 
-[[nodiscard]] static kerrno_t apply_create_part(
-    struct disk *disk, struct mbr_part_entry table[4],
-    size_t index, fs_size_t lba, fs_size_t sectors, uint8_t type
-) {
+[[nodiscard]] static kerrno_t apply_create_part(struct disk *disk, struct mbr_part_entry table[4],
+    size_t index, fs_size_t lba, fs_size_t sectors, uint8_t type) {
     fs_size_t end = lba + sectors;
 
     if (lba == 0) {
@@ -300,10 +299,8 @@ struct co_part_modify {
 
 static co_state_t co_modify_handler(struct coroutine *co);
 
-static void modify_partition(
-    struct disk *disk, size_t index, fs_size_t lba, fs_size_t sectors, uint8_t type,
-    bool removal, struct fs_completion *completion
-) {
+static void modify_partition(struct disk *disk, size_t index, fs_size_t lba, fs_size_t sectors,
+    uint8_t type, bool removal, struct fs_completion *completion) {
     kerrno_t result = OPAL_ENOMEM;
 
     if (!removal && (type == 0 || lba + sectors <= lba)) {
@@ -404,10 +401,8 @@ err_ctx:
     complete_not_null(completion, result);
 }
 
-void disk_create_partition(
-    struct disk *disk, size_t index, fs_size_t lba, fs_size_t sectors, uint8_t type,
-    struct fs_completion *completion
-) {
+void disk_create_partition(struct disk *disk, size_t index, fs_size_t lba, fs_size_t sectors,
+    uint8_t type, struct fs_completion *completion) {
     modify_partition(disk, index, lba, sectors, type, false, completion);
 }
 
@@ -440,14 +435,16 @@ static co_state_t co_modify_handler(struct coroutine *co) {
         size_t partidx = ctx->entry - (struct partition_entry *)disk->partitions.data;
         dynarray_remove_at(&disk->partitions, struct partition_entry, partidx);
     } else {
-        struct partition_entry *new_entry = dynarray_push_back(&disk->partitions, sizeof(*new_entry));
+        struct partition_entry *new_entry =
+            dynarray_push_back(&disk->partitions, sizeof(*new_entry));
         if (!new_entry) {
             kerror("modify_partition: cannot register block device %s", (char *)ctx->partname.ptr);
             result = OPAL_ENOMEM;
             goto err;
         }
 
-        struct block_device *bdev = block_device_create(disk, ctx->partname.ptr, ctx->lba, ctx->sectors);
+        struct block_device *bdev =
+            block_device_create(disk, ctx->partname.ptr, ctx->lba, ctx->sectors);
         if (!bdev) {
             kerror("modify_partition: cannot register block device %s", (char *)ctx->partname.ptr);
             dynarray_pop_back(&disk->partitions, sizeof(*new_entry));

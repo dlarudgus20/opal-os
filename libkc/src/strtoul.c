@@ -40,7 +40,8 @@ kerrno_t kstrtoul(const char *str, int base, char **endptr, unsigned long *resul
     }
 
     if (base == 0) {
-        if (s[0] == '0' && (s[1] == 'x' || s[1] == 'X') && digit_value(s[2]) >= 0 && digit_value(s[2]) < 16) {
+        if (s[0] == '0' && (s[1] == 'x' || s[1] == 'X') && digit_value(s[2]) >= 0
+            && digit_value(s[2]) < 16) {
             base = 16;
             s += 2;
         } else if (s[0] == '0') {
@@ -48,8 +49,8 @@ kerrno_t kstrtoul(const char *str, int base, char **endptr, unsigned long *resul
         } else {
             base = 10;
         }
-    } else if (base == 16 && s[0] == '0' && (s[1] == 'x' || s[1] == 'X')
-        && digit_value(s[2]) >= 0 && digit_value(s[2]) < 16) {
+    } else if (base == 16 && s[0] == '0' && (s[1] == 'x' || s[1] == 'X') && digit_value(s[2]) >= 0
+        && digit_value(s[2]) < 16) {
         s += 2;
     }
 

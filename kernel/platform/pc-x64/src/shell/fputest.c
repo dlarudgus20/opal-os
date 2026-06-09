@@ -23,8 +23,7 @@ struct fputest_arg {
 };
 
 static void fputest_spin(void) {
-    for (volatile size_t spin = 0; spin < 2000000; spin++) {
-    }
+    for (volatile size_t spin = 0; spin < 2000000; spin++) {}
 }
 
 static uint32_t f32_bits(float value) {
@@ -69,35 +68,35 @@ static float sse_store(void) {
 
 [[gnu::target("sse,sse2")]]
 static void mixed_load(float x87_value, float sse_value) {
-    __asm__ volatile (
+    /* clang-format off */ __asm__ volatile (
         "fld DWORD PTR %0\n\t"
         "movss xmm0, DWORD PTR %1"
         :
         : "m"(x87_value), "m"(sse_value)
         : "xmm0", "memory"
-    );
+    ); // clang-format on
 }
 
 [[gnu::target("sse,sse2")]]
 static void mixed_add(float x87_value, float sse_value) {
-    __asm__ volatile (
+    /* clang-format off */ __asm__ volatile (
         "fadd DWORD PTR %0\n\t"
         "addss xmm0, DWORD PTR %1"
         :
         : "m"(x87_value), "m"(sse_value)
         : "xmm0", "memory"
-    );
+    ); // clang-format on
 }
 
 [[gnu::target("sse,sse2")]]
 static void mixed_store(float *x87_out, float *sse_out) {
-    __asm__ volatile (
+    /* clang-format off */ __asm__ volatile (
         "movss DWORD PTR %1, xmm0\n\t"
         "fstp DWORD PTR %0"
         : "=m"(*x87_out), "=m"(*sse_out)
         :
         : "memory"
-    );
+    ); // clang-format on
 }
 
 [[gnu::target("sse,sse2")]]
@@ -158,9 +157,8 @@ static void fputest_mixed_task(uintptr_t argp) {
     mixed_store(&x87_actual, &sse_actual);
     arg->result->actual0 = f32_bits(x87_actual);
     arg->result->actual1 = f32_bits(sse_actual);
-    arg->result->ok =
-        arg->result->actual0 == f32_bits(x87_seed + x87_step * (float)arg->repeat) &&
-        arg->result->actual1 == f32_bits(sse_seed + sse_step * (float)arg->repeat);
+    arg->result->ok = arg->result->actual0 == f32_bits(x87_seed + x87_step * (float)arg->repeat)
+        && arg->result->actual1 == f32_bits(sse_seed + sse_step * (float)arg->repeat);
     arg->result->reason = arg->result->ok ? NULL : "mixed x87/xmm0 state mismatch";
 }
 
@@ -203,13 +201,8 @@ int shell_cmd_fputest(int, char **) {
         tty0_puts("fputest: FAIL\n");
         for (size_t i = 0; i < 3; i++) {
             if (!results[i].ok) {
-                tty0_printf(
-                    "  %s: %s (actual0=%u actual1=%u)\n",
-                    results[i].name,
-                    results[i].reason,
-                    results[i].actual0,
-                    results[i].actual1
-                );
+                tty0_printf("  %s: %s (actual0=%u actual1=%u)\n", results[i].name,
+                    results[i].reason, results[i].actual0, results[i].actual1);
             }
         }
     }

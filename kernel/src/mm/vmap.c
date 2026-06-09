@@ -77,7 +77,8 @@ void *mm_vmap_alloc(phys_addr_t pa, phys_size_t size, struct span *va_span_out) 
             entry->len -= aligned_size;
         }
 
-        pagetable_map(mm_kptbl_get(), va_base, aligned_start, aligned_size, PTE_FLAG_PRESENT | PTE_FLAG_WRITABLE);
+        pagetable_map(mm_kptbl_get(), va_base, aligned_start, aligned_size,
+            PTE_FLAG_PRESENT | PTE_FLAG_WRITABLE);
 
         irqlock_release(&irqlock);
 
@@ -126,8 +127,7 @@ void mm_vmap_free(struct span span) {
 
     const bool merge_prev =
         idx > 0 && (g_vmap_entries[idx - 1].addr + g_vmap_entries[idx - 1].len == addr);
-    const bool merge_next =
-        idx < g_vmap_len && (end == g_vmap_entries[idx].addr);
+    const bool merge_next = idx < g_vmap_len && (end == g_vmap_entries[idx].addr);
 
     if (merge_prev && merge_next) {
         struct vmap_entry *prev = &g_vmap_entries[idx - 1];

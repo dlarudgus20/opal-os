@@ -5,45 +5,45 @@
 
 #include "collections/rbtree.h"
 
-static struct rbtree_node* get_min_node(struct rbtree_node* node);
-static void rotate_left(struct rbtree* tree, struct rbtree_node* node);
-static void rotate_right(struct rbtree* tree, struct rbtree_node* node);
+static struct rbtree_node *get_min_node(struct rbtree_node *node);
+static void rotate_left(struct rbtree *tree, struct rbtree_node *node);
+static void rotate_right(struct rbtree *tree, struct rbtree_node *node);
 
-static void insertion_balancing(struct rbtree* tree, struct rbtree_node* node);
-static void removal_balancing(struct rbtree* tree, struct rbtree_node* sibling);
+static void insertion_balancing(struct rbtree *tree, struct rbtree_node *node);
+static void removal_balancing(struct rbtree *tree, struct rbtree_node *sibling);
 
-static bool is_blk_or_nil(struct rbtree_node* node) {
+static bool is_blk_or_nil(struct rbtree_node *node) {
     return node == NULL || node->color == RBTREE_BLACK;
 }
 
-static bool is_red(struct rbtree_node* node) {
+static bool is_red(struct rbtree_node *node) {
     return node != NULL && node->color == RBTREE_RED;
 }
 
-static struct rbtree_node* get_sibling(struct rbtree_node* node) {
-    struct rbtree_node* parent = node->parent;
+static struct rbtree_node *get_sibling(struct rbtree_node *node) {
+    struct rbtree_node *parent = node->parent;
     if (parent == NULL) {
         return NULL;
     }
     return node == parent->left ? parent->right : parent->left;
 }
 
-void rbtree_init(struct rbtree* tree) {
+void rbtree_init(struct rbtree *tree) {
     tree->root = NULL;
     tree->first = NULL;
 }
 
-struct rbtree_node* rbtree_first(struct rbtree* tree) {
+struct rbtree_node *rbtree_first(struct rbtree *tree) {
     return tree->first;
 }
 
-struct rbtree_node* rbtree_next(struct rbtree_node* node) {
+struct rbtree_node *rbtree_next(struct rbtree_node *node) {
     if (node->right != NULL) {
         return get_min_node(node->right);
     }
 
     while (1) {
-        struct rbtree_node* parent = node->parent;
+        struct rbtree_node *parent = node->parent;
         if (parent == NULL) {
             return NULL;
         } else if (parent->left == node) {
@@ -54,12 +54,8 @@ struct rbtree_node* rbtree_next(struct rbtree_node* node) {
     }
 }
 
-void rbtree_link_insert(
-    struct rbtree* tree,
-    struct rbtree_node* parent,
-    struct rbtree_node** link,
-    struct rbtree_node* node
-) {
+void rbtree_link_insert(struct rbtree *tree, struct rbtree_node *parent, struct rbtree_node **link,
+    struct rbtree_node *node) {
     if (tree->first == NULL || link == &tree->first->left) {
         tree->first = node;
     }
@@ -69,12 +65,12 @@ void rbtree_link_insert(
     insertion_balancing(tree, node);
 }
 
-static void insertion_balancing(struct rbtree* tree, struct rbtree_node* node) {
+static void insertion_balancing(struct rbtree *tree, struct rbtree_node *node) {
     // rebalance tree for insertion
 
-    struct rbtree_node* parent = node->parent;
-    struct rbtree_node* grand;
-    struct rbtree_node* uncle;
+    struct rbtree_node *parent = node->parent;
+    struct rbtree_node *grand;
+    struct rbtree_node *uncle;
 
     // case 1: root
     if (parent == NULL) {
@@ -124,17 +120,17 @@ static void insertion_balancing(struct rbtree* tree, struct rbtree_node* node) {
     }
 }
 
-void rbtree_remove(struct rbtree* tree, struct rbtree_node* node) {
+void rbtree_remove(struct rbtree *tree, struct rbtree_node *node) {
     if (tree->first == node) {
         tree->first = rbtree_next(node);
     }
 
     if (node->left != NULL && node->right != NULL) {
         // case 0: node has two non-null children
-        struct rbtree_node* successor = get_min_node(node->right);
+        struct rbtree_node *successor = get_min_node(node->right);
         rbtree_remove(tree, successor);
 
-        struct rbtree_node* parent = node->parent;
+        struct rbtree_node *parent = node->parent;
         if (parent != NULL) {
             if (parent->left == node) {
                 parent->left = successor;
@@ -159,9 +155,9 @@ void rbtree_remove(struct rbtree* tree, struct rbtree_node* node) {
         }
     } else {
         // replace node with its child
-        struct rbtree_node* parent = node->parent;
-        struct rbtree_node* child = node->left != NULL ? node->left : node->right;
-        struct rbtree_node* sibling = NULL;
+        struct rbtree_node *parent = node->parent;
+        struct rbtree_node *child = node->left != NULL ? node->left : node->right;
+        struct rbtree_node *sibling = NULL;
         if (parent != NULL) {
             if (parent->left == node) {
                 parent->left = child;
@@ -190,7 +186,7 @@ void rbtree_remove(struct rbtree* tree, struct rbtree_node* node) {
     }
 }
 
-static void removal_balancing(struct rbtree* tree, struct rbtree_node* sibling) {
+static void removal_balancing(struct rbtree *tree, struct rbtree_node *sibling) {
     // rebalance tree for removal of black node
 
     // non-null black node's sibiling cannot be null
@@ -200,7 +196,7 @@ static void removal_balancing(struct rbtree* tree, struct rbtree_node* sibling) 
         return;
     }
 
-    struct rbtree_node* parent = sibling->parent;
+    struct rbtree_node *parent = sibling->parent;
 
     // case 2: sibling is red
     // then sibiling's children also cannot be null
@@ -219,8 +215,7 @@ static void removal_balancing(struct rbtree* tree, struct rbtree_node* sibling) 
     // case 3: parent, sibling and its children are black
     if (parent->color == RBTREE_BLACK
         && (sibling->left == NULL || sibling->left->color == RBTREE_BLACK)
-        && (sibling->right == NULL || sibling->right->color == RBTREE_BLACK)
-    ) {
+        && (sibling->right == NULL || sibling->right->color == RBTREE_BLACK)) {
         sibling->color = RBTREE_RED;
         removal_balancing(tree, get_sibling(parent));
         return;
@@ -229,25 +224,20 @@ static void removal_balancing(struct rbtree* tree, struct rbtree_node* sibling) 
     // case 4: parent is red but sibling and its children are black
     if (parent->color == RBTREE_RED
         && (sibling->left == NULL || sibling->left->color == RBTREE_BLACK)
-        && (sibling->right == NULL || sibling->right->color == RBTREE_BLACK)
-    ) {
+        && (sibling->right == NULL || sibling->right->color == RBTREE_BLACK)) {
         sibling->color = RBTREE_RED;
         parent->color = RBTREE_BLACK;
         return;
     }
 
     // case 5: sibling rotation
-    if (sibling == parent->right
-        && is_red(sibling->left) && is_blk_or_nil(sibling->right)
-    ) {
+    if (sibling == parent->right && is_red(sibling->left) && is_blk_or_nil(sibling->right)) {
         sibling->color = RBTREE_RED;
         sibling->left->color = RBTREE_BLACK;
 
         rotate_right(tree, sibling);
         sibling = sibling->parent;
-    } else if (sibling == parent->left
-        && is_red(sibling->right) && is_blk_or_nil(sibling->left)
-    ) {
+    } else if (sibling == parent->left && is_red(sibling->right) && is_blk_or_nil(sibling->left)) {
         sibling->color = RBTREE_RED;
         sibling->right->color = RBTREE_BLACK;
 
@@ -268,7 +258,7 @@ static void removal_balancing(struct rbtree* tree, struct rbtree_node* sibling) 
     }
 }
 
-static struct rbtree_node* get_min_node(struct rbtree_node* node) {
+static struct rbtree_node *get_min_node(struct rbtree_node *node) {
     while (1) {
         if (node->left == NULL) {
             return node;
@@ -277,9 +267,9 @@ static struct rbtree_node* get_min_node(struct rbtree_node* node) {
     }
 }
 
-static void rotate_left(struct rbtree* tree, struct rbtree_node* node) {
-    struct rbtree_node* parent = node->parent;
-    struct rbtree_node* right = node->right;
+static void rotate_left(struct rbtree *tree, struct rbtree_node *node) {
+    struct rbtree_node *parent = node->parent;
+    struct rbtree_node *right = node->right;
 
     kassert(right != NULL, "rbtree: rotate_left with null right child");
     if (right->left != NULL) {
@@ -302,9 +292,9 @@ static void rotate_left(struct rbtree* tree, struct rbtree_node* node) {
     }
 }
 
-static void rotate_right(struct rbtree* tree, struct rbtree_node* node) {
-    struct rbtree_node* parent = node->parent;
-    struct rbtree_node* left = node->left;
+static void rotate_right(struct rbtree *tree, struct rbtree_node *node) {
+    struct rbtree_node *parent = node->parent;
+    struct rbtree_node *left = node->left;
 
     kassert(left != NULL, "rbtree: rotate_right with null left child");
     if (left->right != NULL) {

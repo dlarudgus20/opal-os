@@ -10,32 +10,22 @@
 
 #ifndef OPAL_TEST
 
-enum {
-    PANICK_NONE,
-    PANICK_FORMAT,
-    PANICK_FORMAT_BASIC,
-    PANICK_PUTS,
-    PANICK_PUTS_FORMAT
-};
+enum { PANICK_NONE, PANICK_FORMAT, PANICK_FORMAT_BASIC, PANICK_PUTS, PANICK_PUTS_FORMAT };
 
-static void format_panic(
-    char *buffer, size_t bufsz,
-    const char *fmt, const char *file, const char *func, unsigned line, va_list args
-) {
+static void format_panic(char *buffer, size_t bufsz, const char *fmt, const char *file,
+    const char *func, unsigned line, va_list args) {
     int prefix = ksnprintf(buffer, bufsz, "[%s:%u %s()] ", file, line, func);
     if (0 <= prefix && (size_t)prefix < bufsz) {
         kvsnprintf(buffer + prefix, bufsz - prefix, fmt, args);
     }
 }
 
-static void format_panic_basic(
-    char *buffer, size_t bufsz,
-    const char *fmt, const char *file, const char *func, unsigned line, const char *append
-) {
+static void format_panic_basic(char *buffer, size_t bufsz, const char *fmt, const char *file,
+    const char *func, unsigned line, const char *append) {
     ksnprintf(buffer, bufsz, "[%s:%u %s()] %s%s", file, line, func, fmt, append);
 }
 
-static void print_panic(struct tty* tty, const char *msg) {
+static void print_panic(struct tty *tty, const char *msg) {
     if (tty->ops->set_panic_mode) {
         tty->ops->set_panic_mode(tty);
     }
@@ -45,7 +35,8 @@ static void print_panic(struct tty* tty, const char *msg) {
     tty_puts(tty, "\n");
 }
 
-[[noreturn]] void _panic_format(const char *fmt, const char *file, const char *func, unsigned line, ...) {
+[[noreturn]] void _panic_format(
+    const char *fmt, const char *file, const char *func, unsigned line, ...) {
     static char buffer[4096];
     static size_t prev_len;
 
@@ -71,8 +62,8 @@ static void print_panic(struct tty* tty, const char *msg) {
     } else if (stage == PANICK_FORMAT_BASIC) {
         // arguments cannot be trusted
         ksnprintf(buffer, sizeof(buffer),
-            "[panick_format] ksnprintf panicked fmt=%p file=%p func=%p line=%u",
-            fmt, file, func, line);
+            "[panick_format] ksnprintf panicked fmt=%p file=%p func=%p line=%u", fmt, file, func,
+            line);
 
     } else if (stage == PANICK_PUTS) {
         // multiple panics; try to append message
@@ -100,10 +91,10 @@ static void print_panic(struct tty* tty, const char *msg) {
 
     stage = PANICK_PUTS;
     struct tty_0 *tty_0 = (struct tty_0 *)tty0_get();
-    struct linkedlist_link* ptr = linkedlist_head(&tty_0->subtty_list);
+    struct linkedlist_link *ptr = linkedlist_head(&tty_0->subtty_list);
 
     while (!linkedlist_is_nil(&tty_0->subtty_list, ptr)) {
-        struct linkedlist_link* next = ptr->next;
+        struct linkedlist_link *next = ptr->next;
         linkedlist_remove(ptr);
 
         // if reentrant panic occur, this tty stays removed from tty0

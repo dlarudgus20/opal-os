@@ -21,7 +21,8 @@ struct path_entry *vfs_get_root(void) {
     return &g_root;
 }
 
-kerrno_t vfs_mount_path(struct path_entry *pe, const char *path, struct superblock *sb, struct path_entry **mounted) {
+kerrno_t vfs_mount_path(
+    struct path_entry *pe, const char *path, struct superblock *sb, struct path_entry **mounted) {
     struct path_entry *mount_pe = NULL;
     const char *unresolved_path = NULL;
     kerrno_t result = vfs_lookup_path(pe, path, &mount_pe, &unresolved_path);
@@ -41,7 +42,8 @@ kerrno_t vfs_mount_path(struct path_entry *pe, const char *path, struct superblo
     return OPAL_OK;
 }
 
-kerrno_t vfs_lookup_path(struct path_entry *pe, const char *path, struct path_entry **found, const char **unresolved_path) {
+kerrno_t vfs_lookup_path(struct path_entry *pe, const char *path, struct path_entry **found,
+    const char **unresolved_path) {
     *found = NULL;
     if (unresolved_path) {
         *unresolved_path = path;
@@ -98,7 +100,8 @@ kerrno_t vfs_lookup_path(struct path_entry *pe, const char *path, struct path_en
     return OPAL_ENOENT;
 }
 
-kerrno_t vfs_create_path(struct path_entry *pe, const char *path, enum inode_flags flags, bool truncate, struct file **file_out) {
+kerrno_t vfs_create_path(struct path_entry *pe, const char *path, enum inode_flags flags,
+    bool truncate, struct file **file_out) {
     struct path_entry *found;
     const char *unresolved_path;
     kerrno_t result = vfs_lookup_path(pe, path, &found, &unresolved_path);
@@ -166,7 +169,8 @@ kerrno_t path_entry_mount_super(struct path_entry *pe, struct superblock *sb) {
     return OPAL_OK;
 }
 
-kerrno_t path_entry_add(struct path_entry *parent, struct inode *inode, struct hstr *name, struct path_entry **out) {
+kerrno_t path_entry_add(
+    struct path_entry *parent, struct inode *inode, struct hstr *name, struct path_entry **out) {
     if (!parent->inode || !(parent->inode->flags & FS_INODE_DIR)) {
         return OPAL_ENOTDIR;
     }
@@ -206,7 +210,8 @@ kerrno_t path_entry_add(struct path_entry *parent, struct inode *inode, struct h
     return OPAL_OK;
 }
 
-static kerrno_t create_negative(struct path_entry *parent, const struct hstr *name, struct path_entry **out) {
+static kerrno_t create_negative(
+    struct path_entry *parent, const struct hstr *name, struct path_entry **out) {
     struct hstr str = hstr_clone(name);
     if (hstr_is_null(&str)) {
         return OPAL_ENOMEM;
@@ -225,7 +230,8 @@ static struct path_entry *find_child(struct path_entry *parent, const struct hst
     return NULL;
 }
 
-kerrno_t path_entry_lookup(struct path_entry *pe, const char *name, size_t len, struct path_entry **found) {
+kerrno_t path_entry_lookup(
+    struct path_entry *pe, const char *name, size_t len, struct path_entry **found) {
     // On error, returns with `found == NULL`
     // except when a negative entry is created or found.
     // In that case, returns `OPAL_ENOENT` with `found != NULL`.
@@ -260,7 +266,8 @@ kerrno_t path_entry_lookup(struct path_entry *pe, const char *name, size_t len, 
     return kerrno_ok(result) ? OPAL_ENOENT : result;
 }
 
-kerrno_t path_entry_create(struct path_entry *pe, enum inode_flags flags, bool truncate, struct file **file_out) {
+kerrno_t path_entry_create(
+    struct path_entry *pe, enum inode_flags flags, bool truncate, struct file **file_out) {
     kerrno_t result;
     if (!pe->inode) {
         if (!pe->parent) {

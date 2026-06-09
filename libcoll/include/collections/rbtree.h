@@ -9,28 +9,28 @@ enum rbtree_color {
 
 struct rbtree_node {
     enum rbtree_color color;
-    struct rbtree_node* parent;
-    struct rbtree_node* left;
-    struct rbtree_node* right;
+    struct rbtree_node *parent;
+    struct rbtree_node *left;
+    struct rbtree_node *right;
 };
 
 struct rbtree {
-    struct rbtree_node* root;
-    struct rbtree_node* first;
+    struct rbtree_node *root;
+    struct rbtree_node *first;
 };
 
 struct rbtree_find_result {
-    struct rbtree_node* lower;
-    struct rbtree_node* upper;
+    struct rbtree_node *lower;
+    struct rbtree_node *upper;
 };
 
-void rbtree_init(struct rbtree* tree);
+void rbtree_init(struct rbtree *tree);
 
-[[nodiscard]] struct rbtree_node* rbtree_first(struct rbtree* tree);
-[[nodiscard]] struct rbtree_node* rbtree_next(struct rbtree_node* node);
+[[nodiscard]] struct rbtree_node *rbtree_first(struct rbtree *tree);
+[[nodiscard]] struct rbtree_node *rbtree_next(struct rbtree_node *node);
 
-void rbtree_link_insert(struct rbtree* tree, struct rbtree_node* parent, struct rbtree_node** link, struct rbtree_node* node);
-void rbtree_remove(struct rbtree* tree, struct rbtree_node* node);
+void rbtree_link_insert(struct rbtree *tree, struct rbtree_node *parent, struct rbtree_node **link, struct rbtree_node *node);
+void rbtree_remove(struct rbtree *tree, struct rbtree_node *node);
 
 #define RBTREE_INSERT_TEMPLATE(type, node_, comp, postfix, ...) \
     __VA_ARGS__ \
@@ -53,7 +53,7 @@ void rbtree_remove(struct rbtree* tree, struct rbtree_node* node);
     }
 
 #define RBTREE_TEMPLATE(type, keytype, node_, comp, comp_to, postfix, ...) \
-    RBTREE_INSERT_TEMPLATE(type, node_, comp, postfix, ##__VA_ARGS__) \
+    RBTREE_INSERT_TEMPLATE(type, node_, comp, postfix __VA_OPT__(,) __VA_ARGS__) \
     [[nodiscard]] __VA_ARGS__ \
     struct rbtree_find_result rbtree_find_##postfix(struct rbtree* tree, keytype key) { \
         struct rbtree_find_result result = { .lower = NULL, .upper = NULL }; \

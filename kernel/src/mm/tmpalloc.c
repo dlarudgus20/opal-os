@@ -5,7 +5,8 @@
 #include <opal/mm/tmpalloc.h>
 #include <opal/platform/mm/defines.h>
 
-void tmpalloc_create(struct tmpalloc *ta, struct mmap_entry *buffer, size_t len, const struct mmap *src) {
+void tmpalloc_create(
+    struct tmpalloc *ta, struct mmap_entry *buffer, size_t len, const struct mmap *src) {
     ta->capacity = len;
     ta->mm.length = src->length;
     if (ta->mm.length > len) {
@@ -23,7 +24,8 @@ static void insert_entry(struct tmpalloc *ta, uint32_t index, struct mmap_entry 
     }
 
     const size_t tail_count = ta->mm.length - index;
-    memmove(&ta->mm.entries[index + 1], &ta->mm.entries[index], tail_count * sizeof(struct mmap_entry));
+    memmove(
+        &ta->mm.entries[index + 1], &ta->mm.entries[index], tail_count * sizeof(struct mmap_entry));
     ta->mm.entries[index] = entry;
     ta->mm.length++;
 }
@@ -31,7 +33,8 @@ static void insert_entry(struct tmpalloc *ta, uint32_t index, struct mmap_entry 
 static void erase_entry(struct tmpalloc *ta, uint32_t index) {
     const size_t tail_count = ta->mm.length - index - 1;
     if (tail_count > 0) {
-        memmove(&ta->mm.entries[index], &ta->mm.entries[index + 1], tail_count * sizeof(struct mmap_entry));
+        memmove(&ta->mm.entries[index], &ta->mm.entries[index + 1],
+            tail_count * sizeof(struct mmap_entry));
     }
     ta->mm.length--;
 }
@@ -69,11 +72,12 @@ phys_addr_t tmpalloc_alloc_pages(struct tmpalloc *ta, size_t max_pages, size_t *
             }
         }
 
-        insert_entry(ta, i, (struct mmap_entry){
-            .addr = usable->addr,
-            .len = allocated_len,
-            .type = MM_SEC_ENTRY_METADATA,
-        });
+        insert_entry(ta, i,
+            (struct mmap_entry){
+                .addr = usable->addr,
+                .len = allocated_len,
+                .type = MM_SEC_ENTRY_METADATA,
+            });
         i++;
         usable = &ta->mm.entries[i];
 

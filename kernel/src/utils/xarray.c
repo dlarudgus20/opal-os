@@ -33,7 +33,7 @@ static bool addmul_u64_checked(uint64_t base, uint64_t mul_a, uint64_t mul_b, ui
 
 void xarray_init(struct xarray *xa, uintptr_t stride) {
     kassert(stride > 0 && (stride & FLAG_MASK) == 0);
-    xa->root = (struct xa_node){ };
+    xa->root = (struct xa_node){};
     xa->stride = stride;
     xa->depth = 1;
 }
@@ -63,7 +63,7 @@ void xarray_destroy(struct xarray *xa) {
     if (xa->depth > 1) {
         destroy_node(&xa->root, (xa->depth - 1) * XARRAY_SLOT_BITS);
     }
-    xa->root = (struct xa_node){ };
+    xa->root = (struct xa_node){};
     xa->depth = 1;
 }
 
@@ -104,7 +104,7 @@ static bool ensure_depth(struct xarray *xa, uint64_t index) {
         }
 
         *old_root = xa->root;
-        xa->root = (struct xa_node){ };
+        xa->root = (struct xa_node){};
         xa->root.slots[0] = (uint64_t)old_root;
         xa->depth++;
     }
@@ -167,17 +167,15 @@ bool xarray_set(struct xarray *xa, uint64_t index, void *value) {
     panic();
 }
 
-static bool value_for_index(
-    const struct xarray *xa, uint64_t start_index, uint64_t start_value, uint64_t at, uint64_t *out
-) {
+static bool value_for_index(const struct xarray *xa, uint64_t start_index, uint64_t start_value,
+    uint64_t at, uint64_t *out) {
     kassert(at >= start_index);
     return !addmul_u64_checked(start_value, at - start_index, xa->stride, out);
 }
 
-static bool set_range_node(
-    struct xarray *xa, struct xa_node *node, uint64_t node_base, unsigned slot_shift,
-    uint64_t range_first, uint64_t range_last, uint64_t start_index, uint64_t start_value
-) {
+static bool set_range_node(struct xarray *xa, struct xa_node *node, uint64_t node_base,
+    unsigned slot_shift, uint64_t range_first, uint64_t range_last, uint64_t start_index,
+    uint64_t start_value) {
     uint64_t slot_span = 1ull << slot_shift;
     uint64_t slot_last_delta = slot_span - 1;
 
@@ -227,8 +225,8 @@ static bool set_range_node(
             }
         }
 
-        if (!set_range_node(xa, child, slot_first, slot_shift - XARRAY_SLOT_BITS, range_first, range_last,
-                start_index, start_value)) {
+        if (!set_range_node(xa, child, slot_first, slot_shift - XARRAY_SLOT_BITS, range_first,
+                range_last, start_index, start_value)) {
             return false;
         }
     }
@@ -249,6 +247,5 @@ bool xarray_set_range(struct xarray *xa, uint64_t index, uint64_t len, void *sta
     }
 
     return set_range_node(
-        xa, &xa->root, 0, (xa->depth - 1) * XARRAY_SLOT_BITS,
-        index, last, index, (uintptr_t)start);
+        xa, &xa->root, 0, (xa->depth - 1) * XARRAY_SLOT_BITS, index, last, index, (uintptr_t)start);
 }

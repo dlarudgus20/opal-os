@@ -3,7 +3,10 @@
 
 #include <stdint.h>
 
+#include <collections/linkedlist.h>
+
 #include <opal/attributes.h>
+#include <opal/platform/mm/defines.h>
 
 #define SLAB_REDZONE_SIZE 2
 #define SLAB_REDZONE_PATTERN 0xfd

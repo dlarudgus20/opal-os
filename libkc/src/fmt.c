@@ -15,7 +15,7 @@ enum length_modifier {
     LEN_J,
     LEN_Z,
     LEN_T,
-    LEN_CAP_L
+    LEN_CAP_L,
 };
 
 struct printf_flags {
@@ -159,14 +159,8 @@ static uintmax_t read_unsigned_arg(va_list *arg, enum length_modifier len) {
     }
 }
 
-static void write_integer(struct fmt *restrict fmt,
-    uintmax_t mag,
-    bool negative,
-    struct printf_flags flags,
-    unsigned base,
-    bool upper,
-    char spec
-) {
+static void write_integer(struct fmt *restrict fmt, uintmax_t mag, bool negative,
+    struct printf_flags flags, unsigned base, bool upper, char spec) {
     char rev[sizeof(uintmax_t) * CHAR_BIT];
     int digits_len;
 
@@ -282,7 +276,7 @@ int fmt_vsprintf(struct fmt *restrict fmt, const char *restrict format, va_list 
             .alt = false,
             .zero_pad = false,
             .width = 0,
-            .precision = -1
+            .precision = -1,
         };
         enum length_modifier len = LEN_NONE;
         bool ok = true;
@@ -397,9 +391,9 @@ int fmt_vsprintf(struct fmt *restrict fmt, const char *restrict format, va_list 
                 uintmax_t mag;
 
                 if (negative) {
-                    mag = (uintmax_t) (-(value + 1)) + 1;
+                    mag = (uintmax_t)(-(value + 1)) + 1;
                 } else {
-                    mag = (uintmax_t) value;
+                    mag = (uintmax_t)value;
                 }
 
                 write_integer(fmt, mag, negative, flags, 10, false, spec);
@@ -413,10 +407,11 @@ int fmt_vsprintf(struct fmt *restrict fmt, const char *restrict format, va_list 
                 break;
             case 'x':
             case 'X':
-                write_integer(fmt, read_unsigned_arg(&ap, len), false, flags, 16, spec == 'X', spec);
+                write_integer(
+                    fmt, read_unsigned_arg(&ap, len), false, flags, 16, spec == 'X', spec);
                 break;
             case 'c': {
-                char ch = (char) va_arg(ap, int);
+                char ch = (char)va_arg(ap, int);
                 if (!flags.left_adj) {
                     write_repeat(fmt, ' ', flags.width > 1 ? flags.width - 1 : 0);
                 }
@@ -453,15 +448,17 @@ int fmt_vsprintf(struct fmt *restrict fmt, const char *restrict format, va_list 
             }
             case 'p': {
                 uintptr_t ptr = (uintptr_t)va_arg(ap, void *);
-                write_integer(fmt, (uintmax_t)ptr, false, (struct printf_flags){
-                    .left_adj = flags.left_adj,
-                    .plus = false,
-                    .space = false,
-                    .alt = true,
-                    .zero_pad = false,
-                    .width = flags.width,
-                    .precision = flags.precision
-                }, 16, false, 'x');
+                write_integer(fmt, (uintmax_t)ptr, false,
+                    (struct printf_flags){
+                        .left_adj = flags.left_adj,
+                        .plus = false,
+                        .space = false,
+                        .alt = true,
+                        .zero_pad = false,
+                        .width = flags.width,
+                        .precision = flags.precision,
+                    },
+                    16, false, 'x');
                 break;
             }
             case 'n':

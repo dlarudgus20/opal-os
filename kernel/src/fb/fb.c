@@ -1,3 +1,5 @@
+#include <limits.h>
+
 #include <kc/attributes.h>
 #include <kc/stdlib.h>
 
@@ -27,15 +29,15 @@ void fb_init(void) {
         return;
     }
 
-    if (fbinfo->pitch % sizeof(uint32_t) != 0
-        || fbinfo->width > INT_MAX || fbinfo->height > INT_MAX
-    ) {
+    if (fbinfo->pitch % sizeof(uint32_t) != 0 || fbinfo->width > INT_MAX
+        || fbinfo->height > INT_MAX) {
         // kwarn("framebuffer configuration is broken");
         return;
     }
 
     struct span fb_span;
-    void *fb_ptr = mm_vmap_alloc(fbinfo->addr, (phys_size_t)fbinfo->pitch * fbinfo->height, &fb_span);
+    void *fb_ptr =
+        mm_vmap_alloc(fbinfo->addr, (phys_size_t)fbinfo->pitch * fbinfo->height, &fb_span);
     if (!fb_ptr) {
         // kwarn("cannot allocate page table for framebuffer");
         return;
@@ -71,8 +73,7 @@ struct fb_tty *fb_tty_get(void) {
 }
 
 static bool is_valid(int x, int y) {
-    return 0 <= x && x < g_fb.width
-        && 0 <= y && y < g_fb.height;
+    return 0 <= x && x < g_fb.width && 0 <= y && y < g_fb.height;
 }
 
 void fb_draw_pixel(int x, int y, uint32_t color) {
@@ -149,7 +150,7 @@ void fb_draw_char(int x, int y, char c, uint32_t fg, uint32_t bg) {
     }
 }
 
-void fb_draw_string(int x, int y, const char* str, uint32_t fg, uint32_t bg) {
+void fb_draw_string(int x, int y, const char *str, uint32_t fg, uint32_t bg) {
     while (*str != '\0') {
         fb_draw_char(x, y, *str, fg, bg);
         x += 8;
@@ -161,7 +162,7 @@ struct rect {
     int x, y, width, height;
 };
 
-struct rect rect_intersect(const struct rect* r1, const struct rect* r2) {
+struct rect rect_intersect(const struct rect *r1, const struct rect *r2) {
     struct rect r;
     r.x = MAX(r1->x, r2->x);
     r.y = MAX(r1->y, r2->y);
@@ -208,9 +209,7 @@ void fb_bitblt(int x, int y, int cx, int cy, int x0, int y0) {
         return;
     }
 
-    if (x >= g_fb.width || y >= g_fb.height
-        || x0 >= g_fb.width || y0 >= g_fb.height
-    ) {
+    if (x >= g_fb.width || y >= g_fb.height || x0 >= g_fb.width || y0 >= g_fb.height) {
         return;
     }
 

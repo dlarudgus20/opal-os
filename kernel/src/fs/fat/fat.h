@@ -114,7 +114,8 @@ struct fat_inode_base;
 
 struct fat_inode_ops {
     struct inode_ops ops;
-    kerrno_t (*write_dentry)(struct fat_inode_base *inode, const struct fat_dentry *dentry, uint32_t index);
+    kerrno_t (*write_dentry)(
+        struct fat_inode_base *inode, const struct fat_dentry *dentry, uint32_t index);
     fs_ssize_t (*alloc_dentry)(struct fat_inode_base *inode);
 };
 
@@ -194,11 +195,14 @@ struct fat_sb {
 
 // sb.c
 kerrno_t fat_read_sectors(struct block_device *bdev, uint32_t lba, uint32_t sectors, void *buffer);
-kerrno_t fat_write_sectors(struct block_device *bdev, uint32_t lba, uint32_t sectors, const void *buffer);
+kerrno_t fat_write_sectors(
+    struct block_device *bdev, uint32_t lba, uint32_t sectors, const void *buffer);
 
 // inode.c
-void fat_root_init(struct fat_root_inode *inode, struct fat_sb *sb, uint32_t offset, uint16_t entries);
-void fat_inode_init(struct fat_inode *inode, struct fat_sb *sb, struct fat_inode_base *parent, uint32_t dentry_idx, uint32_t first_cluster);
+void fat_root_init(
+    struct fat_root_inode *inode, struct fat_sb *sb, uint32_t offset, uint16_t entries);
+void fat_inode_init(struct fat_inode *inode, struct fat_sb *sb, struct fat_inode_base *parent,
+    uint32_t dentry_idx, uint32_t first_cluster);
 
 // fat_table.c
 void fat_table_init(struct fat_table *file, struct fat_sb *sb);

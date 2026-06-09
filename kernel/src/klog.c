@@ -36,7 +36,8 @@ static struct klog_queue klog_queue = {
 };
 
 static size_t get_record_size(size_t msglen) {
-    return align_ceil_sz_p2(sizeof(struct klog_record_header) + msglen, sizeof(struct klog_record_header));
+    return align_ceil_sz_p2(
+        sizeof(struct klog_record_header) + msglen, sizeof(struct klog_record_header));
 }
 
 static uint32_t count_records(uint32_t from, uint32_t to) {
@@ -62,7 +63,12 @@ void klog_init(void) {
 
 static void set_log_color(uint16_t level) {
     tty_color_t colors[KLOG_LEVEL_COUNT] = {
-        TTY_BRIGHT_WHITE, TTY_RED, TTY_YELLOW, TTY_CYAN, TTY_GREEN, TTY_GRAY
+        TTY_BRIGHT_WHITE,
+        TTY_RED,
+        TTY_YELLOW,
+        TTY_CYAN,
+        TTY_GREEN,
+        TTY_GRAY,
     };
     if (level >= KLOG_LEVEL_COUNT) {
         level = KLOG_LEVEL_COUNT - 1;
@@ -118,7 +124,8 @@ void klog_write(uint16_t level, const char *msg, uint16_t msglen) {
     }
 
     if (next_write_pos > klog_queue.read_pos + klog_queue.capacity) {
-        klog_queue.drops += count_records(klog_queue.read_pos, next_write_pos - klog_queue.capacity);
+        klog_queue.drops +=
+            count_records(klog_queue.read_pos, next_write_pos - klog_queue.capacity);
         dropped = true;
     }
 

@@ -68,9 +68,8 @@ static bool is_free_head_of_order(pfn_t pfn, uint8_t order) {
     }
 
     struct page *page = pfn_to_page(pfn);
-    return (page->flags & PAGE_FLAG_BUDDY_FREE) &&
-        (page->flags & PAGE_FLAG_BUDDY_HEAD) &&
-        page->buddy_order == order;
+    return (page->flags & PAGE_FLAG_BUDDY_FREE) && (page->flags & PAGE_FLAG_BUDDY_HEAD)
+        && page->buddy_order == order;
 }
 
 static void list_remove(uint8_t order, pfn_t pfn) {
@@ -129,9 +128,8 @@ void buddy_create(struct buddy *buddy, const struct mmap *mmap) {
 
     const pfn_t pfn_end = pfn_get_end();
     buddy->max_order = 0;
-    while (buddy->max_order + 1 < BUDDY_MAX_ORDERS
-        && order_pages(buddy->max_order + 1) <= pfn_end
-    ) {
+    while (
+        buddy->max_order + 1 < BUDDY_MAX_ORDERS && order_pages(buddy->max_order + 1) <= pfn_end) {
         buddy->max_order++;
     }
 

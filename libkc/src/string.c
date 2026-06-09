@@ -5,8 +5,8 @@
 #include <kc/kassert.h>
 
 void *memcpy(void *restrict dest, const void *restrict src, size_t n) {
-    unsigned char *d = (unsigned char *) dest;
-    const unsigned char *s = (const unsigned char *) src;
+    unsigned char *d = (unsigned char *)dest;
+    const unsigned char *s = (const unsigned char *)src;
     size_t i;
 
     for (i = 0; i < n; i++) {
@@ -17,8 +17,8 @@ void *memcpy(void *restrict dest, const void *restrict src, size_t n) {
 }
 
 void *memmove(void *dest, const void *src, size_t n) {
-    unsigned char *d = (unsigned char *) dest;
-    const unsigned char *s = (const unsigned char *) src;
+    unsigned char *d = (unsigned char *)dest;
+    const unsigned char *s = (const unsigned char *)src;
     size_t i;
 
     if (d == s || n == 0) {
@@ -39,8 +39,8 @@ void *memmove(void *dest, const void *src, size_t n) {
 }
 
 void *memset(void *dest, int ch, size_t n) {
-    unsigned char *d = (unsigned char *) dest;
-    unsigned char c = (unsigned char) ch;
+    unsigned char *d = (unsigned char *)dest;
+    unsigned char c = (unsigned char)ch;
     size_t i;
 
     for (i = 0; i < n; i++) {
@@ -51,13 +51,13 @@ void *memset(void *dest, int ch, size_t n) {
 }
 
 int memcmp(const void *lhs, const void *rhs, size_t n) {
-    const unsigned char *a = (const unsigned char *) lhs;
-    const unsigned char *b = (const unsigned char *) rhs;
+    const unsigned char *a = (const unsigned char *)lhs;
+    const unsigned char *b = (const unsigned char *)rhs;
     size_t i;
 
     for (i = 0; i < n; i++) {
         if (a[i] != b[i]) {
-            return (int) a[i] - (int) b[i];
+            return (int)a[i] - (int)b[i];
         }
     }
 
@@ -153,52 +153,52 @@ size_t strcspn(const char *s, const char *reject) {
 }
 
 char *strchr(const char *s, int ch) {
-    unsigned char c = (unsigned char) ch;
+    unsigned char c = (unsigned char)ch;
 
     while (*s != '\0') {
-        if ((unsigned char) *s == c) {
-            return (char *) s;
+        if ((unsigned char)*s == c) {
+            return (char *)s;
         }
         s++;
     }
 
     if (c == '\0') {
-        return (char *) s;
+        return (char *)s;
     }
 
     return 0;
 }
 
 char *strrchr(const char *s, int ch) {
-    unsigned char c = (unsigned char) ch;
+    unsigned char c = (unsigned char)ch;
     char *found = 0;
 
     while (*s != '\0') {
-        if ((unsigned char) *s == c) {
-            found = (char *) s;
+        if ((unsigned char)*s == c) {
+            found = (char *)s;
         }
         s++;
     }
 
     if (c == '\0') {
-        return (char *) s;
+        return (char *)s;
     }
 
     return found;
 }
 
 char *strnchr(const char *s, int ch, size_t n) {
-    unsigned char c = (unsigned char) ch;
+    unsigned char c = (unsigned char)ch;
     size_t i;
 
     for (i = 0; i < n && s[i] != '\0'; i++) {
-        if ((unsigned char) s[i] == c) {
-            return (char *) (s + i);
+        if ((unsigned char)s[i] == c) {
+            return (char *)(s + i);
         }
     }
 
     if (c == '\0' && i < n) {
-        return (char *) (s + i);
+        return (char *)(s + i);
     }
 
     return 0;
@@ -210,7 +210,7 @@ int strcmp(const char *lhs, const char *rhs) {
         rhs++;
     }
 
-    return (int) (unsigned char) *lhs - (int) (unsigned char) *rhs;
+    return (int)(unsigned char)*lhs - (int)(unsigned char)*rhs;
 }
 
 int strncmp(const char *lhs, const char *rhs, size_t n) {
@@ -218,7 +218,7 @@ int strncmp(const char *lhs, const char *rhs, size_t n) {
 
     for (i = 0; i < n; i++) {
         if (lhs[i] != rhs[i]) {
-            return (int) (unsigned char) lhs[i] - (int) (unsigned char) rhs[i];
+            return (int)(unsigned char)lhs[i] - (int)(unsigned char)rhs[i];
         }
         if (lhs[i] == '\0') {
             return 0;

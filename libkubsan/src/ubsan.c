@@ -75,8 +75,8 @@ struct ubsan_vla_bound_data {
     struct ubsan_type_descriptor *type;
 };
 
-[[gnu::no_sanitize("undefined")]]
-[[noreturn]] static void ubsan_report(const char *kind, const struct ubsan_source_location *loc) {
+[[gnu::no_sanitize("undefined")]] [[noreturn]]
+static void ubsan_report(const char *kind, const struct ubsan_source_location *loc) {
     const char *file_name = "<unknown>";
     uint32_t line = 0;
     uint32_t column = 0;
@@ -89,7 +89,8 @@ struct ubsan_vla_bound_data {
         column = loc->column;
     }
 
-    _panic_format("ubsan: %s at %s:%u:%u", __FILE__, __func__, __LINE__, kind, file_name, line, column);
+    _panic_format(
+        "ubsan: %s at %s:%u:%u", __FILE__, __func__, __LINE__, kind, file_name, line, column);
 }
 
 #define UBSAN_HANDLER_LOC(name, kind, data_type) \
@@ -104,16 +105,22 @@ UBSAN_HANDLER_LOC(__ubsan_handle_mul_overflow, "mul-overflow", struct ubsan_over
 UBSAN_HANDLER_LOC(__ubsan_handle_negate_overflow, "negate-overflow", struct ubsan_overflow_data)
 UBSAN_HANDLER_LOC(__ubsan_handle_divrem_overflow, "divrem-overflow", struct ubsan_overflow_data)
 
-UBSAN_HANDLER_LOC(__ubsan_handle_shift_out_of_bounds, "shift-out-of-bounds", struct ubsan_shift_out_of_bounds_data)
+UBSAN_HANDLER_LOC(__ubsan_handle_shift_out_of_bounds, "shift-out-of-bounds",
+    struct ubsan_shift_out_of_bounds_data)
 UBSAN_HANDLER_LOC(__ubsan_handle_out_of_bounds, "out-of-bounds", struct ubsan_out_of_bounds_data)
-UBSAN_HANDLER_LOC(__ubsan_handle_pointer_overflow, "pointer-overflow", struct ubsan_pointer_overflow_data)
+UBSAN_HANDLER_LOC(
+    __ubsan_handle_pointer_overflow, "pointer-overflow", struct ubsan_pointer_overflow_data)
 
 UBSAN_HANDLER_LOC(__ubsan_handle_type_mismatch, "type-mismatch", struct ubsan_type_mismatch_data)
-UBSAN_HANDLER_LOC(__ubsan_handle_type_mismatch_v1, "type-mismatch-v1", struct ubsan_type_mismatch_data)
+UBSAN_HANDLER_LOC(
+    __ubsan_handle_type_mismatch_v1, "type-mismatch-v1", struct ubsan_type_mismatch_data)
 
-UBSAN_HANDLER_LOC(__ubsan_handle_alignment_assumption, "alignment-assumption", struct ubsan_alignment_assumption_data)
-UBSAN_HANDLER_LOC(__ubsan_handle_load_invalid_value, "load-invalid-value", struct ubsan_load_invalid_value_data)
-UBSAN_HANDLER_LOC(__ubsan_handle_vla_bound_not_positive, "vla-bound-not-positive", struct ubsan_vla_bound_data)
+UBSAN_HANDLER_LOC(__ubsan_handle_alignment_assumption, "alignment-assumption",
+    struct ubsan_alignment_assumption_data)
+UBSAN_HANDLER_LOC(
+    __ubsan_handle_load_invalid_value, "load-invalid-value", struct ubsan_load_invalid_value_data)
+UBSAN_HANDLER_LOC(
+    __ubsan_handle_vla_bound_not_positive, "vla-bound-not-positive", struct ubsan_vla_bound_data)
 
 [[gnu::no_sanitize("undefined")]]
 void __ubsan_handle_nonnull_arg(struct ubsan_nonnull_arg_data *data) {
@@ -126,7 +133,8 @@ void __ubsan_handle_nonnull_return(struct ubsan_nonnull_return_data *data) {
 }
 
 [[gnu::no_sanitize("undefined")]]
-void __ubsan_handle_nonnull_return_v1(struct ubsan_nonnull_return_data *data, struct ubsan_source_location *loc) {
+void __ubsan_handle_nonnull_return_v1(
+    struct ubsan_nonnull_return_data *data, struct ubsan_source_location *loc) {
     (void)data;
     ubsan_report("nonnull-return-v1", loc);
 }
@@ -145,16 +153,26 @@ void __ubsan_handle_missing_return(struct ubsan_source_location *loc) {
 UBSAN_HANDLER_LOC(__ubsan_handle_add_overflow_abort, "add-overflow", struct ubsan_overflow_data)
 UBSAN_HANDLER_LOC(__ubsan_handle_sub_overflow_abort, "sub-overflow", struct ubsan_overflow_data)
 UBSAN_HANDLER_LOC(__ubsan_handle_mul_overflow_abort, "mul-overflow", struct ubsan_overflow_data)
-UBSAN_HANDLER_LOC(__ubsan_handle_negate_overflow_abort, "negate-overflow", struct ubsan_overflow_data)
-UBSAN_HANDLER_LOC(__ubsan_handle_divrem_overflow_abort, "divrem-overflow", struct ubsan_overflow_data)
-UBSAN_HANDLER_LOC(__ubsan_handle_shift_out_of_bounds_abort, "shift-out-of-bounds", struct ubsan_shift_out_of_bounds_data)
-UBSAN_HANDLER_LOC(__ubsan_handle_out_of_bounds_abort, "out-of-bounds", struct ubsan_out_of_bounds_data)
-UBSAN_HANDLER_LOC(__ubsan_handle_pointer_overflow_abort, "pointer-overflow", struct ubsan_pointer_overflow_data)
-UBSAN_HANDLER_LOC(__ubsan_handle_type_mismatch_abort, "type-mismatch", struct ubsan_type_mismatch_data)
-UBSAN_HANDLER_LOC(__ubsan_handle_type_mismatch_v1_abort, "type-mismatch-v1", struct ubsan_type_mismatch_data)
-UBSAN_HANDLER_LOC(__ubsan_handle_alignment_assumption_abort, "alignment-assumption", struct ubsan_alignment_assumption_data)
-UBSAN_HANDLER_LOC(__ubsan_handle_load_invalid_value_abort, "load-invalid-value", struct ubsan_load_invalid_value_data)
-UBSAN_HANDLER_LOC(__ubsan_handle_vla_bound_not_positive_abort, "vla-bound-not-positive", struct ubsan_vla_bound_data)
+UBSAN_HANDLER_LOC(
+    __ubsan_handle_negate_overflow_abort, "negate-overflow", struct ubsan_overflow_data)
+UBSAN_HANDLER_LOC(
+    __ubsan_handle_divrem_overflow_abort, "divrem-overflow", struct ubsan_overflow_data)
+UBSAN_HANDLER_LOC(__ubsan_handle_shift_out_of_bounds_abort, "shift-out-of-bounds",
+    struct ubsan_shift_out_of_bounds_data)
+UBSAN_HANDLER_LOC(
+    __ubsan_handle_out_of_bounds_abort, "out-of-bounds", struct ubsan_out_of_bounds_data)
+UBSAN_HANDLER_LOC(
+    __ubsan_handle_pointer_overflow_abort, "pointer-overflow", struct ubsan_pointer_overflow_data)
+UBSAN_HANDLER_LOC(
+    __ubsan_handle_type_mismatch_abort, "type-mismatch", struct ubsan_type_mismatch_data)
+UBSAN_HANDLER_LOC(
+    __ubsan_handle_type_mismatch_v1_abort, "type-mismatch-v1", struct ubsan_type_mismatch_data)
+UBSAN_HANDLER_LOC(__ubsan_handle_alignment_assumption_abort, "alignment-assumption",
+    struct ubsan_alignment_assumption_data)
+UBSAN_HANDLER_LOC(__ubsan_handle_load_invalid_value_abort, "load-invalid-value",
+    struct ubsan_load_invalid_value_data)
+UBSAN_HANDLER_LOC(__ubsan_handle_vla_bound_not_positive_abort, "vla-bound-not-positive",
+    struct ubsan_vla_bound_data)
 
 /* Optional handlers emitted by newer compilers. */
 [[gnu::no_sanitize("undefined")]]

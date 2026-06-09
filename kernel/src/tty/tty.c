@@ -126,12 +126,7 @@ static bool write_fmt(struct fmt *fmt, char ch) {
 
 static void tty_vprintf(struct tty *tty, const char *fmt, va_list args) {
     struct fmt_tty f = {
-        .fmt = {
-            .write_fn = write_fmt,
-            .size = 0,
-            .count = 0,
-            .error = false
-        },
+        .fmt = { .write_fn = write_fmt, .size = 0, .count = 0, .error = false },
         .tty = tty,
         .flush = false,
     };
@@ -195,13 +190,13 @@ static void tty0_flush(void) {
     irqlock_release(&irqlock);
 }
 
-void tty0_register(struct tty* tty) {
+void tty0_register(struct tty *tty) {
     irqlock_t irqlock = irqlock_acquire();
     linkedlist_push_back(&g_tty_0.subtty_list, &tty->link);
     irqlock_release(&irqlock);
 }
 
-void tty0_unregister(struct tty* tty) {
+void tty0_unregister(struct tty *tty) {
     irqlock_t irqlock = irqlock_acquire();
     linkedlist_remove(&tty->link);
     irqlock_release(&irqlock);

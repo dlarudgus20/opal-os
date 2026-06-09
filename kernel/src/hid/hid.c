@@ -123,7 +123,8 @@ static struct hid_char process_keycode(hid_keycode_t key) {
 #define CHARKEY(c) (struct hid_char){ .raw = false, .ch = (c), .keycode = key }
     const struct hid_char raw = RAWKEY(key);
 
-    const bool control = g_keys[HID_KEY_LCTRL] || g_keys[HID_KEY_RCTRL] || g_keys[HID_KEY_LALT] || g_keys[HID_KEY_RALT];
+    const bool control = g_keys[HID_KEY_LCTRL] || g_keys[HID_KEY_RCTRL] || g_keys[HID_KEY_LALT]
+        || g_keys[HID_KEY_RALT];
     const bool shift = g_keys[HID_KEY_LSHIFT] || g_keys[HID_KEY_RSHIFT];
     const bool upper = g_kbd.caps != shift;
 
@@ -142,6 +143,7 @@ static struct hid_char process_keycode(hid_keycode_t key) {
     }
 
     if (!control) {
+        // clang-format off
         switch (key) {
             case HID_KEY_OEM_TILDE:     return CHARKEY(shift ? '~' : '`');
             case HID_KEY_1:             return CHARKEY(shift ? '!' : '1');
@@ -202,8 +204,10 @@ static struct hid_char process_keycode(hid_keycode_t key) {
 
             default: break;
         }
+        // clang-format on
     }
 
+    // clang-format off
     switch (key) {
         case HID_KEY_NUMPAD0:       return g_kbd.num ? (control ? raw : CHARKEY('0')) : RAWKEY(HID_KEY_INSERT);
         case HID_KEY_NUMPAD2:       return g_kbd.num ? (control ? raw : CHARKEY('2')) : RAWKEY(HID_KEY_DOWN);
@@ -219,6 +223,7 @@ static struct hid_char process_keycode(hid_keycode_t key) {
 
         default: break;
     }
+    // clang-format on
 
     return raw;
 #undef PS2RAW

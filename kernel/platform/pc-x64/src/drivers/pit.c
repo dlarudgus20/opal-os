@@ -24,7 +24,8 @@ static void pit_set_rate(uint32_t hz) {
         divisor = 0xffffu;
     }
 
-    uint8_t command = PIT_CMD_CHANNEL0 | PIT_CMD_ACCESS_LOHI | PIT_CMD_MODE_RATEGEN | PIT_CMD_BINARY;
+    uint8_t command =
+        PIT_CMD_CHANNEL0 | PIT_CMD_ACCESS_LOHI | PIT_CMD_MODE_RATEGEN | PIT_CMD_BINARY;
     out8(PIT_MODE_COMMAND, command);
     out8(PIT_CHANNEL0_DATA, (uint8_t)(divisor & 0xffu));
     out8(PIT_CHANNEL0_DATA, (uint8_t)((divisor >> 8) & 0xffu));

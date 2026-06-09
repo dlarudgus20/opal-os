@@ -3,7 +3,8 @@
 #include <opal/test.h>
 #include <opal/utils/vmtree.h>
 
-[[maybe_unused]] static void expect_entry(struct vmtree *tree, uintptr_t addr, uintptr_t start, uintptr_t end, void *entry) {
+[[maybe_unused]] static void expect_entry(
+    struct vmtree *tree, uintptr_t addr, uintptr_t start, uintptr_t end, void *entry) {
     struct vmtree_entry got = vmtree_get(tree, addr);
     TEST_EXPECT_EQ(start, got.start);
     TEST_EXPECT_EQ(end, got.end);
@@ -169,7 +170,7 @@ DEFINE_UNIT_TEST(vmtree_iter_walks_non_hole_ranges) {
     uint64_t count = 0;
     uintptr_t starts_sum = 0;
     struct vmtree_iter iter = vmtree_before_begin(&tree);
-    for (struct vmtree_entry entry; vmtree_iter_next(&iter, &entry); ) {
+    for (struct vmtree_entry entry; vmtree_iter_next(&iter, &entry);) {
         count++;
         starts_sum += entry.start;
     }

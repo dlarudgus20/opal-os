@@ -1,3 +1,5 @@
+#include <limits.h>
+
 #include <kc/kassert.h>
 #include <kc/stdlib.h>
 #include <kc/string.h>
@@ -167,7 +169,8 @@ static void free_mapped_range(struct process *proc, virt_addr_t addr, virt_size_
     }
 }
 
-static kerrno_t map_section(struct process *proc, void *data, size_t filesz, virt_addr_t addr, virt_size_t memsz, uint32_t flags) {
+static kerrno_t map_section(struct process *proc, void *data, size_t filesz, virt_addr_t addr,
+    virt_size_t memsz, uint32_t flags) {
     irqlock_t irqlock = irqlock_acquire();
     kerrno_t result = OPAL_ENOMEM;
 
@@ -208,7 +211,8 @@ static kerrno_t map_section(struct process *proc, void *data, size_t filesz, vir
             ptbl_flags |= PTBL_WRITABLE;
         }
 
-        virt_addr_t map_rs = pagetable_map(proc->pagetable, current_addr, pfn_to_phys(pfn), size, ptbl_flags);
+        virt_addr_t map_rs =
+            pagetable_map(proc->pagetable, current_addr, pfn_to_phys(pfn), size, ptbl_flags);
         if (map_rs == 0) {
             mm_free_page(pfn, order);
             goto err_alloc;
@@ -253,9 +257,8 @@ static void process_entry(void) {
     enter_userland(kstack[0], kstack[1]);
 }
 
-taskptr_t process_create_usertask(
-    struct process *proc, virt_addr_t entry, virt_addr_t stack, virt_size_t stack_size, enum task_priority priority
-) {
+taskptr_t process_create_usertask(struct process *proc, virt_addr_t entry, virt_addr_t stack,
+    virt_size_t stack_size, enum task_priority priority) {
     taskptr_t task = task_create(proc, process_entry, priority);
     if (!task.ptr) {
         return task;
@@ -362,18 +365,20 @@ kerrno_t process_load_elf(struct process *proc, void *elf, size_t size, taskptr_
             return OPAL_ENOEXEC;
         }
 
-        kerrno_t result = map_section(proc, bytes + phdr->offset, phdr->filesz, phdr->vaddr, phdr->memsz, phdr->flags);
+        kerrno_t result = map_section(
+            proc, bytes + phdr->offset, phdr->filesz, phdr->vaddr, phdr->memsz, phdr->flags);
         if (!kerrno_ok(result)) {
             return result;
         }
     }
 
-    kerrno_t result =  map_section(proc, NULL, 0, ustack_bottom, PAGE_SIZE, ELF_PF_R | ELF_PF_W);
+    kerrno_t result = map_section(proc, NULL, 0, ustack_bottom, PAGE_SIZE, ELF_PF_R | ELF_PF_W);
     if (!kerrno_ok(result)) {
         return result;
     }
 
-    *out = process_create_usertask(proc, hdr->entry, ustack_bottom, PAGE_SIZE, TASK_PRIORITY_NORMAL);
+    *out =
+        process_create_usertask(proc, hdr->entry, ustack_bottom, PAGE_SIZE, TASK_PRIORITY_NORMAL);
     if (!out->ptr) {
         return OPAL_ENOMEM;
     }

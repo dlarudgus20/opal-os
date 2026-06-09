@@ -21,8 +21,8 @@ int shell_cmd_irfdump(int, char **) {
     size_t total_len = module->end - module->begin;
 
     const unsigned char *ptr = phys_to_direct_ptr(module->begin);
-    tty0_printf("irfdump: [%#018"PRIphys", %#018"PRIphys") %s (%zu bytes)\n",
-        module->begin, module->end, module->name, total_len);
+    tty0_printf("irfdump: [%#018" PRIphys ", %#018" PRIphys ") %s (%zu bytes)\n", module->begin,
+        module->end, module->name, total_len);
 
     shell_hexdump(ptr, total_len);
     return 0;

@@ -10,12 +10,11 @@
 static struct disk *g_disks[MAX_DISKS];
 static size_t g_disks_count = 0;
 
-[[nodiscard]] static struct disk_request *submit_request(struct disk *disk, const struct disk_request_info *reqinfo);
+[[nodiscard]] static struct disk_request *submit_request(
+    struct disk *disk, const struct disk_request_info *reqinfo);
 
-void disk_init(
-    struct disk *disk, const struct disk_device_ops *ops,
-    const char *name, struct disk_req_queue *queue, fs_size_t sectors
-) {
+void disk_init(struct disk *disk, const struct disk_device_ops *ops, const char *name,
+    struct disk_req_queue *queue, fs_size_t sectors) {
     disk->ops = ops;
     disk->bdev = NULL;
     disk->part_table_sectors = SPAN_NULL;
@@ -65,7 +64,8 @@ struct disk_request *disk_read(struct disk *disk, fs_size_t lba, fs_size_t secto
     return submit_request(disk, &info);
 }
 
-struct disk_request *disk_write(struct disk *disk, fs_size_t lba, fs_size_t sectors, const void *buffer) {
+struct disk_request *disk_write(
+    struct disk *disk, fs_size_t lba, fs_size_t sectors, const void *buffer) {
     struct disk_request_info info = {
         .lba = lba,
         .sectors = sectors,
@@ -95,7 +95,8 @@ struct disk *disk_list_get(size_t index) {
     return disk;
 }
 
-void disk_req_queue_init(struct disk_req_queue *queue, struct disk_request *buffer, size_t capacity) {
+void disk_req_queue_init(
+    struct disk_req_queue *queue, struct disk_request *buffer, size_t capacity) {
     queue->buffer = buffer;
     queue->capacity = capacity;
     queue->count_doing = 0;
@@ -109,7 +110,8 @@ bool disk_req_queue_is_full_unlocked(struct disk_req_queue *queue) {
     return queue->count_doing + queue->count_done >= queue->capacity;
 }
 
-static struct disk_request *submit_request(struct disk *disk, const struct disk_request_info *reqinfo) {
+static struct disk_request *submit_request(
+    struct disk *disk, const struct disk_request_info *reqinfo) {
     irqlock_t irqlock = irqlock_acquire();
 
     struct disk_req_queue *queue = disk->req_queue;

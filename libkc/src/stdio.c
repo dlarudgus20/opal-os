@@ -30,7 +30,7 @@ int kvsnprintf(char *restrict buffer, size_t bufsz, const char *restrict format,
         .buffer = bufsz > 0 ? buffer : NULL,
         .size = (unsigned)bufsz,
         .count = 0,
-        .error = false
+        .error = false,
     };
     int result = fmt_vsprintf(&fmt, format, arg);
     if (result < 0 && buffer && bufsz > 0) {

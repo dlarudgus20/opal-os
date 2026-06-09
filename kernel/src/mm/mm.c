@@ -87,11 +87,11 @@ static void log_map(const struct mmap *mmap, const char *(*entry_type_str)(mmap_
 
         phys_addr_t end = entry->addr + entry->len;
         if (entry->addr <= end) {
-            kinfo("  [%#018"PRIphys", %#018"PRIphys") %s",
-                entry->addr, end, entry_type_str(entry->type));
+            kinfo("  [%#018" PRIphys ", %#018" PRIphys ") %s", entry->addr, end,
+                entry_type_str(entry->type));
         } else {
-            kinfo("  [%#018"PRIphys", %#018"PRIphys"] %s",
-                entry->addr, PHYS_ADDR_MAX, entry_type_str(entry->type));
+            kinfo("  [%#018" PRIphys ", %#018" PRIphys "] %s", entry->addr, PHYS_ADDR_MAX,
+                entry_type_str(entry->type));
         }
     }
 }
@@ -118,6 +118,6 @@ void mm_log_buddy(void) {
 
     kassert(total >= free + reserved);
     size_t used = total - free - reserved;
-    kinfo("buddy: used: %zu / free: %zu / reserved: %zu / total=%zu / max_order=%u",
-        used, free, reserved, total, max_order);
+    kinfo("buddy: used: %zu / free: %zu / reserved: %zu / total=%zu / max_order=%u", used, free,
+        reserved, total, max_order);
 }

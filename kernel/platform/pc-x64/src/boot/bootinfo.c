@@ -28,10 +28,7 @@ static struct bootinfo_module_list g_modules = {
 };
 
 static struct mmap_entry g_mmap_entries[MAX_MMAP_ENTRIES];
-static struct mmap g_boot_mmap = {
-    .entries = g_mmap_entries,
-    .length = 0
-};
+static struct mmap g_boot_mmap = { .entries = g_mmap_entries, .length = 0 };
 
 static struct bootinfo_fb g_fbinfo;
 
@@ -84,11 +81,8 @@ static void parse_mb2_mmap(const struct mb_tag_mmap *mmap) {
             break;
         }
 
-        g_mmap_entries[g_boot_mmap.length++] = (struct mmap_entry){
-            .addr = entry->addr,
-            .len = entry->len,
-            .type = entry->type
-        };
+        g_mmap_entries[g_boot_mmap.length++] =
+            (struct mmap_entry){ .addr = entry->addr, .len = entry->len, .type = entry->type };
 
         entry_ptr += mmap->entry_size;
     }
@@ -148,7 +142,7 @@ static void parse_mb2_info(uint32_t mb2_info_pa) {
         return;
     }
 
-    for (uint32_t off = 8; off + 8 <= total_size; ) {
+    for (uint32_t off = 8; off + 8 <= total_size;) {
         const struct mb_tag *tag = (const struct mb_tag *)(base + off);
         if (tag->size < sizeof(*tag)) {
             kerror("multiboot: invalid tag size");

@@ -13,22 +13,22 @@
 #define TTY_BUFFER_SIZE 512
 
 enum {
-    TTY_DARK_BLACK      = 0,
-    TTY_DARK_RED        = 1,
-    TTY_DARK_GREEN      = 2,
-    TTY_DARK_YELLOW     = 3,
-    TTY_DARK_BLUE       = 4,
-    TTY_DARK_MAGENTA    = 5,
-    TTY_DARK_CYAN       = 6,
-    TTY_WHITE           = 7,
-    TTY_GRAY            = 8,
-    TTY_RED             = 9,
-    TTY_GREEN           = 10,
-    TTY_YELLOW          = 11,
-    TTY_BLUE            = 12,
-    TTY_MAGENTA         = 13,
-    TTY_CYAN            = 14,
-    TTY_BRIGHT_WHITE    = 15,
+    TTY_DARK_BLACK = 0,
+    TTY_DARK_RED = 1,
+    TTY_DARK_GREEN = 2,
+    TTY_DARK_YELLOW = 3,
+    TTY_DARK_BLUE = 4,
+    TTY_DARK_MAGENTA = 5,
+    TTY_DARK_CYAN = 6,
+    TTY_WHITE = 7,
+    TTY_GRAY = 8,
+    TTY_RED = 9,
+    TTY_GREEN = 10,
+    TTY_YELLOW = 11,
+    TTY_BLUE = 12,
+    TTY_MAGENTA = 13,
+    TTY_CYAN = 14,
+    TTY_BRIGHT_WHITE = 15,
 };
 
 typedef uint8_t tty_color_t;
@@ -84,7 +84,7 @@ void tty_flush(struct tty *tty);
 
 void tty_puts(struct tty *tty, const char *str);
 void tty_puts_len(struct tty *tty, const char *str, size_t len);
-void tty_printf(struct tty *tty, const char *fmt, ...) PRINTF_ATTR(2, 3);
+PRINTF_ATTR(2, 3) void tty_printf(struct tty *tty, const char *fmt, ...);
 
 void tty0_init(void);
 [[nodiscard]] struct tty *tty0_get(void);
@@ -101,6 +101,6 @@ size_t tty0_getline(char *buf, size_t len);
 
 #define tty0_puts(str) tty_puts(tty0_get(), str)
 #define tty0_puts_len(str, len) tty_puts_len(tty0_get(), str, len)
-#define tty0_printf(...) tty_printf(tty0_get(), ##__VA_ARGS__)
+#define tty0_printf(...) tty_printf(tty0_get() __VA_OPT__(,) __VA_ARGS__)
 
 #endif

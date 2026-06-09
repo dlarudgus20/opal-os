@@ -104,14 +104,13 @@ int shell_cmd_floattest(int, char **) {
     }
 
     if (ok) {
-        tty0_printf("floattest: PASS bits=%#018"PRIx64" tasks=%u\n",
-            expected, FLOATTEST_TASK_COUNT);
+        tty0_printf(
+            "floattest: PASS bits=%#018" PRIx64 " tasks=%u\n", expected, FLOATTEST_TASK_COUNT);
     } else {
-        tty0_printf("floattest: FAIL expected=%#018"PRIx64" tasks=%u\n",
-            expected, FLOATTEST_TASK_COUNT);
+        tty0_printf(
+            "floattest: FAIL expected=%#018" PRIx64 " tasks=%u\n", expected, FLOATTEST_TASK_COUNT);
         for (size_t i = 0; i < FLOATTEST_TASK_COUNT; i++) {
-            tty0_printf("  task[%zu]=%#018"PRIx64"\n",
-                i, results[i].bits);
+            tty0_printf("  task[%zu]=%#018" PRIx64 "\n", i, results[i].bits);
         }
     }
 

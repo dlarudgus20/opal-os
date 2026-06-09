@@ -88,7 +88,8 @@ err:
     return -1;
 }
 
-struct sysret syscall_dispatch(uintptr_t arg0, uintptr_t arg1, uintptr_t arg2, uintptr_t arg3, uintptr_t arg4, uintptr_t arg5) {
+struct sysret syscall_dispatch(uintptr_t arg0, uintptr_t arg1, uintptr_t arg2, uintptr_t arg3,
+    uintptr_t arg4, uintptr_t arg5) {
     struct sysret sysret = { -1, 0, 0 };
     switch (arg0) {
         case SYS_TASK_EXIT:

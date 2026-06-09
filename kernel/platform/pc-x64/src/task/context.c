@@ -24,7 +24,8 @@ static_assert(sizeof(struct ctx_stack) % 16 == 0);
 
 // context.asm
 void context_switch_asm(struct context *from, const struct context *to);
-[[noreturn]] void enter_userland_asm(virt_addr_t entry, virt_addr_t stack_top, uint64_t cs, uint64_t ss);
+[[noreturn]] void enter_userland_asm(
+    virt_addr_t entry, virt_addr_t stack_top, uint64_t cs, uint64_t ss);
 
 static struct task *g_fpu_owner;
 
@@ -36,7 +37,8 @@ static void clear_task_switched(void) {
     clear_cr0_ts();
 }
 
-void context_init(struct context *ctx, virt_addr_t entry, virt_addr_t stack, virt_size_t stack_size) {
+void context_init(
+    struct context *ctx, virt_addr_t entry, virt_addr_t stack, virt_size_t stack_size) {
     kassert(stack % PAGE_SIZE == 0);
     kassert(stack_size % PAGE_SIZE == 0);
     kassert(stack_size >= PAGE_SIZE);

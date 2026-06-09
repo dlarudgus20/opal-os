@@ -171,11 +171,13 @@ static void pio_write_words(const struct pata_port *port, const void *buf, size_
 }
 
 static void ata_select_drive(const struct pata_port *port, uint8_t drive, uint8_t head) {
-    io_write8(port, ATA_REG_DRIVE_HEAD, (uint8_t)(ATA_DRIVE_LBA | (drive ? 0x10 : 0x00) | (head & 0x0f)));
+    io_write8(
+        port, ATA_REG_DRIVE_HEAD, (uint8_t)(ATA_DRIVE_LBA | (drive ? 0x10 : 0x00) | (head & 0x0f)));
     io_delay_400ns(port);
 }
 
-[[nodiscard]] static bool wait_for_flags(const struct pata_port *port, uint8_t flags, uint8_t *status_out) {
+[[nodiscard]] static bool wait_for_flags(
+    const struct pata_port *port, uint8_t flags, uint8_t *status_out) {
     for (uint32_t i = 0; i < ATA_POLL_SPIN; i++) {
         uint8_t status = io_read8(port, ATA_REG_STATUS);
         if (status & ATA_STATUS_BSY) {
@@ -205,7 +207,8 @@ static void ata_select_drive(const struct pata_port *port, uint8_t drive, uint8_
 }
 
 [[nodiscard]] static bool wait_drdy_or_drq_err(const struct pata_port *port, uint8_t *status_out) {
-    return wait_for_flags(port, ATA_STATUS_DRDY | ATA_STATUS_DRQ | ATA_STATUS_ERR | ATA_STATUS_DF, status_out);
+    return wait_for_flags(
+        port, ATA_STATUS_DRDY | ATA_STATUS_DRQ | ATA_STATUS_ERR | ATA_STATUS_DF, status_out);
 }
 
 static void words_to_chars(char *out, const uint16_t *id_words, int len) {
@@ -280,7 +283,8 @@ static void words_to_chars(char *out, const uint16_t *id_words, int len) {
     return true;
 }
 
-[[nodiscard]] static bool range_valid(const struct pata_disk *disk, fs_size_t lba, fs_size_t sectors) {
+[[nodiscard]] static bool range_valid(
+    const struct pata_disk *disk, fs_size_t lba, fs_size_t sectors) {
     if (sectors == 0 || disk->disk.sectors == 0) {
         return false;
     }
@@ -290,9 +294,7 @@ static void words_to_chars(char *out, const uint16_t *id_words, int len) {
 }
 
 [[nodiscard]] static bool issue_rw_command(
-    const struct pata_port *port,
-    uint8_t drive, bool is_write, uint32_t lba, uint16_t sectors
-) {
+    const struct pata_port *port, uint8_t drive, bool is_write, uint32_t lba, uint16_t sectors) {
     uint8_t status;
 
     if (!wait_not_busy(port)) {
@@ -351,11 +353,13 @@ static bool write_first_sector(struct pata_port *port, struct disk_request *req)
 
     port->next_sector = 1;
     port->deadline_tick = timer_get_tick() + ticks_from_ms(ATA_TIMEOUT_MS);
-    port->phase = port->next_sector >= port->cmd_sectors ? PATA_PHASE_WRITE_DONE : PATA_PHASE_WRITE_DATA;
+    port->phase =
+        port->next_sector >= port->cmd_sectors ? PATA_PHASE_WRITE_DONE : PATA_PHASE_WRITE_DATA;
     return true;
 }
 
-[[nodiscard]] static bool start_command(struct pata_port *port, struct disk_request *req, const struct pata_disk *disk) {
+[[nodiscard]] static bool start_command(
+    struct pata_port *port, struct disk_request *req, const struct pata_disk *disk) {
     if (req->info.lba > UINT32_MAX || req->info.sectors > UINT32_MAX) {
         return false;
     }
@@ -443,61 +447,61 @@ static void handle_irq(struct pata_port *port, uint8_t status) {
     fs_size_t req_sectors = req->info.sectors;
 
     switch (port->phase) {
-    case PATA_PHASE_READ_DATA:
-        if (!(status & ATA_STATUS_DRQ)) {
-            complete_and_start_next(port, false);
+        case PATA_PHASE_READ_DATA:
+            if (!(status & ATA_STATUS_DRQ)) {
+                complete_and_start_next(port, false);
+                return;
+            }
+
+            pio_read_words(port, sector_ptr, DISK_SECTOR_SIZE / 2);
+            port->next_sector++;
+            port->deadline_tick = timer_get_tick() + ticks_from_ms(ATA_TIMEOUT_MS);
+
+            if (port->next_sector >= port->cmd_sectors) {
+                port->done_sectors += port->cmd_sectors;
+                if (port->done_sectors >= req_sectors) {
+                    complete_and_start_next(port, true);
+                } else if (!start_command(port, req, disk)) {
+                    complete_and_start_next(port, false);
+                }
+            }
             return;
-        }
 
-        pio_read_words(port, sector_ptr, DISK_SECTOR_SIZE / 2);
-        port->next_sector++;
-        port->deadline_tick = timer_get_tick() + ticks_from_ms(ATA_TIMEOUT_MS);
+        case PATA_PHASE_WRITE_DATA:
+            if (!(status & ATA_STATUS_DRQ)) {
+                complete_and_start_next(port, false);
+                return;
+            }
 
-        if (port->next_sector >= port->cmd_sectors) {
+            pio_write_words(port, sector_ptr, DISK_SECTOR_SIZE / 2);
+            port->next_sector++;
+            port->deadline_tick = timer_get_tick() + ticks_from_ms(ATA_TIMEOUT_MS);
+
+            if (port->next_sector >= port->cmd_sectors) {
+                port->phase = PATA_PHASE_WRITE_DONE;
+            }
+            return;
+
+        case PATA_PHASE_WRITE_DONE:
             port->done_sectors += port->cmd_sectors;
             if (port->done_sectors >= req_sectors) {
-                complete_and_start_next(port, true);
-            } else if (!start_command(port, req, disk)) {
+                io_write8(port, ATA_REG_COMMAND, ATA_CMD_CACHE_FLUSH);
+                port->phase = PATA_PHASE_COMPLETE;
+                port->deadline_tick = timer_get_tick() + ticks_from_ms(ATA_TIMEOUT_MS);
+                return;
+            }
+
+            if (!start_command(port, req, disk)) {
                 complete_and_start_next(port, false);
             }
-        }
-        return;
-
-    case PATA_PHASE_WRITE_DATA:
-        if (!(status & ATA_STATUS_DRQ)) {
-            complete_and_start_next(port, false);
             return;
-        }
 
-        pio_write_words(port, sector_ptr, DISK_SECTOR_SIZE / 2);
-        port->next_sector++;
-        port->deadline_tick = timer_get_tick() + ticks_from_ms(ATA_TIMEOUT_MS);
-
-        if (port->next_sector >= port->cmd_sectors) {
-            port->phase = PATA_PHASE_WRITE_DONE;
-        }
-        return;
-
-    case PATA_PHASE_WRITE_DONE:
-        port->done_sectors += port->cmd_sectors;
-        if (port->done_sectors >= req_sectors) {
-            io_write8(port, ATA_REG_COMMAND, ATA_CMD_CACHE_FLUSH);
-            port->phase = PATA_PHASE_COMPLETE;
-            port->deadline_tick = timer_get_tick() + ticks_from_ms(ATA_TIMEOUT_MS);
+        case PATA_PHASE_COMPLETE:
+            complete_and_start_next(port, true);
             return;
-        }
 
-        if (!start_command(port, req, disk)) {
-            complete_and_start_next(port, false);
-        }
-        return;
-
-    case PATA_PHASE_COMPLETE:
-        complete_and_start_next(port, true);
-        return;
-
-    case PATA_PHASE_IDLE:
-        return;
+        case PATA_PHASE_IDLE:
+            return;
     }
 }
 
@@ -579,10 +583,11 @@ void pata_init(void) {
                 continue;
             }
 
-            disk_init(&disk->disk, &g_device_ops, dev_names[devidx], &port->req_queue, disk->disk.sectors);
+            disk_init(&disk->disk, &g_device_ops, dev_names[devidx], &port->req_queue,
+                disk->disk.sectors);
 
-            kinfo("pata: ch=%u drv=%u model='%s' serial='%s' sectors=%zu",
-                portidx, drive, disk->model, disk->serial, disk->disk.sectors);
+            kinfo("pata: ch=%u drv=%u model='%s' serial='%s' sectors=%zu", portidx, drive,
+                disk->model, disk->serial, disk->disk.sectors);
 
             if (!disk_register(&disk->disk)) {
                 kwarn("pata: failed to register disk ch=%u drv=%u", portidx, drive);

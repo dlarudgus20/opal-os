@@ -76,7 +76,8 @@ static struct cpio_node *find_child(struct cpio_node *parent, const char *name, 
     return NULL;
 }
 
-static struct cpio_node *alloc_node(struct cpio_sb *sb, struct cpio_node *parent, const char *name, size_t len, bool is_dir) {
+static struct cpio_node *alloc_node(
+    struct cpio_sb *sb, struct cpio_node *parent, const char *name, size_t len, bool is_dir) {
     struct cpio_node *node = kzalloc(sizeof(*node));
     if (!node) {
         return NULL;
@@ -123,7 +124,8 @@ static void free_tree(struct cpio_node *node) {
     kfree(node, sizeof(*node));
 }
 
-static kerrno_t ensure_dir_child(struct cpio_sb *sb, struct cpio_node *parent, const char *name, size_t len, struct cpio_node **out) {
+static kerrno_t ensure_dir_child(struct cpio_sb *sb, struct cpio_node *parent, const char *name,
+    size_t len, struct cpio_node **out) {
     struct cpio_node *child = find_child(parent, name, len);
     if (!child) {
         child = alloc_node(sb, parent, name, len, true);
@@ -150,10 +152,8 @@ static bool is_dotdot(const char *s, size_t len) {
     return len == 2 && s[0] == '.' && s[1] == '.';
 }
 
-static kerrno_t upsert_leaf(
-    struct cpio_sb *sb, struct cpio_node *parent, const char *name, size_t len, bool is_dir,
-    const unsigned char *data, fs_size_t size
-) {
+static kerrno_t upsert_leaf(struct cpio_sb *sb, struct cpio_node *parent, const char *name,
+    size_t len, bool is_dir, const unsigned char *data, fs_size_t size) {
     struct cpio_node *child = find_child(parent, name, len);
     if (!child) {
         child = alloc_node(sb, parent, name, len, is_dir);
@@ -180,10 +180,8 @@ static kerrno_t upsert_leaf(
     return OPAL_OK;
 }
 
-static kerrno_t add_archive_entry(
-    struct cpio_sb *sb, const char *path, size_t path_len, bool is_dir,
-    const unsigned char *data, fs_size_t size
-) {
+static kerrno_t add_archive_entry(struct cpio_sb *sb, const char *path, size_t path_len,
+    bool is_dir, const unsigned char *data, fs_size_t size) {
     while (path_len > 0 && path[0] == '/') {
         path++;
         path_len--;
@@ -249,8 +247,7 @@ static void cpio_umount(struct superblock *base) {
     kfree(sb, sizeof(*sb));
 }
 
-static void cpio_inode_close(struct inode *) {
-}
+static void cpio_inode_close(struct inode *) {}
 
 static kerrno_t cpio_inode_open(struct inode *inode, struct file **file_out) {
     if (inode->flags & FS_INODE_DIR) {
@@ -295,10 +292,10 @@ static kerrno_t cpio_inode_create(struct inode *, struct path_entry *, enum inod
     return OPAL_ENOTSUPP;
 }
 
-static void cpio_file_close(struct file *) {
-}
+static void cpio_file_close(struct file *) {}
 
-static kerrno_t cpio_file_seek(struct file *file, fs_off_t offset, enum fs_seek origin, fs_size_t *pos) {
+static kerrno_t cpio_file_seek(
+    struct file *file, fs_off_t offset, enum fs_seek origin, fs_size_t *pos) {
     struct cpio_node *node = container_of(file, struct cpio_node, file);
     if (node->inode.flags & FS_INODE_DIR) {
         return OPAL_EISDIR;
@@ -401,8 +398,7 @@ kerrno_t cpio_mount(void *cpio, size_t len, struct superblock **sb_out) {
         uint32_t mode = 0;
         uint32_t filesize = 0;
         uint32_t namesize = 0;
-        if (!parse_hex_u32(hdr + 14, 8, &mode)
-            || !parse_hex_u32(hdr + 54, 8, &filesize)
+        if (!parse_hex_u32(hdr + 14, 8, &mode) || !parse_hex_u32(hdr + 54, 8, &filesize)
             || !parse_hex_u32(hdr + 94, 8, &namesize)) {
             result = OPAL_EINVAL;
             goto err;

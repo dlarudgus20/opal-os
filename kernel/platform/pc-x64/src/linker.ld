@@ -34,6 +34,11 @@ SECTIONS {
         *(.rodata* .gnu.linkonce.r.*)
 
         . = ALIGN(8);
+        kmodule_ptr_start__ = .;
+        KEEP(*(.kmodule))
+        kmodule_ptr_end__ = .;
+
+        . = ALIGN(8);
         unit_test_start__ = .;
         KEEP(*(.unittest))
         unit_test_end__ = .;

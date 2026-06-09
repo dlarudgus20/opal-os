@@ -25,7 +25,7 @@ static inline bool ispower2(size_t value) {
     return value != 0 && (value & (value - 1)) == 0;
 }
 
-void sort(void* ptr, size_t count, size_t size, int (*comp)(const void*, const void*));
+void sort(void *ptr, size_t count, size_t size, int (*comp)(const void *, const void *));
 
 kerrno_t kstrtoul(const char *str, int base, char **endptr, unsigned long *result);
 kerrno_t kstrtoul_exact(const char *str, int base, unsigned long max, unsigned long *result);

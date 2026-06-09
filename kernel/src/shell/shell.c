@@ -137,6 +137,7 @@ static int cmd_unit_test_run(int argc, char **argv);
 static int cmd_unit_test_run_heavy(int argc, char **argv);
 #endif
 
+// clang-format off
 static const struct shell_command g_commands[] = {
 #define CMD_RAW(name, help, fn) { (name), (help), false, { .raw_handler = (fn) } }
 #define CMD_ARGV(name, help, fn) { (name), (help), true, { .argv_handler = (fn) } }
@@ -178,6 +179,7 @@ static const struct shell_command g_commands[] = {
     CMD_ARGV("testrwsec",   "test rw sectors: testrwsec",           shell_cmd_testrwsec),
     CMD_ARGV("exec",        "exec: exec [path]",                    shell_cmd_exec),
 };
+// clang-format on
 
 static const struct shell_command *find_command(const char *name, size_t len) {
     for (size_t i = 0; i < sizeof(g_commands) / sizeof(g_commands[0]); i++) {
@@ -233,7 +235,7 @@ static int handle_command(char *line) {
 static void print_banner(void) {
     tty0_puts("\n");
     tty0_puts("========================================\n");
-    tty0_puts("  "UNAME_MSG"\n");
+    tty0_puts("  " UNAME_MSG "\n");
     tty0_puts("========================================\n");
 }
 
@@ -280,7 +282,7 @@ static int cmd_unit_test_run(int, char **) {
     return 0;
 }
 
-static int cmd_unit_test_run_heavy(int , char **) {
+static int cmd_unit_test_run_heavy(int, char **) {
     unit_test_run_heavy();
     return 0;
 }
@@ -353,8 +355,8 @@ static int cmd_bootmodules(int, char **) {
     tty0_printf("boot modules: %u\n", modules->len);
     for (uint32_t i = 0; i < modules->len; i++) {
         const struct bootinfo_module *module = &modules->modules[i];
-        tty0_printf("  [%u] [%#018" PRIphys ", %#018" PRIphys ") %s\n",
-            i, module->begin, module->end, module->name);
+        tty0_printf("  [%u] [%#018" PRIphys ", %#018" PRIphys ") %s\n", i, module->begin,
+            module->end, module->name);
     }
     return 0;
 }
@@ -362,8 +364,8 @@ static int cmd_bootmodules(int, char **) {
 static int cmd_fbinfo(int, char **) {
     const struct bootinfo_fb *fbinfo = bootinfo_get_fb();
     if (fbinfo) {
-        tty0_printf("addr=%#010" PRIphys ", %ux%u, pitch=%u, bpp=%u\n",
-            fbinfo->addr, fbinfo->width, fbinfo->height, fbinfo->pitch, fbinfo->bpp);
+        tty0_printf("addr=%#010" PRIphys ", %ux%u, pitch=%u, bpp=%u\n", fbinfo->addr, fbinfo->width,
+            fbinfo->height, fbinfo->pitch, fbinfo->bpp);
     } else {
         tty0_printf("there is no framebuffer.\n");
     }

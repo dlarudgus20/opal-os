@@ -160,7 +160,8 @@ void sched_init(void) {
 
     task_init(&g_idle, &g_kproc);
     g_idle.priority = TASK_PRIORITY_IDLE;
-    context_init(&g_idle.ctx, (virt_addr_t)idle_task, (virt_addr_t)g_idle_stack, sizeof(g_idle_stack));
+    context_init(
+        &g_idle.ctx, (virt_addr_t)idle_task, (virt_addr_t)g_idle_stack, sizeof(g_idle_stack));
     set_ready(&g_idle);
 
     fpu_init();

@@ -20,8 +20,8 @@ static struct disk *parse_disk_arg(const char *cmd, const char *arg, unsigned lo
     struct disk *disk = disk_list_get((size_t)disk_ul);
     if (!disk) {
         size_t count = disk_list_count();
-        tty0_printf("%s: invalid disk %lu (expected 0..%zu)\n",
-            cmd, disk_ul, count ? count - 1 : 0);
+        tty0_printf(
+            "%s: invalid disk %lu (expected 0..%zu)\n", cmd, disk_ul, count ? count - 1 : 0);
         return NULL;
     }
 
@@ -199,13 +199,11 @@ int shell_cmd_mkpart(int argc, char **argv) {
     unsigned long sectors_ul = 0;
     unsigned long type_ul = 0;
 
-    if (argc != 6
-        || !parse_disk_arg("mkpart", argv[1], &disk_ul)
+    if (argc != 6 || !parse_disk_arg("mkpart", argv[1], &disk_ul)
         || !kerrno_ok(kstrtoul_exact(argv[2], 10, ULONG_MAX, &part_ul))
         || !kerrno_ok(kstrtoul_exact(argv[3], 10, ULONG_MAX, &lba_ul))
         || !kerrno_ok(kstrtoul_exact(argv[4], 10, ULONG_MAX, &sectors_ul))
-        || !kerrno_ok(kstrtoul_exact(argv[5], 0, ULONG_MAX, &type_ul))
-    ) {
+        || !kerrno_ok(kstrtoul_exact(argv[5], 0, ULONG_MAX, &type_ul))) {
         tty0_puts("usage: mkpart [disk] [part] [lba] [sectors] [type]\n");
         return 1;
     }
@@ -235,10 +233,8 @@ int shell_cmd_rmpart(int argc, char **argv) {
     unsigned long disk_ul = 0;
     unsigned long part_ul = 0;
 
-    if (argc != 3
-        || !parse_disk_arg("rmpart", argv[1], &disk_ul)
-        || !kerrno_ok(kstrtoul_exact(argv[2], 10, ULONG_MAX, &part_ul))
-    ) {
+    if (argc != 3 || !parse_disk_arg("rmpart", argv[1], &disk_ul)
+        || !kerrno_ok(kstrtoul_exact(argv[2], 10, ULONG_MAX, &part_ul))) {
         tty0_puts("usage: rmpart [disk] [part]\n");
         return 1;
     }

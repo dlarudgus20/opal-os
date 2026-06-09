@@ -137,7 +137,8 @@ static bool send_dev1(uint8_t cmd, uint8_t *resp) {
 static bool send_dev2(uint8_t cmd, uint8_t *resp) {
     uint8_t ack = 0;
 
-    if (!write_cmd(PS2_CMD_WRITE_PORT2) || !write_data(cmd) || !read_data(&ack) || ack != PS2_DEV_ACK) {
+    if (!write_cmd(PS2_CMD_WRITE_PORT2) || !write_data(cmd) || !read_data(&ack)
+        || ack != PS2_DEV_ACK) {
         return false;
     }
 
@@ -200,7 +201,7 @@ struct device_type {
 };
 
 static struct device_type read_device_type(void) {
-    struct device_type dt = { };
+    struct device_type dt = {};
 
     for (int i = 0; i < PS2_WAIT_SPIN && dt.n < 2; i++) {
         if (is_output_full()) {
@@ -290,7 +291,8 @@ void ps2_init(void) {
 
     // test controller
     uint8_t ctrl_test = 0;
-    if (!write_cmd(PS2_CMD_SELF_TEST) || !read_data(&ctrl_test) || ctrl_test != PS2_CTRL_SELF_TEST_OK) {
+    if (!write_cmd(PS2_CMD_SELF_TEST) || !read_data(&ctrl_test)
+        || ctrl_test != PS2_CTRL_SELF_TEST_OK) {
         kwarn("ps2: controller self-test failed (%#x)", ctrl_test);
         return;
     }

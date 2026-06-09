@@ -23,6 +23,7 @@ static uint8_t g_state = STATE_START;
 static uint8_t g_prev;
 
 static hid_keycode_t keycode_normal(uint8_t byte) {
+    // clang-format off
     switch (byte) {
         case 0x01: return HID_KEY_ESCAPE;
         case 0x02: return HID_KEY_1;
@@ -111,9 +112,11 @@ static hid_keycode_t keycode_normal(uint8_t byte) {
         case 0x58: return HID_KEY_F12;
         default: return HID_KEYCODE_UNKNOWN;
     }
+    // clang-format on
 }
 
 static hid_keycode_t keycode_extended(uint8_t byte) {
+    // clang-format off
     switch (byte) {
         case 0x10: return HID_KEY_MM_PREVTRACK;
         case 0x19: return HID_KEY_MM_NEXTTRACK;
@@ -155,6 +158,7 @@ static hid_keycode_t keycode_extended(uint8_t byte) {
         case 0x6d: return HID_KEY_MM_MEDIASELECT;
         default: return HID_KEYCODE_UNKNOWN;
     }
+    // clang-format on
 }
 
 void ps2_keyboard_feed_raw(uint8_t data) {

@@ -63,7 +63,7 @@ bool irqmsg_push(struct irqmsg msg) {
     return true;
 }
 
-static bool irqmsg_pop(struct irqmsg* msg_out) {
+static bool irqmsg_pop(struct irqmsg *msg_out) {
     irqlock_t irqlock = irqlock_acquire();
     bool ret = true;
 

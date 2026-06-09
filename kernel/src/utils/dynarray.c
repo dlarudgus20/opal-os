@@ -129,7 +129,8 @@ void *dynarray_insert(struct dynarray *ar, size_t pos, size_t data_size) {
 void dynarray_remove(struct dynarray *ar, size_t pos, size_t data_size) {
     kassert(pos + data_size <= ar->size, "dynarray: remove out of bounds");
     if (pos + data_size < ar->size) {
-        memmove((unsigned char *)ar->data + pos, (unsigned char *)ar->data + pos + data_size, ar->size - pos - data_size);
+        memmove((unsigned char *)ar->data + pos, (unsigned char *)ar->data + pos + data_size,
+            ar->size - pos - data_size);
     }
     ar->size -= data_size;
 }

@@ -6,7 +6,10 @@
 
 #include "attributes.h"
 
-int ksnprintf(char *restrict buffer, size_t bufsz, const char *restrict format, ...) PRINTF_ATTR(3, 4);
-int kvsnprintf(char *restrict buffer, size_t bufsz, const char *restrict format, va_list ap) PRINTF_ATTR(3, 0);
+PRINTF_ATTR(3, 4)
+int ksnprintf(char *restrict buffer, size_t bufsz, const char *restrict format, ...);
+
+PRINTF_ATTR(3, 0)
+int kvsnprintf(char *restrict buffer, size_t bufsz, const char *restrict format, va_list ap);
 
 #endif

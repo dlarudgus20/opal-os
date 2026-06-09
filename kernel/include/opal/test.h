@@ -18,6 +18,9 @@ typedef void (*unit_test_ptr)(void);
 #define PROTOTYPE_UNIT_TEST(name) \
     static void unit_test_func__##name (void)
 
+void unit_test_run(void);
+void unit_test_run_heavy(void);
+
 #ifdef OPAL_UNIT_TEST
 
 struct unit_test_info {
@@ -37,12 +40,9 @@ struct unit_test_info {
         .fn = unit_test_func__##name , \
         .item = #name , \
     }; \
-    static const struct unit_test_info *unit_test_ptr__##name \
+    static const struct unit_test_info *const unit_test_ptr__##name \
     [[maybe_unused, gnu::used, gnu::section(".unittest")]] = &unit_test_item__##name ; \
     PROTOTYPE_UNIT_TEST(name)
-
-void unit_test_run(void);
-void unit_test_run_heavy(void);
 
 void unit_test_expect_true_failed(const char *expr, const char *file, unsigned line);
 void unit_test_expect_eq_u64_failed(

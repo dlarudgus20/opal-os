@@ -83,7 +83,8 @@ static fs_ssize_t fat_table_read(struct file *base, fs_size_t pos, void *buffer,
     return (fs_ssize_t)size;
 }
 
-static fs_ssize_t fat_table_write(struct file *base, fs_size_t pos, const void *buffer, fs_size_t size, bool append) {
+static fs_ssize_t fat_table_write(
+    struct file *base, fs_size_t pos, const void *buffer, fs_size_t size, bool append) {
     struct fat_table *file = container_of(base, struct fat_table, file);
     struct fat_sb *sb = file->sb;
 
@@ -215,7 +216,8 @@ static kerrno_t fat12_table_alloc(struct fat_table *file, uint32_t *cluster_out)
     uint32_t offset = 2;
     for (; cluster2 * 2 < cluster_count + 2; cluster2++) {
         uint16_t e1 = file->buffer[cluster2 * 3] | ((file->buffer[cluster2 * 3 + 1] & 0xf) << 8);
-        uint16_t e2 = ((file->buffer[cluster2 * 3 + 1] & 0xf0) >> 4) | (file->buffer[cluster2 * 3 + 2] << 4);
+        uint16_t e2 =
+            ((file->buffer[cluster2 * 3 + 1] & 0xf0) >> 4) | (file->buffer[cluster2 * 3 + 2] << 4);
         if (e1 == 0) {
             offset = 0;
             break;

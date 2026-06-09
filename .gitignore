@@ -26,3 +26,6 @@ __pycache__/
 !.vscode/extensions.json
 !.vscode/*.code-snippets
 !.vscode/c_cpp_properties.json
+
+# clangd
+compile_commands.*
