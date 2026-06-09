@@ -15,7 +15,7 @@
   - `python3` (`tools/` 스크립트 실행용)
 - `make iso`
   - `cpio` (`initramfs` 생성용)
-  - `grub-mkrescue`, `xorriso`
+  - `grub-mkrescue`, `xorriso`, `mtools`
     - `grub-pc` for BIOS
     - `grub-efi-amd64` for UEFI
 - `make run` / `make unit-test`

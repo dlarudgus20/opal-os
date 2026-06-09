@@ -149,7 +149,6 @@ static struct slab_page *pick_alloc_page(struct slab *slab) {
 
 void slab_create(struct slab *slab, size_t object_size, size_t object_align) {
     kassert(slab);
-    kassert(!slab->initialized, "slab is already initialized");
     kassert(0 < object_size && object_size <= UINT16_MAX, "invalid slab object_size");
     kassert(ispower2(object_align) && object_align <= UINT16_MAX, "invalid slab object_align");
 
@@ -177,11 +176,10 @@ void slab_create(struct slab *slab, size_t object_size, size_t object_align) {
     slab->page_capacity = (uint32_t)page_capacity;
 
     linkedlist_init(&slab->partial_pages);
-    slab->initialized = true;
 }
 
 void slab_destroy(struct slab *slab) {
-    kassert(slab && slab->initialized, "slab is not initialized");
+    kassert(slab);
     kassert(slab->inuse_objects == 0, "slab has in-use objects");
 
     struct slab_page *page;
@@ -193,7 +191,7 @@ void slab_destroy(struct slab *slab) {
 }
 
 void *slab_alloc(struct slab *slab) {
-    kassert(slab && slab->initialized, "slab is not initialized");
+    kassert(slab);
 
     struct slab_page *page = pick_alloc_page(slab);
     if (!page) {
@@ -224,7 +222,7 @@ void *slab_alloc(struct slab *slab) {
 }
 
 void slab_free(struct slab *slab, void *ptr) {
-    kassert(slab && slab->initialized, "slab is not initialized");
+    kassert(slab);
     kassert(ptr, "slab free ptr is null");
 
     const virt_addr_t va = (virt_addr_t)ptr;
@@ -268,16 +266,16 @@ void slab_free(struct slab *slab, void *ptr) {
 }
 
 size_t slab_get_object_size(const struct slab *slab) {
-    kassert(slab && slab->initialized, "slab is not initialized");
+    kassert(slab);
     return slab->object_size;
 }
 
 size_t slab_get_inuse(const struct slab *slab) {
-    kassert(slab && slab->initialized, "slab is not initialized");
+    kassert(slab);
     return slab->inuse_objects;
 }
 
 size_t slab_get_total(const struct slab *slab) {
-    kassert(slab && slab->initialized, "slab is not initialized");
+    kassert(slab);
     return slab->total_objects;
 }

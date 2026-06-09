@@ -20,8 +20,6 @@ struct slab {
     uint32_t total_objects;
 
     struct linkedlist partial_pages;
-
-    bool initialized;
 };
 
 void slab_create(struct slab *slab, size_t object_size, size_t object_align);
