@@ -1,22 +1,17 @@
 #include <stdint.h>
-
-#include "syscall.h"
+#include <libuc.h>
 
 int main(void) {
-    int fd = open("/test.txt");
+    int fd = open(FD_INVALID, "/test.txt", OPEN_READ);
     if (fd < 0) {
         puts("opsh: open failed");
         return 1;
     }
 
     int ec = 0;
-    for (size_t pos = 0;; pos++) {
-        int ch = readc(fd, pos);
-        if (ch < 0) {
-            break;
-        }
+    int ch;
+    while ((ch = readc(fd)) >= 0) {
         if (putchar(ch) < 0) {
-            puts("\nopsh: i/o failed");
             ec = 1;
             goto end;
         }

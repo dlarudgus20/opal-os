@@ -5,8 +5,9 @@
 
 #include <opal/mm/vmap.h>
 #include <opal/fb/fb.h>
-#include <opal/tty/fb_tty.h>
 #include <opal/platform/boot/bootinfo.h>
+
+#include "fbcon.h"
 
 extern unsigned char g_font_data[];
 
@@ -21,7 +22,7 @@ struct fbinfo {
 };
 
 static struct fbinfo g_fb;
-static struct fb_tty g_fb_tty;
+static struct fbcon g_fbcon;
 
 void fb_init(void) {
     const struct bootinfo_fb *fbinfo = bootinfo_get_fb();
@@ -48,8 +49,7 @@ void fb_init(void) {
     g_fb.width = (int)fbinfo->width;
     g_fb.height = (int)fbinfo->height;
 
-    fb_tty_init(&g_fb_tty, 0, 0, g_fb.width, g_fb.height);
-    tty0_register(&g_fb_tty.tty);
+    fbcon_init(&g_fbcon, 0, 0, g_fb.width, g_fb.height);
 }
 
 static bool is_exist(void) {
@@ -66,10 +66,6 @@ int fb_get_width(void) {
 
 int fb_get_height(void) {
     return g_fb.height;
-}
-
-struct fb_tty *fb_tty_get(void) {
-    return is_exist() ? &g_fb_tty : NULL;
 }
 
 static bool is_valid(int x, int y) {

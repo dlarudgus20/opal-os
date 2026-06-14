@@ -38,6 +38,7 @@ struct vmtree_iter {
 };
 
 void vmtree_init(struct vmtree *tree);
+void vmtree_move(struct vmtree *dst, struct vmtree *src);
 void vmtree_destroy(struct vmtree *tree);
 [[nodiscard]] struct vmtree_entry vmtree_get(struct vmtree *tree, uintptr_t addr);
 vmtree_status_t vmtree_insert(struct vmtree *tree, uintptr_t start, uintptr_t end, void *entry);

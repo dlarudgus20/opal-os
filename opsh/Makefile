@@ -1,9 +1,11 @@
 TARGET_NAME := opsh
 TARGET_TYPE := executable
-STATIC_REFS := libkc
+STATIC_REFS := libuc libkc
+
+LDFLAGS := -Wl,-u,_panic_format
 
 TEST_SHARED_REFS := libpanicimpl
-LDFLAGS_ON_TEST := -Wl,--exclude-libs=libkc
+LDFLAGS_ON_TEST := -Wl,--exclude-libs=libkc,--exclude-libs=libuc
 
 ifneq ($(IS_TEST),1)
 STATIC_REFS += libkubsan

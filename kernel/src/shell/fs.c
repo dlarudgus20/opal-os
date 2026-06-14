@@ -132,12 +132,12 @@ int shell_cmd_cat(int argc, char **argv) {
     struct file *file = NULL;
     kerrno_t result;
     if (write_mode) {
-        result = vfs_create_path(NULL, path, 0, true, &file);
+        result = vfs_create_path(NULL, path, 0, true, OPEN_WRITE | OPEN_APPEND, &file);
         if (!kerrno_ok(result)) {
             return print_cat_error("lookup/create", result);
         }
     } else {
-        result = vfs_open_path(NULL, path, &file);
+        result = vfs_open_path(NULL, path, OPEN_READ, &file);
         if (!kerrno_ok(result)) {
             return print_cat_error("open", result);
         }
@@ -147,9 +147,8 @@ int shell_cmd_cat(int argc, char **argv) {
 
     if (!write_mode) {
         char buffer[256];
-        fs_size_t pos = 0;
         while (1) {
-            fs_ssize_t n = file->ops->read(file, pos, buffer, sizeof(buffer));
+            fs_ssize_t n = file_read(file, buffer, sizeof(buffer));
             if (n < 0) {
                 rc = print_cat_error("read", n);
                 break;
@@ -159,7 +158,6 @@ int shell_cmd_cat(int argc, char **argv) {
             }
 
             tty0_puts_len(buffer, (size_t)n);
-            pos += (fs_size_t)n;
         }
     } else {
         if (!file->ops->truncate) {
@@ -180,7 +178,7 @@ int shell_cmd_cat(int argc, char **argv) {
                 }
 
                 size_t line_len = strlen(line);
-                fs_ssize_t n = file->ops->write(file, 0, line, line_len, true);
+                fs_ssize_t n = file_write(file, line, line_len);
                 if (n < 0) {
                     rc = print_cat_error("write", n);
                     break;
@@ -190,7 +188,7 @@ int shell_cmd_cat(int argc, char **argv) {
                     break;
                 }
 
-                n = file->ops->write(file, 0, "\n", 1, true);
+                n = file_write(file, "\n", 1);
                 if (n < 0) {
                     rc = print_cat_error("write", n);
                     break;
@@ -227,7 +225,7 @@ int shell_cmd_ls(int argc, char **argv) {
         ec = print_ls_error("lookup_path", OPAL_ENOENT);
         goto end;
     }
-    if (!(pe->inode->flags & FS_INODE_DIR)) {
+    if (!(pe->inode->flags & INODE_DIR)) {
         ec = print_ls_error("lookup_path", OPAL_ENOTDIR);
         goto end;
     }
@@ -248,7 +246,7 @@ int shell_cmd_ls(int argc, char **argv) {
         if (!child->inode) {
             continue;
         }
-        bool is_dir = child->inode && (child->inode->flags & FS_INODE_DIR);
+        bool is_dir = child->inode && (child->inode->flags & INODE_DIR);
         tty0_printf("%s%s\n", hstrget(&child->name), is_dir ? "/" : "");
     }
 
@@ -266,7 +264,7 @@ int shell_cmd_mkdir(int argc, char **argv) {
     }
 
     struct file *file = NULL;
-    kerrno_t result = vfs_create_path(NULL, argv[1], FS_INODE_DIR, false, &file);
+    kerrno_t result = vfs_create_path(NULL, argv[1], INODE_DIR, false, OPEN_NONE, &file);
     if (!kerrno_ok(result)) {
         return print_mkdir_error("create", result);
     }

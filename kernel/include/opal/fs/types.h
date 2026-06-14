@@ -9,7 +9,9 @@
 #include <opal/task/completion.h>
 
 #define FS_OFF_MAX      INT64_MAX
+#define FS_OFF_MIN      INT64_MIN
 #define FS_SSIZE_MAX    INT64_MAX
+#define FS_SSIZE_MIN    INT64_MIN
 #define FS_SIZE_MAX     UINT64_MAX
 
 typedef int64_t fs_off_t;

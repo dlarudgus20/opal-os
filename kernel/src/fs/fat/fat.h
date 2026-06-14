@@ -124,7 +124,6 @@ struct fat_inode_base {
         const struct fat_inode_ops *ops;
         struct inode inode;
     };
-    struct file file;
     struct fat_sb *sb;
     unsigned char *buffer;
     size_t buflen;
@@ -136,7 +135,6 @@ struct fat_root_inode {
         struct fat_inode_base base;
         struct {
             struct inode inode;
-            struct file file;
             struct fat_sb *sb;
             struct fat_dentry *buffer;
             size_t buflen;
@@ -153,7 +151,6 @@ struct fat_inode {
         struct fat_inode_base base;
         struct {
             struct inode inode;
-            struct file file;
             struct fat_sb *sb;
             unsigned char *buffer;
             size_t buflen;
@@ -163,6 +160,11 @@ struct fat_inode {
     struct fat_inode_base *parent;
     uint32_t first_cluster;
     uint32_t filesize;
+};
+
+struct fat_file {
+    struct file file;
+    struct fat_inode_base *inode;
 };
 
 struct fat_table_ops {

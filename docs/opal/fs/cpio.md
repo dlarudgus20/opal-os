@@ -27,11 +27,13 @@
 
 ## VFS 연동
 - `inode_ops`:
+  - `open`: 일반 파일에 대해 `OPEN_READ`만 지원
   - `lookup`: 디렉터리 자식 조회 지원
   - `create`: 미지원 (`OPAL_ENOTSUPP`)
 - `file_ops`:
   - `seek`, `read` 지원
   - `write`, `truncate` 미지원 (`OPAL_ENOTSUPP`)
+- 파일은 `open`마다 별도 핸들을 만들며, VFS의 file position 계약에 따라 `read` 성공 시 위치가 이동한다.
 - 즉, 현재 `cpiofs`는 읽기 전용입니다.
 
 ## 부팅 경로 연동

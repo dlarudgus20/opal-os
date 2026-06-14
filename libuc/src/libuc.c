@@ -4,21 +4,26 @@
 #include <kc/kassert.h>
 #include <kc/fmt.h>
 
-#include "syscall.h"
+#include <libuc.h>
 
 enum syscall_index : uint64_t {
     SYS_TASK_EXIT = 1,
-    SYS_TTY0_PUTC = 2,
-    SYS_TTY0_GETC = 3,
-    SYS_OPEN = 4,
-    SYS_CLOSE = 5,
-    SYS_READC = 6,
+    SYS_OPEN,
+    SYS_CLOSE,
+    SYS_DUP,
+    SYS_READC,
+    SYS_WRITEC,
+    SYS_IOCTL,
+    SYS_MOUNT,
+    SYS_PIPE,
+    SYS_FORK,
+    SYS_EXEC,
 };
 
 typedef struct sysret {
+    int64_t ret0;
     int64_t ret1;
     int64_t ret2;
-    int64_t ret3;
 } sysret_t;
 
 static sysret_t syscall(enum syscall_index index, uint64_t arg0, uint64_t arg1, uint64_t arg2) {
@@ -40,12 +45,12 @@ void task_exit(void) {
 
 int putchar(int ch) {
     unsigned char uch = (unsigned char)ch;
-    int64_t ret = syscall(SYS_TTY0_PUTC, uch, 0, 0).ret1;
+    int64_t ret = syscall(SYS_WRITEC, 1, 0, uch).ret0;
     return ret >= 0 ? uch : -1;
 }
 
 int getchar(void) {
-    int64_t ret = syscall(SYS_TTY0_GETC, 0, 0, 0).ret1;
+    int64_t ret = syscall(SYS_READC, 0, 0, 0).ret0;
     return ret >= 0 ? (int)ret : -1;
 }
 
@@ -96,17 +101,57 @@ void _panic_format(const char *msg, const char *file, const char *func, unsigned
     task_exit();
 }
 
-int open(const char *path) {
-    sysret_t ret = syscall(SYS_OPEN, (uint64_t)path, 0, 0);
-    return (int)ret.ret1;
+int open(int fd, const char *path, enum open_mode mode) {
+    sysret_t ret = syscall(SYS_OPEN, (uint64_t)fd, (uint64_t)path, mode);
+    return (int)ret.ret0;
 }
 
 int close(int fd) {
     sysret_t ret = syscall(SYS_CLOSE, (uint64_t)fd, 0, 0);
-    return (int)ret.ret1;
+    return (int)ret.ret0;
 }
 
-int readc(int fd, size_t pos) {
-    sysret_t ret = syscall(SYS_READC, (uint64_t)fd, (uint64_t)pos, 0);
-    return (int)ret.ret1;
+int dup(int oldfd, int newfd) {
+    sysret_t ret = syscall(SYS_DUP, (uint64_t)oldfd, (uint64_t)newfd, 0);
+    return (int)ret.ret0;
+}
+
+int readc(int fd) {
+    sysret_t ret = syscall(SYS_READC, (uint64_t)fd, 0, 0);
+    return (int)ret.ret0;
+}
+
+int writec(int fd, int ch) {
+    unsigned char uch = (unsigned char)ch;
+    int64_t ret = syscall(SYS_WRITEC, (uint64_t)fd, uch, 0).ret0;
+    return ret >= 0 ? uch : -1;
+}
+
+long ioctl(int fd, unsigned long op, unsigned long arg) {
+    return syscall(SYS_IOCTL, (uint64_t)fd, op, arg).ret0;
+}
+
+int mount(const char *fstype, int arg, const char *path) {
+    sysret_t ret = syscall(SYS_MOUNT, (uint64_t)fstype, (uint64_t)arg, (uint64_t)path);
+    return (int)ret.ret0;
+}
+
+int pipe(int fds[2]) {
+    sysret_t ret = syscall(SYS_PIPE, 0, 0, 0);
+    if (ret.ret0 < 0) {
+        return (int)ret.ret0;
+    }
+    fds[0] = (int)ret.ret0;
+    fds[1] = (int)ret.ret1;
+    return 0;
+}
+
+pid_t fork(void) {
+    sysret_t ret = syscall(SYS_FORK, 0, 0, 0);
+    return (pid_t)ret.ret0;
+}
+
+int exec(int fd) {
+    sysret_t ret = syscall(SYS_EXEC, (uint64_t)fd, 0, 0);
+    return (int)ret.ret0;
 }

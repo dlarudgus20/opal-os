@@ -10,6 +10,7 @@ struct kargs {
 void kargs_init(void);
 const struct kargs *kargs_get(void);
 void kargs_postboot(void);
+void kargs_run_uinit(void);
 void kargs_print_log(void);
 
 #endif

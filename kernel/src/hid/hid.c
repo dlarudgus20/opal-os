@@ -6,8 +6,9 @@
 #include <opal/klog.h>
 #include <opal/hid/hid.h>
 #include <opal/fb/fb.h>
-#include <opal/tty/fb_tty.h>
 #include <opal/locks/irqlock.h>
+
+#include "hid_inode.h"
 
 struct hid_char {
     bool raw;
@@ -65,6 +66,8 @@ void hid_init(void) {
     if (fb_is_available()) {
         cursor_init();
     }
+
+    hid_inode_init();
 }
 
 static void on_key(hid_keycode_t keycode, bool pressed) {
@@ -74,10 +77,7 @@ static void on_key(hid_keycode_t keycode, bool pressed) {
     if (pressed) {
         struct hid_char ch = process_keycode(keycode);
         if (!ch.raw) {
-            tty0_put_input(&ch.ch, 1);
-            if (fb_is_available()) {
-                tty_puts_len(&fb_tty_get()->tty, &ch.ch, 1);
-            }
+            hid_inode_onkey(ch.ch);
         }
     }
 

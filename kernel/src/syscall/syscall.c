@@ -1,49 +1,61 @@
+#include "kc/kerrno.h"
 #include <kc/string.h>
 
 #include <opal/tty.h>
 #include <opal/mm/kmalloc.h>
 #include <opal/fs/vfs.h>
+#include <opal/fs/fs_type.h>
+#include <opal/fs/globals.h>
+#include <opal/fs/pipefs.h>
 #include <opal/task/task.h>
 #include <opal/task/process.h>
 #include <opal/syscall/syscall.h>
 
 #define SYSCALL_PATH_MAX 4095
+#define SYSCALL_FSNAME_MAX 255
 
-static intptr_t syscall_tty0_putc(uintptr_t arg1) {
-    char ch = (char)(unsigned char)arg1;
-    tty0_puts_len(&ch, 1);
-    return 0;
-}
-
-static intptr_t syscall_tty0_getc() {
-    return (unsigned char)tty0_getchar();
-}
-
-static intptr_t syscall_open(uintptr_t arg1) {
-    const char *upath = (const char *)arg1;
-    if (!upath) {
+static kerrno_t copy_user_string(uintptr_t user, size_t maxlen, char **out, size_t *outlen) {
+    const char *uptr = (const char *)user;
+    if (!uptr) {
         return OPAL_EINVAL;
     }
 
-    size_t len = strnlen_s(upath, SYSCALL_PATH_MAX + 1);
-    if (len > SYSCALL_PATH_MAX) {
+    size_t len = strnlen_s(uptr, maxlen + 1);
+    if (len > maxlen) {
         return OPAL_EINVAL;
     }
 
-    char *kpath = kzalloc(len + 1);
-    if (!kpath) {
+    char *kptr = kzalloc(len + 1);
+    if (!kptr) {
         return OPAL_ENOMEM;
     }
-    memcpy(kpath, upath, len);
+
+    memcpy(kptr, uptr, len);
+    *out = kptr;
+    *outlen = len;
+    return OPAL_OK;
+}
+
+static intptr_t syscall_open(uintptr_t arg1, uintptr_t arg2, uintptr_t arg3) {
+    if (arg3 & ~OPEN_MASK_ALL) {
+        return OPAL_EINVAL;
+    }
+
+    char *kpath;
+    size_t kpath_len;
+    kerrno_t err = copy_user_string(arg2, SYSCALL_PATH_MAX, &kpath, &kpath_len);
+    if (!kerrno_ok(err)) {
+        return err;
+    }
 
     struct file *file;
-    fs_ssize_t result = vfs_open_path(NULL, kpath, &file);
-    kfree(kpath, len + 1);
+    fs_ssize_t result = vfs_open_path(NULL, kpath, (enum open_mode)arg3, &file);
+    kfree(kpath, kpath_len + 1);
     if (!kerrno_ok(result)) {
         return result;
     }
 
-    fd_t fd = process_open_file(process_current(), file);
+    fd_t fd = process_open_file(process_current(), arg1, file);
     if (fd < 0) {
         goto err_file;
     }
@@ -63,57 +75,242 @@ static intptr_t syscall_close(uintptr_t arg1) {
     return ok ? 0 : -1;
 }
 
-static intptr_t syscall_readc(uintptr_t arg1, uintptr_t arg2) {
+static intptr_t syscall_dup(uintptr_t arg1, uintptr_t arg2) {
+    fd_t fd = process_dup_fd(process_current(), arg1, arg2);
+    return fd;
+}
+
+static intptr_t syscall_readc(uintptr_t arg1) {
     if (arg1 > FD_MAX) {
-        goto err;
+        return OPAL_EINVAL;
     }
 
     struct file *file = process_get_file(process_current(), (fd_t)arg1);
     if (!file) {
-        goto err;
+        return OPAL_ENOENT;
     }
 
     char ch = '\0';
-    fs_ssize_t n = file->ops->read(file, (fs_size_t)arg2, &ch, 1);
-    if (n != 1) {
-        goto err_file;
+    fs_ssize_t ret = file_read(file, &ch, 1);
+    if (ret == 1) {
+        ret = (unsigned char)ch;
+    } else if (kerrno_ok(ret)) {
+        ret = OPAL_EIO;
     }
 
     file_release(file);
-    return (unsigned char)ch;
-
-err_file:
-    file_release(file);
-err:
-    return -1;
+    return ret;
 }
 
-struct sysret syscall_dispatch(uintptr_t arg0, uintptr_t arg1, uintptr_t arg2, uintptr_t arg3,
-    uintptr_t arg4, uintptr_t arg5) {
+static intptr_t syscall_writec(uintptr_t arg1, uintptr_t arg2) {
+    if (arg1 > FD_MAX) {
+        return OPAL_EINVAL;
+    }
+
+    struct file *file = process_get_file(process_current(), (fd_t)arg1);
+    if (!file) {
+        return OPAL_ENOENT;
+    }
+
+    char ch = (char)(unsigned char)arg2;
+    fs_ssize_t ret = file_write(file, &ch, 1);
+
+    file_release(file);
+    return ret;
+}
+
+static intptr_t syscall_ioctl(uintptr_t arg1, uintptr_t arg2, uintptr_t arg3) {
+    if (arg1 > FD_MAX) {
+        return OPAL_EINVAL;
+    }
+
+    struct file *file = process_get_file(process_current(), (fd_t)arg1);
+    if (!file) {
+        return OPAL_ENOENT;
+    }
+
+    fs_ssize_t ret = file_ioctl(file, arg2, arg3);
+
+    file_release(file);
+    return ret;
+}
+
+static intptr_t syscall_mount(uintptr_t arg1, uintptr_t arg2, uintptr_t arg3) {
+    char *path;
+    size_t path_len;
+    kerrno_t err = copy_user_string(arg3, SYSCALL_PATH_MAX, &path, &path_len);
+    if (!kerrno_ok(err)) {
+        return err;
+    }
+
+    char *name;
+    size_t name_len;
+    err = copy_user_string(arg1, SYSCALL_FSNAME_MAX, &name, &name_len);
+    if (!kerrno_ok(err)) {
+        goto err_path;
+    }
+
+    struct fs_type *fs = vfs_fstype_get(name);
+    kfree(name, name_len + 1);
+    if (!fs) {
+        err = OPAL_ENOENT;
+        goto err_path;
+    }
+
+    struct block_device *bdev = NULL;
+    if (arg2 != 0) {
+        err = OPAL_ENOTSUPP;
+        goto err_path;
+    }
+
+    struct superblock *sb;
+    err = fs->mount(bdev, &sb);
+    if (!kerrno_ok(err)) {
+        goto err_path;
+    }
+
+    struct path_entry *pe;
+    err = vfs_mount_path(NULL, path, sb, &pe);
+    kfree(path, path_len + 1);
+    if (kerrno_ok(err)) {
+        path_entry_release(pe);
+    }
+
+    return err;
+
+err_path:
+    kfree(path, path_len + 1);
+    return err;
+}
+
+static void syscall_pipe(struct sysret *sysret) {
+    kerrno_t result = OPAL_ENOMEM;
+
+    struct pipefs *pipe = pipefs_create();
+    if (!pipe) {
+        result = OPAL_ENOMEM;
+        goto err;
+    }
+
+    struct file *read_file = pipefs_open_reader(pipe);
+    if (!read_file) {
+        goto err_pipe;
+    }
+
+    struct file *write_file = pipefs_open_writer(pipe);
+    if (!write_file) {
+        goto err_read_file;
+    }
+
+    struct process *proc = process_current();
+    fd_t read_fd = process_open_file(proc, FD_INVALID, read_file);
+    if (read_fd == FD_INVALID) {
+        result = OPAL_ENOSPC;
+        goto err_write_file;
+    }
+
+    fd_t write_fd = process_open_file(proc, FD_INVALID, write_file);
+    if (write_fd == FD_INVALID) {
+        result = OPAL_ENOSPC;
+        goto err_read_fd;
+    }
+
+    sysret->ret0 = read_fd;
+    sysret->ret1 = write_fd;
+
+    file_release(write_file);
+    file_release(read_file);
+    inode_release(&pipe->inode);
+    return;
+
+err_read_fd:
+    process_close_file(proc, read_fd);
+err_write_file:
+    file_release(write_file);
+err_read_file:
+    file_release(read_file);
+err_pipe:
+    inode_release(&pipe->inode);
+err:
+    sysret->ret0 = result;
+}
+
+static void syscall_fork(struct isr_stackframe *frame, struct sysret *sysret) {
+    procptr_t proc;
+    taskptr_t task;
+    kerrno_t result = process_fork(frame, &proc, &task);
+    if (!kerrno_ok(result)) {
+        sysret->ret0 = result;
+        return;
+    }
+
+    (void)task;
+    sysret->ret0 = proc.ptr->id;
+    process_release(proc);
+}
+
+static intptr_t syscall_exec(uintptr_t arg1) {
+    if (arg1 > FD_MAX) {
+        return OPAL_EINVAL;
+    }
+
+    struct process *proc = process_current();
+    struct file *file = process_get_file(proc, (fd_t)arg1);
+    if (!file) {
+        return OPAL_ENOENT;
+    }
+
+    taskptr_t task;
+    kerrno_t result = process_exec_elf_file(proc, file, &task);
+    file_release(file);
+    if (!kerrno_ok(result)) {
+        return result;
+    }
+
+    task_resume(task.ptr);
+    task_release(task);
+    task_exit();
+}
+
+struct sysret syscall_dispatch(struct isr_stackframe *frame, uintptr_t arg0, uintptr_t arg1,
+    uintptr_t arg2, uintptr_t arg3, uintptr_t arg4, uintptr_t arg5) {
     struct sysret sysret = { -1, 0, 0 };
     switch (arg0) {
         case SYS_TASK_EXIT:
             task_exit();
             sysret.ret0 = 0;
             break;
-        case SYS_TTY0_PUTC:
-            sysret.ret0 = syscall_tty0_putc(arg1);
-            break;
-        case SYS_TTY0_GETC:
-            sysret.ret0 = syscall_tty0_getc();
-            break;
         case SYS_OPEN:
-            sysret.ret0 = syscall_open(arg1);
+            sysret.ret0 = syscall_open(arg1, arg2, arg3);
             break;
         case SYS_CLOSE:
             sysret.ret0 = syscall_close(arg1);
             break;
+        case SYS_DUP:
+            sysret.ret0 = syscall_dup(arg1, arg2);
+            break;
         case SYS_READC:
-            sysret.ret0 = syscall_readc(arg1, arg2);
+            sysret.ret0 = syscall_readc(arg1);
+            break;
+        case SYS_WRITEC:
+            sysret.ret0 = syscall_writec(arg1, arg2);
+            break;
+        case SYS_IOCTL:
+            sysret.ret0 = syscall_ioctl(arg1, arg2, arg3);
+            break;
+        case SYS_MOUNT:
+            sysret.ret0 = syscall_mount(arg1, arg2, arg3);
+            break;
+        case SYS_PIPE:
+            syscall_pipe(&sysret);
+            break;
+        case SYS_FORK:
+            syscall_fork(frame, &sysret);
+            break;
+        case SYS_EXEC:
+            sysret.ret0 = syscall_exec(arg1);
             break;
     }
-    (void)arg2;
-    (void)arg3;
     (void)arg4;
     (void)arg5;
     return sysret;

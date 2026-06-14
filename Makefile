@@ -47,11 +47,19 @@ $(ISO_FILE): build
 	cp $(KERNEL_BIN) $(ISO_DIR)/boot/kernel.sys
 	grub-mkrescue -o $(ISO_FILE) $(ISO_DIR)
 
-$(INITRAMFS): .FORCE
+UINIT := uinit/$(BUILD_DIR)/uinit.elf
+$(UINIT): .FORCE
+	$(MAKE) -C uinit
+
+OPSH := opsh/$(BUILD_DIR)/opsh.elf
+$(OPSH): .FORCE
 	$(MAKE) -C opsh
+
+$(INITRAMFS): $(UINIT) $(OPSH) .FORCE
 	rm -rf $(INITRAMFS_DIR)
 	cp -rT initramfs $(INITRAMFS_DIR)
-	cp opsh/$(BUILD_DIR)/opsh.elf $(INITRAMFS_DIR)/opsh.elf
+	cp $(UINIT) $(INITRAMFS_DIR)/uinit
+	cp $(OPSH) $(INITRAMFS_DIR)/opsh
 	@mkdir -p $(dir $@)
 	(cd $(INITRAMFS_DIR); find .) | cpio -o -H newc -D $(INITRAMFS_DIR) > $(INITRAMFS)
 
