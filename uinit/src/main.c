@@ -36,15 +36,15 @@ static char read_escape(int fd, int *arg, size_t *arglen) {
 }
 
 static void color_reset(void) {
-    ioctl(1, 0, 0xffff);
+    ioctl(FD_STDOUT, 0, 0xffff);
 }
 
 static void color_fg(int color) {
-    ioctl(1, 0, 0xff00 | color);
+    ioctl(FD_STDOUT, 0, 0xff00 | color);
 }
 
 static void color_bg(int color) {
-    ioctl(1, 0, (color << 8) | 0xff);
+    ioctl(FD_STDOUT, 0, (color << 8) | 0xff);
 }
 
 static void esc_color(int *arg, size_t arglen) {
@@ -77,13 +77,23 @@ static void escape(int fd) {
     }
 }
 
-static void tty(int fd) {
+static void write_tty(int fd) {
     int ch;
     while ((ch = readc(fd)) >= 0) {
         if (ch == '\x1b') {
             escape(fd);
         } else {
-            writec(1, ch);
+            writec(FD_STDOUT, ch);
+        }
+    }
+}
+
+static void read_tty(int fd) {
+    int ch;
+    while ((ch = readc(FD_STDIN)) >= 0) {
+        writec(fd, ch);
+        if (isprint(ch)) {
+            writec(FD_STDOUT, ch);
         }
     }
 }
@@ -91,34 +101,53 @@ static void tty(int fd) {
 int main(void) {
     mount("devfs", 0, "/dev");
 
-    if (open(0, "/dev/hid", OPEN_READ) < 0) {
+    if (open(FD_STDIN, "/dev/hid", OPEN_READ) < 0) {
         return 1;
     }
-    if (open(1, "/dev/fbcon", OPEN_WRITE | OPEN_APPEND) < 0) {
+    if (open(FD_STDOUT, "/dev/fbcon", OPEN_WRITE | OPEN_APPEND) < 0) {
         return 1;
     }
-    if (dup(1, 2) < 0) {
+    if (dup(FD_STDOUT, FD_STDERR) < 0) {
         return 1;
     }
 
     while (1) {
-        int io[2] = {};
-        if (pipe(io) < 0) {
+        int out_pipe[2] = {};
+        int in_pipe[2] = {};
+        if (pipe(out_pipe) < 0) {
+            break;
+        }
+        if (pipe(in_pipe) < 0) {
+            close(out_pipe[0]);
+            close(out_pipe[1]);
             break;
         }
 
-        pid_t pid = fork();
-        if (pid) {
-            close(io[1]);
-            tty(io[0]);
-            close(io[0]);
+        pid_t pid_reader;
+        pid_t pid_shell;
+        if ((pid_reader = fork()) != 0) {
+            close(in_pipe[0]);
+            close(in_pipe[1]);
+            close(out_pipe[1]);
+            write_tty(out_pipe[0]);
+            close(out_pipe[0]);
+        } else if ((pid_shell = fork()) != 0) {
+            close(out_pipe[0]);
+            close(out_pipe[1]);
+            close(in_pipe[0]);
+            read_tty(in_pipe[1]);
+            close(in_pipe[1]);
         } else {
-            close(1);
-            close(2);
-            dup(io[1], 1);
-            dup(io[1], 2);
-            close(io[0]);
-            close(io[1]);
+            close(FD_STDIN);
+            close(FD_STDOUT);
+            close(FD_STDERR);
+            dup(in_pipe[0], FD_STDIN);
+            dup(out_pipe[1], FD_STDOUT);
+            dup(out_pipe[1], FD_STDERR);
+            close(out_pipe[0]);
+            close(out_pipe[1]);
+            close(in_pipe[0]);
+            close(in_pipe[1]);
 
             int shfd = open(FD_INVALID, "/opsh", OPEN_READ);
             exec(shfd);

@@ -5,6 +5,12 @@
 
 #define FD_INVALID -1
 
+enum {
+    FD_STDIN = 0,
+    FD_STDOUT = 1,
+    FD_STDERR = 2,
+};
+
 enum open_mode {
     OPEN_NONE = 0,
     OPEN_READ = 0x01,

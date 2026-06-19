@@ -4,6 +4,7 @@
 #include <opal/task/task.h>
 #include <opal/platform/asm.h>
 #include <opal/platform/descriptors.h>
+#include <opal/platform/interrupt.h>
 #include <opal/platform/task/context.h>
 #include <opal/platform/mm/pagetable.h>
 
@@ -64,6 +65,10 @@ void context_switch(struct task *from, const struct task *to) {
 
     set_task_switched();
     context_switch_asm(&from->ctx, &to->ctx);
+}
+
+void stackframe_set_return_value(struct isr_stackframe *frame, uintptr_t value) {
+    frame->rax = value;
 }
 
 static void fpu_ctx_init(void) {

@@ -1,3 +1,4 @@
+#include "opal/platform/task/context.h"
 #include <limits.h>
 
 #include <kc/kassert.h>
@@ -12,6 +13,7 @@
 #include <opal/mm/page.h>
 #include <opal/mm/kmalloc.h>
 #include <opal/fs/vfs.h>
+#include <opal/platform/interrupt.h>
 #include <opal/platform/mm/pagetable.h>
 
 #define MAX_REFC INT_MAX
@@ -36,8 +38,7 @@ struct process_image {
     struct vmtree vmtree;
 };
 
-static void free_mapped_range(
-    struct pagetable *ptbl, virt_addr_t addr, virt_size_t mapped_len);
+static void free_mapped_range(struct pagetable *ptbl, virt_addr_t addr, virt_size_t mapped_len);
 
 static struct rbtree g_pid_tree;
 static unsigned g_pid_next;
@@ -237,16 +238,15 @@ static bool process_has_current_task_only(struct process *proc) {
 
     struct task *current = task_current();
     struct linkedlist_link *head = linkedlist_head(&proc->task_list);
-    bool result = !linkedlist_is_nil(&proc->task_list, head) &&
-                  head == &current->proc_link &&
-                  head->next == linkedlist_nil(&proc->task_list);
+    bool result = !linkedlist_is_nil(&proc->task_list, head) && head == &current->proc_link
+        && head->next == linkedlist_nil(&proc->task_list);
 
     irqlock_release(&irqlock);
     return result;
 }
 
-static kerrno_t clone_vmem_range(struct process *child, struct process *parent,
-    struct vmtree_entry entry) {
+static kerrno_t clone_vmem_range(
+    struct process *child, struct process *parent, struct vmtree_entry entry) {
     struct vm_area *src_area = entry.entry;
     struct vm_area *dst_area = kzalloc(sizeof(*dst_area));
     if (!dst_area) {
@@ -255,8 +255,7 @@ static kerrno_t clone_vmem_range(struct process *child, struct process *parent,
 
     *dst_area = *src_area;
 
-    vmtree_status_t insertion =
-        vmtree_insert(&child->vmtree, entry.start, entry.end, dst_area);
+    vmtree_status_t insertion = vmtree_insert(&child->vmtree, entry.start, entry.end, dst_area);
     if (insertion != VMTREE_OK) {
         kfree(dst_area, sizeof(*dst_area));
         return insertion == VMTREE_ERR_EXISTS ? OPAL_EEXIST : OPAL_ENOMEM;
@@ -280,7 +279,8 @@ static kerrno_t clone_vmem_range(struct process *child, struct process *parent,
         memcpy(pfn_to_direct_ptr(dst_pfn), phys_to_direct_ptr(src_pa & PTE_MASK_ADDR), PAGE_SIZE);
 
         if (pagetable_map(child->pagetable, current_addr, pfn_to_phys(dst_pfn), PAGE_SIZE,
-                dst_area->ptbl_flags) == 0) {
+                dst_area->ptbl_flags)
+            == 0) {
             mm_free_page(dst_pfn, 0);
             result = OPAL_ENOMEM;
             goto err;
@@ -310,13 +310,14 @@ static kerrno_t process_clone_vmem(struct process *child, struct process *parent
     return OPAL_OK;
 }
 
-static void fork_child_stub(void) {
-    panic("fork child trampoline is not implemented");
+static void fork_entry(void) {
+    struct isr_stackframe *kstack = task_current()->kstack;
+    stackframe_set_return_value(kstack, 0);
+    return_to_userland(kstack);
 }
 
-kerrno_t process_fork(const struct isr_stackframe *frame, procptr_t *proc_out, taskptr_t *task_out) {
-    (void)frame;
-
+kerrno_t process_fork(
+    const struct isr_stackframe *frame, procptr_t *proc_out, taskptr_t *task_out) {
     struct process *parent = process_current();
     procptr_t child = process_create();
     if (!child.ptr) {
@@ -337,11 +338,14 @@ kerrno_t process_fork(const struct isr_stackframe *frame, procptr_t *proc_out, t
         goto err_child;
     }
 
-    taskptr_t task = task_create(child.ptr, fork_child_stub, TASK_PRIORITY_NORMAL);
+    taskptr_t task = task_create(child.ptr, fork_entry, TASK_PRIORITY_NORMAL);
     if (!task.ptr) {
         result = OPAL_ENOMEM;
         goto err_child;
     }
+
+    struct isr_stackframe *kstack = task.ptr->kstack;
+    *kstack = *frame;
 
     *proc_out = child;
     *task_out = task;
@@ -360,8 +364,7 @@ static page_entry_t elf_flags_to_ptbl_flags(uint32_t flags) {
     return ptbl_flags;
 }
 
-static void free_mapped_range(
-    struct pagetable *ptbl, virt_addr_t addr, virt_size_t mapped_len) {
+static void free_mapped_range(struct pagetable *ptbl, virt_addr_t addr, virt_size_t mapped_len) {
     for (virt_size_t off = 0; off < mapped_len; off += PAGE_SIZE) {
         phys_addr_t pa;
         if (!pagetable_lookup(ptbl, addr + off, &pa)) {
@@ -418,8 +421,8 @@ static kerrno_t map_section(struct pagetable *ptbl, struct vmtree *vmtree, void 
             continue;
         }
 
-        virt_addr_t map_rs = pagetable_map(
-            ptbl, current_addr, pfn_to_phys(pfn), size, area->ptbl_flags);
+        virt_addr_t map_rs =
+            pagetable_map(ptbl, current_addr, pfn_to_phys(pfn), size, area->ptbl_flags);
         if (map_rs == 0) {
             mm_free_page(pfn, order);
             goto err_alloc;
@@ -582,8 +585,8 @@ static kerrno_t load_elf_image(struct pagetable *ptbl, struct vmtree *vmtree, vo
             return OPAL_ENOEXEC;
         }
 
-        kerrno_t result = map_section(
-            ptbl, vmtree, bytes + phdr->offset, phdr->filesz, phdr->vaddr, phdr->memsz, phdr->flags);
+        kerrno_t result = map_section(ptbl, vmtree, bytes + phdr->offset, phdr->filesz, phdr->vaddr,
+            phdr->memsz, phdr->flags);
         if (!kerrno_ok(result)) {
             return result;
         }
@@ -611,8 +614,7 @@ kerrno_t process_load_elf(struct process *proc, void *elf, size_t size, taskptr_
         return result;
     }
 
-    *out =
-        process_create_usertask(proc, entry, stack, stack_size, TASK_PRIORITY_NORMAL);
+    *out = process_create_usertask(proc, entry, stack, stack_size, TASK_PRIORITY_NORMAL);
     if (!out->ptr) {
         return OPAL_ENOMEM;
     }

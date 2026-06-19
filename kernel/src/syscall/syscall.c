@@ -244,8 +244,9 @@ static void syscall_fork(struct isr_stackframe *frame, struct sysret *sysret) {
         return;
     }
 
-    (void)task;
     sysret->ret0 = proc.ptr->id;
+    task_resume(task.ptr);
+    task_release(task);
     process_release(proc);
 }
 
