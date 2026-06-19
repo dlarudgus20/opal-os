@@ -90,6 +90,13 @@
 ### 참조 라이브러리
 - `STATIC_REFS`, `SHARED_REFS`를 받아 하위 프로젝트 산출물을 의존성으로 추가
 
+### 빌드 시스템 제한사항
+- 서로 다른 `make` invocation을 동시에 실행하지 않습니다.
+- 이 빌드 시스템은 여러 독립 `make -C ...` 프로세스가 같은 `build/<platform>/<config>` 산출물을 동시에 쓰는 상황을 serialize하지 않습니다.
+- 특히 같은 하위 산출물을 공유하는 서브프로젝트를 병렬로 빌드하면 동일한 `.a`, `.nm`, `.o` 파일을 동시에 생성/읽는 레이스가 날 수 있습니다.
+- 이 경우 `nm: file format not recognized`, `plugin needed to handle lto object` 같은 메시지가 보일 수 있으며, 최종 산출물이 나중에 정상으로 덮여도 검증 결과로 신뢰하지 않습니다.
+- 여러 산출물을 검증할 때는 루트 `make`, `make iso`처럼 한 make invocation 안의 의존성 그래프를 사용하거나 명령을 순차 실행합니다.
+
 ## 4. 서브프로젝트 설정 패턴
 각 프로젝트 [`Makefile`](../kernel/Makefile)은 보통 다음만 정의합니다.
 - `TARGET_NAME`

@@ -161,7 +161,7 @@ static kerrno_t fat12_table_at(struct fat_table *file, uint32_t cluster, uint32_
     const fs_size_t pos = cluster * 3 / 2;
     fs_ssize_t n = fat_table_read(&file->file, &(fs_size_t){ pos }, entry, 2);
     if (n < 0) {
-        return n;
+        return fs_ssize_errno(n);
     } else if (n != 2) {
         return OPAL_ERANGE;
     }
@@ -183,7 +183,7 @@ static kerrno_t fat12_table_set(struct fat_table *file, uint32_t cluster, uint32
     const fs_size_t pos = cluster * 3 / 2;
     fs_ssize_t n = fat_table_read(&file->file, &(fs_size_t){ pos }, entry, 2);
     if (n < 0) {
-        return n;
+        return fs_ssize_errno(n);
     } else if (n != 2) {
         return OPAL_ERANGE;
     }
@@ -198,7 +198,7 @@ static kerrno_t fat12_table_set(struct fat_table *file, uint32_t cluster, uint32
 
     n = fat_table_write(&file->file, &(fs_size_t){ pos }, entry, 2);
     if (n < 0) {
-        return n;
+        return fs_ssize_errno(n);
     } else if (n != 2) {
         return OPAL_ERANGE;
     }
@@ -243,7 +243,7 @@ static kerrno_t fat16_table_at(struct fat_table *file, uint32_t cluster, uint32_
     const fs_size_t pos = cluster * 2;
     fs_ssize_t n = fat_table_read(&file->file, &(fs_size_t){ pos }, &entry, 2);
     if (n < 0) {
-        return n;
+        return fs_ssize_errno(n);
     } else if (n != 2) {
         return OPAL_ERANGE;
     }
@@ -260,7 +260,7 @@ static kerrno_t fat16_table_set(struct fat_table *file, uint32_t cluster, uint32
     const fs_size_t pos = cluster * 2;
     fs_ssize_t n = fat_table_write(&file->file, &(fs_size_t){ pos }, &entry, 2);
     if (n < 0) {
-        return n;
+        return fs_ssize_errno(n);
     } else if (n != 2) {
         return OPAL_ERANGE;
     }
@@ -292,7 +292,7 @@ static kerrno_t fat32_table_at(struct fat_table *file, uint32_t cluster, uint32_
     const fs_size_t pos = cluster * 4;
     fs_ssize_t n = fat_table_read(&file->file, &(fs_size_t){ pos }, &entry, 4);
     if (n < 0) {
-        return n;
+        return fs_ssize_errno(n);
     } else if (n != 4) {
         return OPAL_ERANGE;
     }
@@ -305,7 +305,7 @@ static kerrno_t fat32_table_set(struct fat_table *file, uint32_t cluster, uint32
     const fs_size_t pos = cluster * 4;
     fs_ssize_t n = fat_table_write(&file->file, &(fs_size_t){ pos }, &value, 4);
     if (n < 0) {
-        return n;
+        return fs_ssize_errno(n);
     } else if (n != 4) {
         return OPAL_ERANGE;
     }

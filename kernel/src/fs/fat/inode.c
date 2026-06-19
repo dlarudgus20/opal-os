@@ -263,7 +263,7 @@ static kerrno_t fat_inode_create(
 
     fs_ssize_t didx = inode->ops->alloc_dentry(inode);
     if (didx < 0) {
-        result = didx;
+        result = fs_ssize_errno(didx);
         goto err_alloc;
     }
 
@@ -833,10 +833,10 @@ static kerrno_t fat_inode_write_dentry(
     }
 
     fs_size_t pos = index * sizeof(*dentry);
-    result = fat_inode_write(&inode->inode, &pos, dentry, sizeof(*dentry), append);
-    if (result < 0) {
-        return result;
-    } else if (result != sizeof(*dentry)) {
+    fs_ssize_t written = fat_inode_write(&inode->inode, &pos, dentry, sizeof(*dentry), append);
+    if (written < 0) {
+        return fs_ssize_errno(written);
+    } else if (written != sizeof(*dentry)) {
         return OPAL_ERANGE;
     }
     return OPAL_OK;

@@ -13,8 +13,8 @@ enum syscall_index : uint64_t {
     SYS_OPEN,
     SYS_CLOSE,
     SYS_DUP,
-    SYS_READC,
-    SYS_WRITEC,
+    SYS_READ,
+    SYS_WRITE,
     SYS_IOCTL,
     SYS_MOUNT,
     SYS_PIPE,
@@ -36,6 +36,7 @@ static sysret_t syscall(enum syscall_index index, uint64_t arg0, uint64_t arg1, 
         "int 0x80\n"
         : "+r"(rax), "=r"(rcx), "=r"(r11)
         : "D"(arg0), "S"(arg1), "d"(arg2)
+        : "memory", "cc"
     ); // clang-format on
     return (sysret_t){ rax, rcx, r11 };
 }
@@ -46,12 +47,13 @@ void task_exit(void) {
 }
 
 int putchar(int ch) {
-    return writec(1, ch);
+    unsigned char uch = (unsigned char)ch;
+    return write(1, &uch, 1) == 1 ? uch : -1;
 }
 
 int getchar(void) {
-    int ret = readc(0);
-    return ret >= 0 ? ret : -1;
+    unsigned char ch;
+    return read(0, &ch, 1) == 1 ? ch : -1;
 }
 
 int puts(const char *str) {
@@ -116,15 +118,14 @@ int dup(int oldfd, int newfd) {
     return (int)ret.ret0;
 }
 
-int readc(int fd) {
-    sysret_t ret = syscall(SYS_READC, (uint64_t)fd, 0, 0);
-    return (int)ret.ret0;
+ssize_t read(int fd, void *buffer, size_t size) {
+    sysret_t ret = syscall(SYS_READ, (uint64_t)fd, (uint64_t)buffer, size);
+    return (ssize_t)ret.ret0;
 }
 
-int writec(int fd, int ch) {
-    unsigned char uch = (unsigned char)ch;
-    int64_t ret = syscall(SYS_WRITEC, (uint64_t)fd, uch, 0).ret0;
-    return ret >= 0 ? uch : -1;
+ssize_t write(int fd, const void *buffer, size_t size) {
+    sysret_t ret = syscall(SYS_WRITE, (uint64_t)fd, (uint64_t)buffer, size);
+    return (ssize_t)ret.ret0;
 }
 
 long ioctl(int fd, unsigned long op, unsigned long arg) {

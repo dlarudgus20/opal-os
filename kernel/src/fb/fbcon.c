@@ -20,6 +20,16 @@
 #define DEFAULT_FG 15
 #define DEFAULT_BG 0
 
+enum {
+    FBCON_IOCTL_COLOR = 0,
+    FBCON_IOCTL_GET_CURSOR = 1,
+    FBCON_IOCTL_GOTOXY = 2,
+    FBCON_IOCTL_SET_CURSOR_VISIBLE = 3,
+    FBCON_IOCTL_PUT_AT = 4,
+    FBCON_IOCTL_ERASE_LINE = 5,
+    FBCON_IOCTL_SCROLL_UP = 6,
+};
+
 struct fbcon_file {
     struct file file;
     struct fbcon *con;
@@ -47,9 +57,30 @@ static const fb_color_t g_colors[16] = {
 static const struct inode_ops g_fbcon_ops;
 static const struct file_ops g_fbcon_fops;
 
+static void clear_cursor(struct fbcon *con) {
+    if (!con->cursor_visible) {
+        return;
+    }
+
+    fb_fill_rect(con->xoff + con->xcur * CW + MARGIN,
+        con->yoff + (con->ycur + 1) * CH + MARGIN - CUR_THICK, CW, CUR_THICK, con->bg);
+}
+
 static void draw_cursor(struct fbcon *con) {
+    if (!con->cursor_visible) {
+        return;
+    }
+
     fb_fill_rect(con->xoff + con->xcur * CW + MARGIN,
         con->yoff + (con->ycur + 1) * CH + MARGIN - CUR_THICK, CW, CUR_THICK, con->fg);
+}
+
+static bool cursor_valid(const struct fbcon *con, int x, int y) {
+    return 0 <= x && x < con->width && 0 <= y && y < con->height;
+}
+
+static void draw_char_at(struct fbcon *con, int x, int y, char ch) {
+    fb_draw_char(con->xoff + x * CW + MARGIN, con->yoff + y * CH + MARGIN, ch, con->fg, con->bg);
 }
 
 static void clear_screen(struct fbcon *con) {
@@ -64,19 +95,8 @@ static void clear_screen(struct fbcon *con) {
     draw_cursor(con);
 }
 
-static void scroll(struct fbcon *con) {
-    if (con->xcur < con->width) {
-        fb_fill_rect(con->xoff + con->xcur * CW + MARGIN, con->yoff + con->ycur * CH + MARGIN, CW,
-            CH, con->bg);
-    }
-    con->xcur = 0;
-
-    if (con->ycur + 1 < con->height) {
-        con->ycur++;
-        draw_cursor(con);
-        return;
-    }
-
+static void scroll_up(struct fbcon *con) {
+    clear_cursor(con);
     fb_bitblt(con->xoff + MARGIN, con->yoff + MARGIN, con->width * CW, (con->height - 1) * CH,
         con->xoff + MARGIN, con->yoff + CH + MARGIN);
     fb_fill_rect(con->xoff + MARGIN, con->yoff + (con->height - 1) * CH + MARGIN, con->width * CW,
@@ -84,37 +104,14 @@ static void scroll(struct fbcon *con) {
     draw_cursor(con);
 }
 
-static void erase(struct fbcon *con) {
-    if (con->xcur == 0) {
-        return;
-    }
-
-    con->xcur -= 1;
-    fb_fill_rect(con->xoff + con->xcur * CW + MARGIN, con->yoff + con->ycur * CH + MARGIN, CW * 2,
-        CH, con->bg);
-    draw_cursor(con);
-}
-
 static void write_char(struct fbcon *con, char ch) {
-    if (ch == '\n') {
-        scroll(con);
-        return;
-    }
+    clear_cursor(con);
+    draw_char_at(con, con->xcur, con->ycur, ch);
 
-    if (ch == '\b') {
-        erase(con);
-        return;
+    if (con->xcur + 1 < con->width) {
+        con->xcur += 1;
     }
-
-    fb_draw_char(con->xoff + con->xcur * CW + MARGIN, con->yoff + con->ycur * CH + MARGIN, ch,
-        con->fg, con->bg);
-
-    con->xcur += 1;
-    if (con->xcur >= con->width) {
-        scroll(con);
-    } else {
-        draw_cursor(con);
-    }
+    draw_cursor(con);
 }
 
 static void set_color(struct fbcon *con, int fg, int bg) {
@@ -146,6 +143,7 @@ void fbcon_init(struct fbcon *con, int x, int y, int width, int height) {
     con->height = ch_h;
     con->xcur = 0;
     con->ycur = 0;
+    con->cursor_visible = true;
 
     set_color(con, -1, -1);
     clear_screen(con);
@@ -236,18 +234,82 @@ static kerrno_t fbcon_file_truncate(struct file *, fs_size_t) {
 
 static kerrno_t fbcon_file_ioctl(struct file *base, uintptr_t op, uintptr_t arg) {
     struct fbcon_file *file = container_of(base, typeof(*file), file);
-    if (op != 0) {
-        return OPAL_ENOTSUPP;
-    }
+    struct fbcon *con = file->con;
 
-    if (arg == 0xffff) {
-        set_color(file->con, -1, -1);
-    } else {
-        int fg = arg & 0xff;
-        int bg = (arg >> 8) & 0xff;
-        set_color(file->con, fg == 0xff ? -1 : fg, bg == 0xff ? -1 : bg);
+    switch (op) {
+        case FBCON_IOCTL_COLOR:
+            if (arg == 0xffff) {
+                set_color(con, -1, -1);
+            } else {
+                int fg = arg & 0xff;
+                int bg = (arg >> 8) & 0xff;
+                set_color(con, fg == 0xff ? -1 : fg, bg == 0xff ? -1 : bg);
+            }
+            return OPAL_OK;
+        case FBCON_IOCTL_GET_CURSOR:
+            return (con->xcur & 0xffff) | ((con->ycur & 0xffff) << 16);
+        case FBCON_IOCTL_GOTOXY: {
+            int x = arg & 0xffff;
+            int y = (arg >> 16) & 0xffff;
+            if (!cursor_valid(con, x, y)) {
+                return OPAL_ERANGE;
+            }
+            clear_cursor(con);
+            con->xcur = x;
+            con->ycur = y;
+            draw_cursor(con);
+            return OPAL_OK;
+        }
+        case FBCON_IOCTL_SET_CURSOR_VISIBLE:
+            if (arg > 1) {
+                return OPAL_EINVAL;
+            }
+            if (arg == 0) {
+                clear_cursor(con);
+                con->cursor_visible = false;
+            } else {
+                con->cursor_visible = true;
+                draw_cursor(con);
+            }
+            return OPAL_OK;
+        case FBCON_IOCTL_PUT_AT: {
+            int x = arg & 0xff;
+            int y = (arg >> 8) & 0xff;
+            char ch = (char)((arg >> 16) & 0xff);
+            if (!cursor_valid(con, x, y)) {
+                return OPAL_ERANGE;
+            }
+            clear_cursor(con);
+            draw_char_at(con, x, y, ch);
+            draw_cursor(con);
+            return OPAL_OK;
+        }
+        case FBCON_IOCTL_ERASE_LINE: {
+            int x0 = arg & 0xff;
+            int y = (arg >> 8) & 0xff;
+            int x1 = (arg >> 16) & 0xff;
+            if (x0 > x1) {
+                return OPAL_EINVAL;
+            }
+            if (!cursor_valid(con, x0, y) || x1 > con->width) {
+                return OPAL_ERANGE;
+            }
+            clear_cursor(con);
+            for (int x = x0; x < x1; x++) {
+                draw_char_at(con, x, y, ' ');
+            }
+            draw_cursor(con);
+            return OPAL_OK;
+        }
+        case FBCON_IOCTL_SCROLL_UP:
+            if (arg != 0) {
+                return OPAL_EINVAL;
+            }
+            scroll_up(con);
+            return OPAL_OK;
+        default:
+            return OPAL_ENOTSUPP;
     }
-    return OPAL_OK;
 }
 
 static const struct file_ops g_fbcon_fops = {

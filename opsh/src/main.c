@@ -16,6 +16,7 @@ struct cmd {
 };
 
 static int cmd_help(int argc, char **argv);
+static int cmd_echo(char *args);
 static int cmd_cat(int argc, char **argv);
 
 // clang-format off
@@ -23,6 +24,7 @@ static const struct cmd g_commands[] = {
 #define CMD_RAW(name, help, fn) { (name), (help), .raw_handler = (fn) }
 #define CMD_ARGV(name, help, fn) { (name), (help), .argv_handler = (fn) }
     CMD_ARGV("help", "show this message", cmd_help),
+    CMD_RAW("echo", "print echo", cmd_echo),
     CMD_ARGV("cat", "show file content", cmd_cat),
 };
 // clang-format on
@@ -166,7 +168,6 @@ int main(void) {
     while (1) {
         printf("opsh: /> ");
         getline(buf, sizeof(buf));
-        putchar('\n');
         handle_command(buf);
     }
 }
@@ -192,6 +193,11 @@ static int cmd_help(int argc, char **argv) {
     return 0;
 }
 
+static int cmd_echo(char *args) {
+    puts(args);
+    return 0;
+}
+
 static int cmd_cat(int argc, char **argv) {
     if (argc != 2) {
         puts("usage: cat [path]");
@@ -205,12 +211,17 @@ static int cmd_cat(int argc, char **argv) {
     }
 
     int ec = 0;
-    int ch;
-    while ((ch = readc(fd)) >= 0) {
-        if (putchar(ch) < 0) {
+    char buf[128];
+    ssize_t n;
+    while ((n = read(fd, buf, sizeof(buf))) > 0) {
+        if (write(FD_STDOUT, buf, (size_t)n) != n) {
             ec = 1;
             goto end;
         }
+    }
+    if (n < 0) {
+        ec = 1;
+        goto end;
     }
     putchar('\n');
 

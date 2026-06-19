@@ -23,6 +23,16 @@ enum fs_seek : uint8_t {
     FS_SEEK_END,
 };
 
+static inline kerrno_t fs_ssize_errno(fs_ssize_t ss) {
+    if (ss >= 0) {
+        return OPAL_OK;
+    } else if (ss < OPAL_EUNKNOWN) {
+        return OPAL_EUNKNOWN;
+    } else {
+        return (kerrno_t)ss;
+    }
+}
+
 static inline fs_size_t align_ceil_fsz_p2(fs_size_t x, fs_size_t align) {
     const fs_size_t mask = align - 1;
     return (x + mask) & ~mask;

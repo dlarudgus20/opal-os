@@ -14,6 +14,7 @@ struct fbcon {
 
     int xcur;
     int ycur;
+    bool cursor_visible;
 
     fb_color_t fg;
     fb_color_t bg;

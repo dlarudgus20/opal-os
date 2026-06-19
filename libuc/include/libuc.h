@@ -26,6 +26,7 @@ enum open_mode {
 };
 
 typedef int pid_t;
+typedef long ssize_t;
 
 [[noreturn]] void task_exit(void);
 int putchar(int ch);
@@ -36,8 +37,8 @@ int printf(const char *msg, ...);
 int open(int fd, const char *path, enum open_mode mode);
 int close(int fd);
 int dup(int oldfd, int newfd);
-int readc(int fd);
-int writec(int fd, int ch);
+ssize_t read(int fd, void *buffer, size_t size);
+ssize_t write(int fd, const void *buffer, size_t size);
 long ioctl(int fd, unsigned long op, unsigned long arg);
 int mount(const char *fstype, int arg, const char *path);
 

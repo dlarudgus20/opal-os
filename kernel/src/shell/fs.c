@@ -154,7 +154,7 @@ int shell_cmd_cat(int argc, char **argv) {
         while (1) {
             fs_ssize_t n = file_read(file, buffer, sizeof(buffer));
             if (n < 0) {
-                rc = print_cat_error("read", n);
+                rc = print_cat_error("read", fs_ssize_errno(n));
                 break;
             }
             if (n == 0) {
@@ -173,7 +173,7 @@ int shell_cmd_cat(int argc, char **argv) {
             size_t line_len = strlen(buffer);
             fs_ssize_t n = file_write(file, buffer, line_len);
             if (n < 0) {
-                rc = print_cat_error("write", n);
+                rc = print_cat_error("write", fs_ssize_errno(n));
                 break;
             }
             if ((size_t)n != line_len) {
@@ -183,7 +183,7 @@ int shell_cmd_cat(int argc, char **argv) {
 
             n = file_write(file, "\n", 1);
             if (n < 0) {
-                rc = print_cat_error("write", n);
+                rc = print_cat_error("write", fs_ssize_errno(n));
                 break;
             }
             if (n != 1) {

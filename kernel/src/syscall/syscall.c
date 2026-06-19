@@ -80,8 +80,11 @@ static intptr_t syscall_dup(uintptr_t arg1, uintptr_t arg2) {
     return fd;
 }
 
-static intptr_t syscall_readc(uintptr_t arg1) {
+static intptr_t syscall_read(uintptr_t arg1, uintptr_t arg2, uintptr_t arg3) {
     if (arg1 > FD_MAX) {
+        return OPAL_EINVAL;
+    }
+    if (arg3 > FS_SSIZE_MAX || (arg2 == 0 && arg3 != 0)) {
         return OPAL_EINVAL;
     }
 
@@ -90,20 +93,17 @@ static intptr_t syscall_readc(uintptr_t arg1) {
         return OPAL_ENOENT;
     }
 
-    char ch = '\0';
-    fs_ssize_t ret = file_read(file, &ch, 1);
-    if (ret == 1) {
-        ret = (unsigned char)ch;
-    } else if (kerrno_ok(ret)) {
-        ret = OPAL_EIO;
-    }
+    fs_ssize_t ret = file_read(file, (void *)arg2, (fs_size_t)arg3);
 
     file_release(file);
     return ret;
 }
 
-static intptr_t syscall_writec(uintptr_t arg1, uintptr_t arg2) {
+static intptr_t syscall_write(uintptr_t arg1, uintptr_t arg2, uintptr_t arg3) {
     if (arg1 > FD_MAX) {
+        return OPAL_EINVAL;
+    }
+    if (arg3 > FS_SSIZE_MAX || (arg2 == 0 && arg3 != 0)) {
         return OPAL_EINVAL;
     }
 
@@ -112,8 +112,7 @@ static intptr_t syscall_writec(uintptr_t arg1, uintptr_t arg2) {
         return OPAL_ENOENT;
     }
 
-    char ch = (char)(unsigned char)arg2;
-    fs_ssize_t ret = file_write(file, &ch, 1);
+    fs_ssize_t ret = file_write(file, (const void *)arg2, (fs_size_t)arg3);
 
     file_release(file);
     return ret;
@@ -290,11 +289,11 @@ struct sysret syscall_dispatch(struct isr_stackframe *frame, uintptr_t arg0, uin
         case SYS_DUP:
             sysret.ret0 = syscall_dup(arg1, arg2);
             break;
-        case SYS_READC:
-            sysret.ret0 = syscall_readc(arg1);
+        case SYS_READ:
+            sysret.ret0 = syscall_read(arg1, arg2, arg3);
             break;
-        case SYS_WRITEC:
-            sysret.ret0 = syscall_writec(arg1, arg2);
+        case SYS_WRITE:
+            sysret.ret0 = syscall_write(arg1, arg2, arg3);
             break;
         case SYS_IOCTL:
             sysret.ret0 = syscall_ioctl(arg1, arg2, arg3);

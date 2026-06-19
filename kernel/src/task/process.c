@@ -625,7 +625,7 @@ kerrno_t process_load_elf(struct process *proc, void *elf, size_t size, taskptr_
 static kerrno_t read_file_all(struct file *file, void **buf_out, size_t *len_out) {
     fs_ssize_t len = file->ops->seek(file, 0, FS_SEEK_END);
     if (!kerrno_ok(len)) {
-        return len;
+        return fs_ssize_errno(len);
     }
     if (len == 0) {
         return OPAL_EBADIMAGE;
@@ -639,7 +639,7 @@ static kerrno_t read_file_all(struct file *file, void **buf_out, size_t *len_out
     kerrno_t result = OPAL_OK;
     fs_ssize_t n = file->ops->read(file, &(fs_size_t){ 0 }, buf, len);
     if (n < 0) {
-        result = (kerrno_t)n;
+        result = fs_ssize_errno(n);
         goto err_buf;
     }
     if (n != len) {

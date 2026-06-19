@@ -11,7 +11,7 @@
 
 #include "hid_inode.h"
 
-#define INPUT_BUFSZ 1024
+#define INPUT_BUFSZ 256
 
 struct hid_file {
     struct file file;
@@ -22,7 +22,7 @@ struct hid_file {
     uint16_t rpos;
     uint16_t wpos;
     uint16_t count;
-    char buffer[INPUT_BUFSZ];
+    struct hid_char buffer[INPUT_BUFSZ];
 };
 
 static struct ko_inode g_hid_inode;
@@ -38,12 +38,12 @@ void hid_inode_init(void) {
     kobjfs_add_inode(&vfs_globals()->devfs, &g_hid_inode);
 }
 
-static bool hid_file_try_write(struct hid_file *file, char ch) {
+static bool hid_file_try_write(struct hid_file *file, const struct hid_char *input) {
     if (file->count >= INPUT_BUFSZ) {
         return false;
     }
 
-    file->buffer[file->wpos++] = ch;
+    file->buffer[file->wpos++] = *input;
     if (file->wpos >= INPUT_BUFSZ) {
         file->wpos -= INPUT_BUFSZ;
     }
@@ -51,13 +51,17 @@ static bool hid_file_try_write(struct hid_file *file, char ch) {
     return true;
 }
 
-static uint16_t hid_file_try_read(struct hid_file *file, void *buffer, fs_size_t size) {
+static fs_ssize_t hid_file_try_read(struct hid_file *file, void *buffer, fs_size_t size) {
+    if (size < sizeof(struct hid_char)) {
+        return OPAL_EINVAL;
+    }
     if (file->count == 0) {
         return 0;
     }
 
-    uint16_t to_read = size < file->count ? size : file->count;
-    char *output = buffer;
+    fs_size_t max_entries = size / sizeof(struct hid_char);
+    uint16_t to_read = max_entries < file->count ? (uint16_t)max_entries : file->count;
+    struct hid_char *output = buffer;
     for (uint16_t i = 0; i < to_read; i++) {
         output[i] = file->buffer[file->rpos++];
         if (file->rpos >= INPUT_BUFSZ) {
@@ -66,15 +70,15 @@ static uint16_t hid_file_try_read(struct hid_file *file, void *buffer, fs_size_t
     }
 
     file->count -= to_read;
-    return to_read;
+    return (fs_ssize_t)(to_read * sizeof(struct hid_char));
 }
 
-void hid_inode_onkey(char ch) {
+void hid_inode_onkey(const struct hid_char *input) {
     irqlock_t irqlock = irqlock_acquire();
 
     linkedlist_foreach(ptr, &g_listeners) {
         struct hid_file *file = container_of(ptr, struct hid_file, link);
-        if (hid_file_try_write(file, ch)) {
+        if (hid_file_try_write(file, input)) {
             event_signal(&file->event);
         }
     }
@@ -152,7 +156,7 @@ static fs_ssize_t hid_file_read(struct file *base, fs_size_t *pos, void *buffer,
     }
 
     irqlock_t irqlock = irqlock_acquire();
-    uint16_t len;
+    fs_ssize_t len;
 
     while ((len = hid_file_try_read(file, buffer, size)) == 0) {
         event_wait(&file->event, TIMEOUT_INFINITY);
