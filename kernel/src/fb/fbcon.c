@@ -234,10 +234,27 @@ static kerrno_t fbcon_file_truncate(struct file *, fs_size_t) {
     return OPAL_ENOTSUPP;
 }
 
+static kerrno_t fbcon_file_ioctl(struct file *base, uintptr_t op, uintptr_t arg) {
+    struct fbcon_file *file = container_of(base, typeof(*file), file);
+    if (op != 0) {
+        return OPAL_ENOTSUPP;
+    }
+
+    if (arg == 0xffff) {
+        set_color(file->con, -1, -1);
+    } else {
+        int fg = arg & 0xff;
+        int bg = (arg >> 8) & 0xff;
+        set_color(file->con, fg == 0xff ? -1 : fg, bg == 0xff ? -1 : bg);
+    }
+    return OPAL_OK;
+}
+
 static const struct file_ops g_fbcon_fops = {
     .close = fbcon_file_close,
     .seek = fbcon_file_seek,
     .read = fbcon_file_read,
     .write = fbcon_file_write,
     .truncate = fbcon_file_truncate,
+    .ioctl = fbcon_file_ioctl,
 };

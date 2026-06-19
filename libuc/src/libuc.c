@@ -44,14 +44,12 @@ void task_exit(void) {
 }
 
 int putchar(int ch) {
-    unsigned char uch = (unsigned char)ch;
-    int64_t ret = syscall(SYS_WRITEC, 1, 0, uch).ret0;
-    return ret >= 0 ? uch : -1;
+    return writec(1, ch);
 }
 
 int getchar(void) {
-    int64_t ret = syscall(SYS_READC, 0, 0, 0).ret0;
-    return ret >= 0 ? (int)ret : -1;
+    int ret = readc(0);
+    return ret >= 0 ? ret : -1;
 }
 
 int puts(const char *str) {

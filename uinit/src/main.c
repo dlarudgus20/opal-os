@@ -40,11 +40,11 @@ static void color_reset(void) {
 }
 
 static void color_fg(int color) {
-    ioctl(1, 0, color);
+    ioctl(1, 0, 0xff00 | color);
 }
 
 static void color_bg(int color) {
-    ioctl(1, 0, color << 8);
+    ioctl(1, 0, (color << 8) | 0xff);
 }
 
 static void esc_color(int *arg, size_t arglen) {
