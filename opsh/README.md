@@ -1,16 +1,10 @@
 # opsh
 
-`opsh`는 사용자 모드에서 동작하는 테스트 프로그램입니다.
+`opsh`는 사용자 공간 shell 프로그램이다.
+자세한 정보는 `docs/user/opsh.md` 참고.
 
 ## 빌드
 - 루트 빌드에 포함:
   - `make iso` 시 `$(MAKE) -C opsh`가 수행됩니다.
 - 단독 빌드:
   - `make -C opsh`
-
-## syscall 인터페이스
-- 구현: `opsh/src/syscall.c`, `opsh/src/syscall.h`
-
-## initramfs 연동
-- ISO 생성 시 `opsh.elf`가 initramfs에 복사됩니다.
-- 커널에서 `exec /opsh.elf`로 실행할 수 있습니다.

@@ -11,7 +11,7 @@
    - 현재 프로세스의 fd table을 복제한다.
    - 현재 프로세스의 전체 user vmem을 eager copy한다.
    - 현재 task 하나에 대응하는 child task를 만든다.
-   - 단, child가 `fork()`에서 user mode로 복귀하는 trampoline은 아직 후속 작업으로 둔다.
+   - child는 복사된 syscall frame으로 user mode에 복귀하며 `fork()`에서 0을 반환한다.
 
 2. `exec`
    - fd table은 유지한다.
@@ -100,7 +100,7 @@ fork는 parent의 open file table을 child에 같은 fd 번호로 복제해야 �
 2. `process_create()`로 child process를 만든다.
 3. child fd table을 `filetable_clone()`으로 복제한다.
 4. parent vmtree를 순회하며 child vmem을 복제한다.
-5. child task placeholder를 만든다.
+5. child task를 만든다.
 6. child process와 child task를 out parameter로 반환한다.
 
 ### vmem 복제
@@ -128,20 +128,19 @@ fd clone 또는 vmem clone 중 실패하면 child process를 release한다. chil
 range 복제 도중 실패한 경우에는 해당 range에서 이미 매핑된 page만 먼저 정리하고, child vmtree에서
 range를 제거한 뒤 child `vm_area`를 free한다.
 
-### child task placeholder
+### child fork entry
 
-아직 syscall frame에서 child가 user mode로 복귀하는 trampoline은 구현하지 않았다.
+child task는 `fork_entry()`에서 시작한다.
 
-그래서 child task는 현재 `fork_child_stub()` entry로 생성만 하고 resume하지 않는다. stub는
-실행되면 panic하도록 되어 있다. syscall `SYS_FORK`는 parent에게 child pid를 돌려주지만,
-child는 아직 runnable 상태가 아니다.
+`process_fork()`는 syscall 진입 시점의 `isr_stackframe`을 child task의 kernel stack에 복사한다.
+`SYS_FORK` 성공 경로는 parent에게 child pid를 반환한 뒤 child task를 resume한다.
+child task가 실행되면 `fork_entry()`가 복사된 frame의 반환값을 0으로 고치고
+`return_to_userland(frame)`으로 user mode에 복귀한다.
 
-후속 trampoline 작업에서는 다음이 필요하다.
+따라서 반환값 계약은 다음과 같다.
 
-- `isr_stackframe`을 child kernel stack에 복사한다.
-- child frame의 return value를 `0`으로 설정한다.
-- child context가 그 frame으로 `iretq` 복귀하도록 platform task helper를 추가한다.
-- 그 시점에 child task를 resume한다.
+- parent: child pid
+- child: 0
 
 ## exec 흐름
 
@@ -210,7 +209,8 @@ commit 이후에는 새 pagetable/vmtree가 process에 들어간 상태이므로
 - platform int80 handler에서 받은 `isr_stackframe *`를 dispatch에 전달한다.
 - `process_fork()`를 호출한다.
 - 성공 시 parent return value는 child pid다.
-- 현재 child return `0`은 trampoline 미구현으로 아직 연결되지 않았다.
+- child task를 resume한다.
+- child는 복사된 syscall frame의 return value를 0으로 바꾼 뒤 user mode로 복귀한다.
 
 `SYS_EXEC`:
 
@@ -227,15 +227,7 @@ libuc에는 다음 wrapper가 추가됐다.
 
 ## 현재 제한
 
-현재 구현은 fork의 address space와 fd table 복제 기반을 마련한 상태다. 하지만 child가 실제로
-`fork()` syscall return 지점으로 복귀하지는 않는다.
-
-남은 주요 작업은 다음과 같다.
-
-- x86_64 child fork trampoline 구현
-- child `isr_stackframe` 복사 및 return register 조정
-- child task resume 시점 연결
-- fork runtime 검증
+현재 구현은 COW가 아니라 eager copy다. fork runtime 검증과 COW 최적화는 후속 작업이다.
 
 exec는 single-thread 조건에서 동작하도록 설계했다. multi-thread process에서 exec를 호출하면
 `OPAL_EBUSY`로 실패한다.
@@ -257,4 +249,3 @@ ASAN_OPTIONS=detect_leaks=0 make -C kernel test CONFIG=debug PLATFORM=pc-x64
 - libuc debug build 성공
 - uinit debug build/link 성공
 - kernel hosted test 27개 통과
-

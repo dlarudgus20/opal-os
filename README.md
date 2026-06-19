@@ -5,6 +5,7 @@
 ## 개발 흐름
 - 커널 이미지 빌드 (`kernel.elf`, `kernel.sys`)
 - ISO 생성 + QEMU 부팅
+- initramfs에 사용자 프로그램(`uinit`, `opsh`) 포함
 - hosted 단위 테스트(`make test`)
 - 커널 유닛 테스트(`make unit-test`)
 
