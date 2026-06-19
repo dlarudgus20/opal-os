@@ -162,7 +162,8 @@ static kerrno_t fbcon_inode_open(struct inode *inode, enum open_mode mode, struc
     struct ko_inode *ko = container_of(inode, typeof(*ko), inode);
     struct fbcon *con = container_of(ko, typeof(*con), inode);
 
-    if (mode & ~OPEN_READ) {
+    enum open_mode fmode = mode & OPEN_MASK_FMODE;
+    if (fmode != OPEN_NONE && fmode != (OPEN_WRITE | OPEN_APPEND)) {
         return OPAL_ENOTSUPP;
     }
 
@@ -212,6 +213,10 @@ static fs_ssize_t fbcon_file_write(
     struct file *base, fs_size_t *pos, const void *buffer, fs_size_t size) {
     struct fbcon_file *file = container_of(base, typeof(*file), file);
     (void)pos;
+
+    if (!(base->mode & FILE_WRITE)) {
+        return OPAL_ENOTSUPP;
+    }
 
     if (size > FS_SSIZE_MAX) {
         return OPAL_EINVAL;

@@ -103,37 +103,27 @@ kerrno_t vfs_lookup_path(struct path_entry *pe, const char *path, struct path_en
 }
 
 kerrno_t vfs_create_path(struct path_entry *pe, const char *path, enum inode_flags flags,
-    bool truncate, enum open_mode mode, struct file **file_out) {
+    enum open_mode mode, struct file **file_out) {
     struct path_entry *found;
     const char *unresolved_path;
     kerrno_t result = vfs_lookup_path(pe, path, &found, &unresolved_path);
-    if (!found || *unresolved_path != '\0') {
-        if (found) {
-            path_entry_release(found);
-        }
+    if (!found) {
         return result;
     }
+    if (*unresolved_path != '\0') {
+        goto ret;
+    }
 
-    result = path_entry_create(found, flags, truncate, mode, file_out);
+    result = path_entry_create(found, flags, mode, file_out);
+
+ret:
     path_entry_release(found);
     return result;
 }
 
 kerrno_t vfs_open_path(
     struct path_entry *pe, const char *path, enum open_mode mode, struct file **file_out) {
-    struct path_entry *found;
-    kerrno_t result = vfs_lookup_path(pe, path, &found, NULL);
-    if (!kerrno_ok(result)) {
-        if (found) {
-            path_entry_release(found);
-        }
-        return result;
-    }
-
-    struct inode *inode = found->inode;
-    result = inode->ops->open(inode, mode, file_out);
-    path_entry_release(found);
-    return result;
+    return vfs_create_path(pe, path, INODE_NORMAL, mode, file_out);
 }
 
 static void path_entry_init(struct path_entry *pe) {
@@ -269,43 +259,45 @@ kerrno_t path_entry_lookup(
     return kerrno_ok(result) ? OPAL_ENOENT : result;
 }
 
-kerrno_t path_entry_create(struct path_entry *pe, enum inode_flags flags, bool truncate,
-    enum open_mode mode, struct file **file_out) {
-    kerrno_t result;
-    if (!pe->inode) {
-        if (!pe->parent) {
+kerrno_t path_entry_create(
+    struct path_entry *pe, enum inode_flags flags, enum open_mode mode, struct file **file_out) {
+    struct inode *inode = pe->inode;
+    bool existed = inode != NULL;
+    if (!inode) {
+        if (!(mode & OPEN_CREATE) || !pe->parent) {
             return OPAL_ENOENT;
         }
 
         struct inode *pinode = pe->parent->inode;
-        result = pinode->ops->create(pinode, pe, flags);
+        kerrno_t result = pinode->ops->create(pinode, pe, flags);
         if (!kerrno_ok(result)) {
             return result;
         }
+        inode = pe->inode;
+    } else if (mode & OPEN_NONEXIST) {
+        return OPAL_EEXIST;
+    }
 
-        struct inode *inode = pe->inode;
-        result = inode->ops->open(inode, mode, file_out);
+    struct file *file;
+    kerrno_t result = inode->ops->open(inode, mode, &file);
+    if (!kerrno_ok(result)) {
         return result;
-    } else {
-        if (!truncate) {
-            return OPAL_EEXIST;
-        }
+    }
 
-        struct inode *inode = pe->inode;
-        struct file *file;
-        result = inode->ops->open(inode, mode, &file);
-        if (!kerrno_ok(result)) {
-            return result;
-        }
-        result = file->ops->truncate(file, 0);
+    if (existed && (mode & OPEN_TRUNC)) {
+        result = file_truncate(file, 0);
         if (!kerrno_ok(result)) {
             file_release(file);
             return result;
         }
-
-        *file_out = file;
-        return OPAL_OK;
     }
+
+    *file_out = file;
+    return OPAL_OK;
+}
+
+kerrno_t path_entry_open(struct path_entry *pe, enum open_mode mode, struct file **file_out) {
+    return path_entry_create(pe, INODE_NORMAL, mode, file_out);
 }
 
 void superblock_init(struct superblock *sb, const struct superblock_ops *ops) {

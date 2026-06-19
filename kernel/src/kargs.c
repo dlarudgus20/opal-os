@@ -228,7 +228,6 @@ void kargs_run_uinit(void) {
         return;
     }
 
-    task_join(task.ptr, TIMEOUT_INFINITY);
     task_release(task);
     process_release(proc);
 }

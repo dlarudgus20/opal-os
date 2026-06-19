@@ -10,6 +10,13 @@ enum open_mode {
     OPEN_READ = 0x01,
     OPEN_WRITE = 0x02,
     OPEN_APPEND = 0x04,
+
+    OPEN_CREATE = 0x10,
+    OPEN_NONEXIST = 0x20,
+    OPEN_TRUNC = 0x40,
+
+    OPEN_MASK_FMODE = 0x0f,
+    OPEN_MASK_ALL = OPEN_READ | OPEN_WRITE | OPEN_APPEND | OPEN_CREATE | OPEN_NONEXIST | OPEN_TRUNC,
 };
 
 typedef int pid_t;

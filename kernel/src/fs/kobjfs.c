@@ -120,6 +120,11 @@ static void kodir_inode_close(struct inode *inode) {
 }
 
 static kerrno_t kodir_inode_open(struct inode *inode, enum open_mode mode, struct file **file_out) {
+    enum open_mode fmode = mode & OPEN_MASK_FMODE;
+    if (fmode != OPEN_NONE && fmode != OPEN_READ) {
+        return OPAL_EISDIR;
+    }
+
     struct kodir_inode *kodir = container_of(inode, typeof(*kodir), inode);
     struct kodir_file *file = kzalloc(sizeof(*file));
     if (!file) {
@@ -136,7 +141,7 @@ static kerrno_t kodir_inode_lookup(struct inode *inode, struct path_entry *pe) {
     struct kodir_inode *kodir = container_of(inode, typeof(*kodir), inode);
 
     irqlock_t irqlock = irqlock_acquire();
-    kerrno_t err = OPAL_OK;
+    kerrno_t result = OPAL_OK;
 
     struct path_entry *out;
     linkedlist_foreach(ptr, &kodir->children) {
@@ -144,23 +149,25 @@ static kerrno_t kodir_inode_lookup(struct inode *inode, struct path_entry *pe) {
 
         struct hstr name = hstrdup(child->name);
         if (hstr_is_null(&name)) {
-            err = OPAL_ENOMEM;
-            break;
+            result = OPAL_ENOMEM;
+            goto err;
         }
 
-        err = path_entry_add(pe, &child->inode, &name, &out);
-        if (!kerrno_ok(err)) {
+        result = path_entry_add(pe, &child->inode, &name, &out);
+        if (!kerrno_ok(result)) {
             hstr_free(&name);
-            if (err != OPAL_EEXIST) {
-                break;
+            if (result != OPAL_EEXIST) {
+                goto err;
             }
         } else {
             path_entry_release(out);
         }
     }
 
+    result = OPAL_OK;
+err:
     irqlock_release(&irqlock);
-    return err;
+    return result;
 }
 
 static kerrno_t kodir_inode_create(struct inode *, struct path_entry *, enum inode_flags) {

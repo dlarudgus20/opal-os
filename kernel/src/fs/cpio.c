@@ -257,7 +257,9 @@ static kerrno_t cpio_inode_open(struct inode *inode, enum open_mode mode, struct
     if (inode->flags & INODE_DIR) {
         return OPAL_EISDIR;
     }
-    if (mode & ~OPEN_READ) {
+
+    enum open_mode fmode = mode & OPEN_MASK_FMODE;
+    if (fmode != OPEN_NONE && fmode != OPEN_READ) {
         return OPAL_ENOTSUPP;
     }
 
@@ -338,6 +340,9 @@ static fs_ssize_t cpio_file_seek(struct file *base, fs_off_t offset, enum fs_see
 static fs_ssize_t cpio_file_read(struct file *base, fs_size_t *pos, void *buffer, fs_size_t size) {
     struct cpio_file *file = container_of(base, struct cpio_file, file);
     struct cpio_node *node = file->node;
+    if (!(base->mode & FILE_READ)) {
+        return OPAL_ENOTSUPP;
+    }
     if (node->inode.flags & INODE_DIR) {
         return OPAL_EISDIR;
     }

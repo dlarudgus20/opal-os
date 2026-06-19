@@ -94,7 +94,7 @@ int main(void) {
     if (open(0, "/dev/hid", OPEN_READ) < 0) {
         return 1;
     }
-    if (open(1, "/dev/fbcon", OPEN_WRITE) < 0) {
+    if (open(1, "/dev/fbcon", OPEN_WRITE | OPEN_APPEND) < 0) {
         return 1;
     }
     if (dup(1, 2) < 0) {

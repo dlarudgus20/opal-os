@@ -116,12 +116,17 @@ static int print_mkdir_error(const char *op, kerrno_t result) {
 
 int shell_cmd_cat(int argc, char **argv) {
     bool write_mode = false;
+    bool append = false;
     const char *path = NULL;
 
     if (argc == 2) {
         path = argv[1];
     } else if (argc == 3 && strcmp(argv[1], ">") == 0) {
         write_mode = true;
+        path = argv[2];
+    } else if (argc == 3 && strcmp(argv[1], ">>") == 0) {
+        write_mode = true;
+        append = true;
         path = argv[2];
     } else {
         tty0_puts("usage: cat /path\n");
@@ -131,22 +136,21 @@ int shell_cmd_cat(int argc, char **argv) {
 
     struct file *file = NULL;
     kerrno_t result;
+    enum open_mode mode;
     if (write_mode) {
-        result = vfs_create_path(NULL, path, 0, true, OPEN_WRITE | OPEN_APPEND, &file);
-        if (!kerrno_ok(result)) {
-            return print_cat_error("lookup/create", result);
-        }
+        mode = OPEN_WRITE | OPEN_CREATE | (append ? OPEN_APPEND : OPEN_TRUNC);
     } else {
-        result = vfs_open_path(NULL, path, OPEN_READ, &file);
-        if (!kerrno_ok(result)) {
-            return print_cat_error("open", result);
-        }
+        mode = OPEN_READ;
+    }
+    result = vfs_open_path(NULL, path, mode, &file);
+    if (!kerrno_ok(result)) {
+        return print_cat_error("open", result);
     }
 
     int rc = 0;
+    char buffer[256];
 
     if (!write_mode) {
-        char buffer[256];
         while (1) {
             fs_ssize_t n = file_read(file, buffer, sizeof(buffer));
             if (n < 0) {
@@ -160,43 +164,31 @@ int shell_cmd_cat(int argc, char **argv) {
             tty0_puts_len(buffer, (size_t)n);
         }
     } else {
-        if (!file->ops->truncate) {
-            rc = print_cat_error("truncate", OPAL_ENOTSUPP);
-        } else {
-            result = file->ops->truncate(file, 0);
-            if (!kerrno_ok(result)) {
-                rc = print_cat_error("truncate", result);
+        while (1) {
+            tty0_getline(buffer, sizeof(buffer));
+            if (strcmp(buffer, "EOF") == 0) {
+                break;
             }
-        }
 
-        if (rc == 0) {
-            char line[128];
-            while (1) {
-                tty0_getline(line, sizeof(line));
-                if (strcmp(line, "EOF") == 0) {
-                    break;
-                }
+            size_t line_len = strlen(buffer);
+            fs_ssize_t n = file_write(file, buffer, line_len);
+            if (n < 0) {
+                rc = print_cat_error("write", n);
+                break;
+            }
+            if ((size_t)n != line_len) {
+                rc = print_cat_error("write", OPAL_EIO);
+                break;
+            }
 
-                size_t line_len = strlen(line);
-                fs_ssize_t n = file_write(file, line, line_len);
-                if (n < 0) {
-                    rc = print_cat_error("write", n);
-                    break;
-                }
-                if ((size_t)n != line_len) {
-                    rc = print_cat_error("write", OPAL_EIO);
-                    break;
-                }
-
-                n = file_write(file, "\n", 1);
-                if (n < 0) {
-                    rc = print_cat_error("write", n);
-                    break;
-                }
-                if (n != 1) {
-                    rc = print_cat_error("write", OPAL_EIO);
-                    break;
-                }
+            n = file_write(file, "\n", 1);
+            if (n < 0) {
+                rc = print_cat_error("write", n);
+                break;
+            }
+            if (n != 1) {
+                rc = print_cat_error("write", OPAL_EIO);
+                break;
             }
         }
     }
@@ -264,7 +256,7 @@ int shell_cmd_mkdir(int argc, char **argv) {
     }
 
     struct file *file = NULL;
-    kerrno_t result = vfs_create_path(NULL, argv[1], INODE_DIR, false, OPEN_NONE, &file);
+    kerrno_t result = vfs_create_path(NULL, argv[1], INODE_DIR, OPEN_CREATE | OPEN_NONEXIST, &file);
     if (!kerrno_ok(result)) {
         return print_mkdir_error("create", result);
     }

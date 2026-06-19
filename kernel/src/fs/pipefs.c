@@ -46,7 +46,8 @@ static void pipe_inode_close(struct inode *inode) {
 }
 
 static kerrno_t pipe_inode_open(struct inode *inode, enum open_mode mode, struct file **file_out) {
-    if (mode != OPEN_READ && mode != OPEN_WRITE) {
+    enum open_mode fmode = mode & OPEN_MASK_FMODE;
+    if (fmode != OPEN_READ && fmode != OPEN_WRITE) {
         return OPAL_ENOTSUPP;
     }
 
@@ -61,7 +62,7 @@ static kerrno_t pipe_inode_open(struct inode *inode, enum open_mode mode, struct
     file->pipe = pipe;
 
     irqlock_t irqlock = irqlock_acquire();
-    if (mode == OPEN_READ) {
+    if (fmode == OPEN_READ) {
         pipe->readers++;
     } else {
         pipe->writers++;

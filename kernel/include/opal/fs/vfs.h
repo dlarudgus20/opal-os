@@ -10,6 +10,7 @@
 #define VFS_MAX_NAME UINT16_MAX
 
 enum inode_flags {
+    INODE_NORMAL = 0,
     INODE_DIR = 0x1,
     INODE_DEV = 0x2,
     INODE_PIPE = 0x4,
@@ -21,8 +22,12 @@ enum open_mode : uint16_t {
     OPEN_WRITE = 0x02,
     OPEN_APPEND = 0x04,
 
+    OPEN_CREATE = 0x10,
+    OPEN_NONEXIST = 0x20,
+    OPEN_TRUNC = 0x40,
+
     OPEN_MASK_FMODE = 0x0f,
-    OPEN_MASK_ALL = OPEN_READ | OPEN_WRITE | OPEN_APPEND,
+    OPEN_MASK_ALL = OPEN_READ | OPEN_WRITE | OPEN_APPEND | OPEN_CREATE | OPEN_NONEXIST | OPEN_TRUNC,
 };
 
 enum file_mode : uint16_t {
@@ -30,6 +35,7 @@ enum file_mode : uint16_t {
     FILE_READ = OPEN_READ,
     FILE_WRITE = OPEN_WRITE,
     FILE_APPEND = OPEN_APPEND,
+
     FILE_POSLOCK = 0x10,
 };
 
@@ -96,7 +102,7 @@ kerrno_t vfs_mount_path(
 kerrno_t vfs_lookup_path(struct path_entry *pe, const char *path, struct path_entry **found,
     const char **unresolved_path);
 kerrno_t vfs_create_path(struct path_entry *pe, const char *path, enum inode_flags flags,
-    bool truncate, enum open_mode mode, struct file **file_out);
+    enum open_mode mode, struct file **file_out);
 kerrno_t vfs_open_path(
     struct path_entry *pe, const char *path, enum open_mode mode, struct file **file_out);
 
@@ -107,8 +113,9 @@ kerrno_t path_entry_add(
     struct path_entry *parent, struct inode *inode, struct hstr *name, struct path_entry **out);
 kerrno_t path_entry_lookup(
     struct path_entry *pe, const char *name, size_t len, struct path_entry **found);
-kerrno_t path_entry_create(struct path_entry *pe, enum inode_flags flags, bool truncate,
-    enum open_mode mode, struct file **file_out);
+kerrno_t path_entry_create(
+    struct path_entry *pe, enum inode_flags flags, enum open_mode mode, struct file **file_out);
+kerrno_t path_entry_open(struct path_entry *pe, enum open_mode mode, struct file **file_out);
 
 void superblock_init(struct superblock *sb, const struct superblock_ops *ops);
 

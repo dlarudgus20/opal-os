@@ -179,6 +179,11 @@ static void root_inode_close(struct inode *base) {
 }
 
 static kerrno_t root_inode_open(struct inode *base, enum open_mode mode, struct file **file_out) {
+    enum open_mode fmode = mode & OPEN_MASK_FMODE;
+    if (fmode != OPEN_NONE && fmode != OPEN_READ) {
+        return OPAL_EISDIR;
+    }
+
     struct fat_root_inode *inode = container_of(base, struct fat_root_inode, inode);
     struct fat_file *file = kzalloc(sizeof(*file));
     if (!file) {
@@ -523,6 +528,11 @@ err:
 
 static kerrno_t fat_inode_open(struct inode *base, enum open_mode mode, struct file **file_out) {
     struct fat_inode *inode = container_of(base, struct fat_inode, inode);
+    enum open_mode fmode = mode & OPEN_MASK_FMODE;
+    if ((base->flags & INODE_DIR) && fmode != OPEN_NONE && fmode != OPEN_READ) {
+        return OPAL_EISDIR;
+    }
+
     struct fat_file *file = kzalloc(sizeof(*file));
     if (!file) {
         return OPAL_ENOMEM;
@@ -613,7 +623,7 @@ static fs_ssize_t fat_file_read(struct file *base, fs_size_t *pos, void *buffer,
 }
 
 static fs_ssize_t fat_inode_write(
-    struct inode *base, fs_size_t pos, const void *buffer, fs_size_t size, bool append) {
+    struct inode *base, fs_size_t *pos, const void *buffer, fs_size_t size, bool append) {
     struct fat_inode *inode = container_of(base, struct fat_inode, inode);
 
     kerrno_t result = fat_inode_readall(inode);
@@ -621,17 +631,14 @@ static fs_ssize_t fat_inode_write(
         return result;
     }
 
+    fs_size_t write_pos = append ? inode->filesize : *pos;
+    if (write_pos > UINT32_MAX || size > UINT32_MAX - write_pos) {
+        return OPAL_ENOSPC;
+    }
+    uint32_t write_end = (uint32_t)(write_pos + size);
     uint32_t fsz = inode->filesize;
-    if (!append) {
-        if (pos > fsz || size > fsz - pos) {
-            return OPAL_ERANGE;
-        }
-    } else {
-        if (size > UINT32_MAX - fsz) {
-            return OPAL_ENOSPC;
-        }
-        pos = fsz;
-        fsz += (uint32_t)size;
+    if (write_end > fsz) {
+        fsz = write_end;
     }
 
     if (size == 0) {
@@ -650,7 +657,7 @@ static fs_ssize_t fat_inode_write(
         return OPAL_ENOMEM;
     }
     memcpy(newbuf, inode->buffer, inode->filesize);
-    memcpy(newbuf + pos, buffer, size);
+    memcpy(newbuf + write_pos, buffer, size);
 
     struct fat_table *table = &inode->sb->table;
     uint32_t first_cluster = inode->first_cluster & 0x0fffffff;
@@ -664,7 +671,7 @@ static fs_ssize_t fat_inode_write(
     uint32_t byte_index = 0;
     uint32_t cluster = first_cluster;
     while (1) {
-        if (byte_index + bpc > pos) {
+        if (byte_index + bpc > write_pos) {
             result = fat_write_sectors(
                 inode->sb->bdev, data_offset + (cluster - 2) * pspc, pspc, newbuf + byte_index);
             if (!kerrno_ok(result)) {
@@ -673,7 +680,7 @@ static fs_ssize_t fat_inode_write(
         }
         byte_index += bpc;
 
-        if (byte_index >= pos + size) {
+        if (byte_index >= write_end) {
             break;
         }
 
@@ -685,10 +692,6 @@ static fs_ssize_t fat_inode_write(
         uint32_t next_cluster = entry & 0x0fffffff;
 
         if (is_cluster_eof(layout, next_cluster)) {
-            if (!append) {
-                result = OPAL_ERANGE;
-                break;
-            }
             result = fat_table_append(table, cluster, &next_cluster);
             if (!kerrno_ok(result)) {
                 result = OPAL_ENOSPC;
@@ -698,15 +701,14 @@ static fs_ssize_t fat_inode_write(
         cluster = next_cluster;
     }
 
-    if (byte_index < pos + size) {
-        if (byte_index <= pos) {
+    if (byte_index < write_end) {
+        if (byte_index <= write_pos) {
             goto err;
         }
 
-        size = byte_index - pos;
-        if (append) {
-            fsz = inode->filesize + (uint32_t)size;
-        }
+        size = byte_index - write_pos;
+        fsz = byte_index;
+        write_end = byte_index;
     }
 
     const struct fat_dentry *dentry = get_dentry(inode);
@@ -735,6 +737,7 @@ static fs_ssize_t fat_inode_write(
     inode->filesize = fsz;
     inode->buffer = newbuf;
     inode->buflen = newlen;
+    *pos = write_end;
     return kerrno_ok(result) ? (fs_ssize_t)size : result;
 
 err:
@@ -751,11 +754,7 @@ static fs_ssize_t fat_file_write(
         return OPAL_EISDIR;
     }
 
-    fs_ssize_t n = fat_inode_write(&inode->inode, *pos, buffer, size, base->mode & FILE_APPEND);
-    if (kerrno_ok(n)) {
-        *pos += n;
-    }
-    return n;
+    return fat_inode_write(&inode->inode, pos, buffer, size, base->mode & FILE_APPEND);
 }
 
 static kerrno_t fat_file_truncate(struct file *base, fs_size_t size) {
@@ -833,8 +832,8 @@ static kerrno_t fat_inode_write_dentry(
         append = true;
     }
 
-    result =
-        fat_inode_write(&inode->inode, index * sizeof(*dentry), dentry, sizeof(*dentry), append);
+    fs_size_t pos = index * sizeof(*dentry);
+    result = fat_inode_write(&inode->inode, &pos, dentry, sizeof(*dentry), append);
     if (result < 0) {
         return result;
     } else if (result != sizeof(*dentry)) {

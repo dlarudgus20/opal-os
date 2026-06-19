@@ -87,7 +87,8 @@ static void hid_inode_close(struct inode *) {
 }
 
 static kerrno_t hid_inode_open(struct inode *, enum open_mode mode, struct file **file_out) {
-    if (mode & ~OPEN_READ) {
+    enum open_mode fmode = mode & OPEN_MASK_FMODE;
+    if (fmode != OPEN_NONE && fmode != OPEN_READ) {
         return OPAL_ENOTSUPP;
     }
 
@@ -143,6 +144,9 @@ static fs_ssize_t hid_file_read(struct file *base, fs_size_t *pos, void *buffer,
     struct hid_file *file = container_of(base, typeof(*file), file);
     (void)pos;
 
+    if (!(base->mode & FILE_READ)) {
+        return OPAL_ENOTSUPP;
+    }
     if (size == 0) {
         return 0;
     }
