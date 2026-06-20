@@ -89,6 +89,11 @@ make fullclean       # 전부
 
 3. 변경 후 최소 검증
    - 가능한 경우 최소 1개 이상 빌드/테스트를 실행하고 결과를 남깁니다.
+   - 여러 `make` 명령을 동시에 실행하지 않습니다. 이 빌드 시스템은 독립 `make` 프로세스 간 산출물 쓰기를 serialize하지 않습니다.
+   - 여러 산출물을 검증할 때는 루트 `make`/`make iso`처럼 한 make invocation 안의 의존성 그래프를 사용하거나 순차 실행합니다.
+   - 소스 수집 여부나 Make 규칙 포함 여부만 확인할 때는 `make -B -n` 같은 강제 dry-run을 우선 사용합니다.
+   - 단순 `make -n`은 타깃이 up-to-date이면 실제 recipe를 보여주지 않을 수 있습니다.
+   - `make -B` 전체 강제 빌드는 실제 산출물 재생성 검증이 필요할 때만 사용합니다.
 
 4. 큰 구조 변경 시 문서 동반 업데이트
    - `README.md`와 `docs/` 내 문서들을 우선 검토합니다.
@@ -113,6 +118,12 @@ ASAN_OPTIONS=detect_leaks=0 make -C kernel test CONFIG=debug PLATFORM=pc-x64
 - 예: `((constexpr struct singlylist){ { NULL } })`
 - 해당 문법은 현재 툴체인에서 유효하므로, "C++ 전용 문법"으로 자동 판단하지 않습니다.
 - 문법 이슈를 제기하려면 최소 1회 실제 컴파일 실패 로그를 첨부합니다.
+
+### 4) release 빌드 false positive 경고 처리 원칙
+- release 빌드에서 false positive 경고나 오탐처럼 보이는 경고가 나와도, 경고를 잠재우기 위한 임시 초기화/캐스트/분기 추가를 먼저 하지 않습니다.
+- 먼저 실제 타입 계약, 에러 값 표현, signed/unsigned 변환, narrow cast, 수명/소유권 경로를 조사해서 분석기가 혼란스러워한 근본 원인을 확인합니다.
+- 경고가 false positive로 결론나더라도, 가능하면 코드의 계약을 더 명확히 표현하는 헬퍼나 타입 경계 정리로 해결합니다.
+- 단순 우회가 필요하다고 판단한 경우에는 왜 근본 수정이 불가능하거나 과도한지 근거를 남깁니다.
 
 ## 커널 유닛테스트 작성 가이드
 - 테스트 등록: `DEFINE_UNIT_TEST(name)`
