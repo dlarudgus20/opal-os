@@ -5,6 +5,7 @@
 #include <kc/string.h>
 
 #include <opal/fs/vfs.h>
+#include <opal/fs/globals.h>
 #include <opal/mm/kmalloc.h>
 
 #define MAX_REFC INT_MAX
@@ -15,6 +16,7 @@ static void path_entry_init_empty(struct path_entry *pe);
 
 void vfs_init(void) {
     path_entry_init_empty(&g_root);
+    vfs_globals_init();
 }
 
 struct path_entry *vfs_get_root(void) {

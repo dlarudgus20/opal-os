@@ -135,3 +135,10 @@
 - 트리 연결(`parent->children`)은 active 참조를 의미하지 않는다.
 - active 핸들만 `path_entry_retain/release`로 관리한다.
 - 구현은 `refcount == 0` 상태의 캐시 엔트리를 허용한다.
+
+## 파일시스템 타입/특수 파일시스템
+- `vfs_globals_init()`은 파일시스템 타입 리스트와 전역 devfs(`vfs_globals()->devfs`)를 초기화한다.
+- `vfs_fstype_register(fs)`는 이름 기준 중복을 거부하고 파일시스템 타입을 등록한다.
+- `vfs_fstype_get(name)`은 등록된 `struct fs_type`을 이름으로 조회한다.
+- `devfs`는 block device 없이 마운트되는 전역 `kobjfs` 인스턴스다.
+- `kobjfs`는 커널 객체 inode를 디렉터리 트리로 노출하는 특수 파일시스템이다.
