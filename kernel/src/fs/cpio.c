@@ -1,4 +1,3 @@
-#include "opal/fs/vfs.h"
 #include <kc/string.h>
 #include <kc/stdlib.h>
 

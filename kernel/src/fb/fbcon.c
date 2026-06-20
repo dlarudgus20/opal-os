@@ -3,12 +3,11 @@
 #include <kc/kassert.h>
 #include <kc/stdlib.h>
 
+#include <opal/fs/vfs.h>
 #include <opal/fs/globals.h>
+#include <opal/mm/kmalloc.h>
 
 #include "fbcon.h"
-#include "kc/kerrno.h"
-#include "opal/fs/vfs.h"
-#include "opal/mm/kmalloc.h"
 
 #define CW 8
 #define CH 16

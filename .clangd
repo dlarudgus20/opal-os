@@ -1,3 +1,5 @@
+Completion:
+    HeaderInsertion: Never
 CompileFlags:
     Add: -Wno-empty-translation-unit
     Remove: -fanalyzer
