@@ -58,9 +58,36 @@
   - `OPAL_ENOEXEC`: 실행 불가 형식/타겟 아키텍처 불일치/실행 정책 위반
 
 ## FD 테이블 API
-- `process_open_file(proc, file)`:
-  - FD 슬롯 추가, 파일 참조 1 증가
+- `process_open_file(proc, fd, file)`:
+  - `fd == FD_INVALID`이면 빈 FD를 할당한다.
+  - 지정 FD는 비어 있을 때만 등록한다.
+  - 실패 시 `FD_INVALID`를 반환한다.
 - `process_get_file(proc, fd)`:
   - 유효한 FD면 파일 참조 1 증가 후 반환, 아니면 `NULL`
 - `process_close_file(proc, fd)`:
   - 슬롯 파일 참조 해제 후 `NULL`로 표시
+- `process_dup_fd(proc, oldfd, newfd)`:
+  - `oldfd`의 파일 참조를 복제한다.
+  - `newfd == FD_INVALID`이면 빈 FD를 할당한다.
+  - 지정 `newfd`는 기존 파일을 닫거나 교체하지 않는다.
+  - 실패 시 `FD_INVALID`를 반환한다.
+
+## FD 테이블 구조/정책
+- `struct filetable`은 프로세스별 FD 번호를 `struct file *`로 매핑한다.
+- 주요 상태:
+  - `files`: FD 번호별 파일 포인터 배열
+  - `bitmap`: 열린 슬롯 표시
+  - `capacity`: 현재 배열 용량
+  - `count`: 열린 FD 수
+  - `end_fd`: 순회가 필요한 마지막 FD의 다음 번호
+  - `next_fd`: 자동 할당 시작 힌트
+  - `inline_files`, `inline_bitmap`: 작은 FD table용 내부 저장소
+- `FD_INVALID`는 자동 할당 요청 또는 실패 반환값으로 사용한다.
+- `FD_MAX`는 지정 가능한 최대 FD 번호다.
+- 자동 할당(`filetable_insert`)은 `next_fd` 힌트부터 빈 슬롯을 찾고, 없으면 앞쪽도 순회한다.
+- 지정 삽입(`filetable_insert_at`)은 FD가 범위 안이고 해당 슬롯이 비어 있을 때만 성공한다.
+- 이미 열린 FD에 지정 삽입하면 기존 파일을 닫거나 교체하지 않고 `OPAL_EEXIST`로 실패한다.
+- insert/dup/clone으로 새 슬롯에 파일을 넣으면 file reference를 retain한다.
+- get은 열린 FD면 retain 후 반환하고, 닫힌 FD나 범위 밖 FD면 `NULL`을 반환한다.
+- remove는 열린 FD만 제거하고 release한다.
+- clone은 열린 FD만 같은 번호로 복제하고 `next_fd`를 원본과 동일하게 맞춘다.

@@ -1,3 +1,4 @@
+#include <kc/kassert.h>
 #include <kc/string.h>
 
 #include <opal/task/filetable.h>
@@ -109,12 +110,14 @@ static void put_file(struct filetable *table, uint32_t idx, struct file *file) {
         table->end_fd = idx + 1;
     }
 
-    table->next_fd = idx + 1;
+    table->count++;
+}
+
+static void update_next_fd(struct filetable *table, uint32_t inserted_idx) {
+    table->next_fd = inserted_idx + 1;
     if (table->next_fd >= table->capacity) {
         table->next_fd = 0;
     }
-
-    table->count++;
 }
 
 static void update_end_fd(struct filetable *table) {
@@ -159,6 +162,30 @@ void filetable_destroy(struct filetable *table) {
     free_table(table);
 }
 
+kerrno_t filetable_clone(struct filetable *dst, struct filetable *src) {
+    kassert(dst);
+    kassert(src);
+
+    filetable_init(dst);
+
+    for (uint32_t idx = 0; idx < src->end_fd; idx++) {
+        struct file *file = src->files[idx];
+        if (!file) {
+            continue;
+        }
+
+        kerrno_t result = filetable_insert_at(dst, (fd_t)idx, file);
+        if (!kerrno_ok(result)) {
+            filetable_destroy(dst);
+            filetable_init(dst);
+            return result;
+        }
+    }
+
+    dst->next_fd = src->next_fd;
+    return OPAL_OK;
+}
+
 fd_t filetable_insert(struct filetable *table, struct file *file) {
     uint32_t idx;
 
@@ -177,7 +204,32 @@ fd_t filetable_insert(struct filetable *table, struct file *file) {
     }
 
     put_file(table, idx, file);
+    update_next_fd(table, idx);
     return (fd_t)idx;
+}
+
+kerrno_t filetable_insert_at(struct filetable *table, fd_t fd, struct file *file) {
+    if (fd < 0 || fd > FD_MAX) {
+        return OPAL_EINVAL;
+    }
+
+    uint32_t idx = (uint32_t)fd;
+
+    if (idx >= table->capacity) {
+        if (!realloc(table, idx + 1)) {
+            return OPAL_ENOMEM;
+        }
+    }
+
+    if (table->files[idx]) {
+        return OPAL_EEXIST;
+    }
+
+    put_file(table, idx, file);
+    if (table->next_fd == idx) {
+        update_next_fd(table, idx);
+    }
+    return OPAL_OK;
 }
 
 struct file *filetable_get(struct filetable *table, fd_t fd) {

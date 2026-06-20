@@ -1,50 +1,59 @@
-#include "opal/fs/types.h"
 #include <kc/string.h>
 
 #include <opal/tty.h>
 #include <opal/mm/kmalloc.h>
 #include <opal/fs/vfs.h>
+#include <opal/fs/fs_type.h>
+#include <opal/fs/globals.h>
 #include <opal/task/task.h>
 #include <opal/task/process.h>
 #include <opal/syscall/syscall.h>
 
 #define SYSCALL_PATH_MAX 4095
+#define SYSCALL_FSNAME_MAX 255
 
-static intptr_t syscall_tty0_putc(uintptr_t arg1) {
-    char ch = (char)(unsigned char)arg1;
-    tty0_puts_len(&ch, 1);
-    return 0;
-}
-
-static intptr_t syscall_tty0_getc() {
-    return (unsigned char)tty0_getchar();
-}
-
-static intptr_t syscall_open(uintptr_t arg1) {
-    const char *upath = (const char *)arg1;
-    if (!upath) {
+static kerrno_t copy_user_string(uintptr_t user, size_t maxlen, char **out, size_t *outlen) {
+    const char *uptr = (const char *)user;
+    if (!uptr) {
         return OPAL_EINVAL;
     }
 
-    size_t len = strnlen_s(upath, SYSCALL_PATH_MAX + 1);
-    if (len > SYSCALL_PATH_MAX) {
+    size_t len = strnlen_s(uptr, maxlen + 1);
+    if (len > maxlen) {
         return OPAL_EINVAL;
     }
 
-    char *kpath = kzalloc(len + 1);
-    if (!kpath) {
+    char *kptr = kzalloc(len + 1);
+    if (!kptr) {
         return OPAL_ENOMEM;
     }
-    memcpy(kpath, upath, len);
+
+    memcpy(kptr, uptr, len);
+    *out = kptr;
+    *outlen = len;
+    return OPAL_OK;
+}
+
+static intptr_t syscall_open(uintptr_t arg1, uintptr_t arg2, uintptr_t arg3) {
+    if (arg3 & ~OPEN_MASK_ALL) {
+        return OPAL_EINVAL;
+    }
+
+    char *kpath;
+    size_t kpath_len;
+    kerrno_t err = copy_user_string(arg2, SYSCALL_PATH_MAX, &kpath, &kpath_len);
+    if (!kerrno_ok(err)) {
+        return err;
+    }
 
     struct file *file;
-    fs_ssize_t result = vfs_open_path(NULL, kpath, OPEN_READ, &file);
-    kfree(kpath, len + 1);
+    fs_ssize_t result = vfs_open_path(NULL, kpath, (enum open_mode)arg3, &file);
+    kfree(kpath, kpath_len + 1);
     if (!kerrno_ok(result)) {
         return result;
     }
 
-    fd_t fd = process_open_file(process_current(), file);
+    fd_t fd = process_open_file(process_current(), arg1, file);
     if (fd < 0) {
         goto err_file;
     }
@@ -64,26 +73,111 @@ static intptr_t syscall_close(uintptr_t arg1) {
     return ok ? 0 : -1;
 }
 
-static intptr_t syscall_readc(uintptr_t arg1, uintptr_t arg2) {
+static intptr_t syscall_dup(uintptr_t arg1, uintptr_t arg2) {
+    fd_t fd = process_dup_fd(process_current(), arg1, arg2);
+    return fd;
+}
+
+static intptr_t syscall_read(uintptr_t arg1, uintptr_t arg2, uintptr_t arg3) {
     if (arg1 > FD_MAX) {
         return OPAL_EINVAL;
     }
-    (void)arg2;
+    if (arg3 > FS_SSIZE_MAX || (arg2 == 0 && arg3 != 0)) {
+        return OPAL_EINVAL;
+    }
 
     struct file *file = process_get_file(process_current(), (fd_t)arg1);
     if (!file) {
         return OPAL_ENOENT;
     }
 
-    unsigned char byte;
-    fs_ssize_t ret = file_read(file, &byte, 1);
-    file_release(file);
+    fs_ssize_t ret = file_read(file, (void *)arg2, (fs_size_t)arg3);
 
-    if (!kerrno_ok(ret)) {
-        return fs_ssize_errno(ret);
+    file_release(file);
+    return ret;
+}
+
+static intptr_t syscall_write(uintptr_t arg1, uintptr_t arg2, uintptr_t arg3) {
+    if (arg1 > FD_MAX) {
+        return OPAL_EINVAL;
+    }
+    if (arg3 > FS_SSIZE_MAX || (arg2 == 0 && arg3 != 0)) {
+        return OPAL_EINVAL;
     }
 
-    return ret == 0 ? OPAL_EIO : byte;
+    struct file *file = process_get_file(process_current(), (fd_t)arg1);
+    if (!file) {
+        return OPAL_ENOENT;
+    }
+
+    fs_ssize_t ret = file_write(file, (const void *)arg2, (fs_size_t)arg3);
+
+    file_release(file);
+    return ret;
+}
+
+static intptr_t syscall_ioctl(uintptr_t arg1, uintptr_t arg2, uintptr_t arg3) {
+    if (arg1 > FD_MAX) {
+        return OPAL_EINVAL;
+    }
+
+    struct file *file = process_get_file(process_current(), (fd_t)arg1);
+    if (!file) {
+        return OPAL_ENOENT;
+    }
+
+    fs_ssize_t ret = file_ioctl(file, arg2, arg3);
+
+    file_release(file);
+    return ret;
+}
+
+static intptr_t syscall_mount(uintptr_t arg1, uintptr_t arg2, uintptr_t arg3) {
+    char *path;
+    size_t path_len;
+    kerrno_t err = copy_user_string(arg3, SYSCALL_PATH_MAX, &path, &path_len);
+    if (!kerrno_ok(err)) {
+        return err;
+    }
+
+    char *name;
+    size_t name_len;
+    err = copy_user_string(arg1, SYSCALL_FSNAME_MAX, &name, &name_len);
+    if (!kerrno_ok(err)) {
+        goto err_path;
+    }
+
+    struct fs_type *fs = vfs_fstype_get(name);
+    kfree(name, name_len + 1);
+    if (!fs) {
+        err = OPAL_ENOENT;
+        goto err_path;
+    }
+
+    struct block_device *bdev = NULL;
+    if (arg2 != 0) {
+        err = OPAL_ENOTSUPP;
+        goto err_path;
+    }
+
+    struct superblock *sb;
+    err = fs->mount(bdev, &sb);
+    if (!kerrno_ok(err)) {
+        goto err_path;
+    }
+
+    struct path_entry *pe;
+    err = vfs_mount_path(NULL, path, sb, &pe);
+    kfree(path, path_len + 1);
+    if (kerrno_ok(err)) {
+        path_entry_release(pe);
+    }
+
+    return err;
+
+err_path:
+    kfree(path, path_len + 1);
+    return err;
 }
 
 struct sysret syscall_dispatch(uintptr_t arg0, uintptr_t arg1, uintptr_t arg2, uintptr_t arg3,
@@ -94,24 +188,28 @@ struct sysret syscall_dispatch(uintptr_t arg0, uintptr_t arg1, uintptr_t arg2, u
             task_exit();
             sysret.ret0 = 0;
             break;
-        case SYS_TTY0_PUTC:
-            sysret.ret0 = syscall_tty0_putc(arg1);
-            break;
-        case SYS_TTY0_GETC:
-            sysret.ret0 = syscall_tty0_getc();
-            break;
         case SYS_OPEN:
-            sysret.ret0 = syscall_open(arg1);
+            sysret.ret0 = syscall_open(arg1, arg2, arg3);
             break;
         case SYS_CLOSE:
             sysret.ret0 = syscall_close(arg1);
             break;
-        case SYS_READC:
-            sysret.ret0 = syscall_readc(arg1, arg2);
+        case SYS_DUP:
+            sysret.ret0 = syscall_dup(arg1, arg2);
+            break;
+        case SYS_READ:
+            sysret.ret0 = syscall_read(arg1, arg2, arg3);
+            break;
+        case SYS_WRITE:
+            sysret.ret0 = syscall_write(arg1, arg2, arg3);
+            break;
+        case SYS_IOCTL:
+            sysret.ret0 = syscall_ioctl(arg1, arg2, arg3);
+            break;
+        case SYS_MOUNT:
+            sysret.ret0 = syscall_mount(arg1, arg2, arg3);
             break;
     }
-    (void)arg2;
-    (void)arg3;
     (void)arg4;
     (void)arg5;
     return sysret;

@@ -7,11 +7,13 @@
 
 enum syscall_index : uint64_t {
     SYS_TASK_EXIT = 1,
-    SYS_TTY0_PUTC = 2,
-    SYS_TTY0_GETC = 3,
-    SYS_OPEN = 4,
-    SYS_CLOSE = 5,
-    SYS_READC = 6,
+    SYS_OPEN,
+    SYS_CLOSE,
+    SYS_DUP,
+    SYS_READ,
+    SYS_WRITE,
+    SYS_IOCTL,
+    SYS_MOUNT,
 };
 
 struct sysret {
@@ -20,6 +22,7 @@ struct sysret {
     intptr_t ret2;
 };
 
-struct sysret syscall_dispatch(uintptr_t arg0, uintptr_t arg1, uintptr_t arg2, uintptr_t arg3, uintptr_t arg4, uintptr_t arg5);
+struct sysret syscall_dispatch(
+    uintptr_t arg0, uintptr_t arg1, uintptr_t arg2, uintptr_t arg3, uintptr_t arg4, uintptr_t arg5);
 
 #endif

@@ -15,6 +15,7 @@
 typedef int pid_t;
 
 struct pagetable;
+struct isr_stackframe;
 
 struct process {
     pid_t id;
@@ -39,9 +40,10 @@ struct process *process_current(void);
 [[nodiscard]] procptr_t process_retain(struct process *proc);
 pid_t process_release(procptr_t proc);
 
-fd_t process_open_file(struct process *proc, struct file *file);
+fd_t process_open_file(struct process *proc, fd_t fd, struct file *file);
 struct file *process_get_file(struct process *proc, fd_t fd);
 bool process_close_file(struct process *proc, fd_t fd);
+fd_t process_dup_fd(struct process *proc, fd_t oldfd, fd_t newfd);
 
 [[nodiscard]] taskptr_t process_create_usertask(struct process *proc, virt_addr_t entry,
     virt_addr_t stack, virt_size_t stack_size, enum task_priority priority);

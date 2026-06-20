@@ -138,9 +138,15 @@ pid_t process_release(procptr_t proc) {
     return id;
 }
 
-fd_t process_open_file(struct process *proc, struct file *file) {
+fd_t process_open_file(struct process *proc, fd_t fd, struct file *file) {
     irqlock_t irqlock = irqlock_acquire();
-    fd_t fd = filetable_insert(&proc->open_files, file);
+    if (fd == FD_INVALID) {
+        fd = filetable_insert(&proc->open_files, file);
+    } else {
+        if (!kerrno_ok(filetable_insert_at(&proc->open_files, fd, file))) {
+            fd = FD_INVALID;
+        }
+    }
     irqlock_release(&irqlock);
     return fd;
 }
@@ -157,6 +163,29 @@ bool process_close_file(struct process *proc, fd_t fd) {
     bool ok = filetable_remove(&proc->open_files, fd);
     irqlock_release(&irqlock);
     return ok;
+}
+
+fd_t process_dup_fd(struct process *proc, fd_t oldfd, fd_t newfd) {
+    irqlock_t irqlock = irqlock_acquire();
+    fd_t ret = FD_INVALID;
+
+    struct file *file = filetable_get(&proc->open_files, oldfd);
+    if (!file) {
+        goto ret;
+    }
+
+    if (newfd == oldfd) {
+        ret = newfd;
+    } else if (newfd == FD_INVALID) {
+        ret = filetable_insert(&proc->open_files, file);
+    } else if (kerrno_ok(filetable_insert_at(&proc->open_files, newfd, file))) {
+        ret = newfd;
+    }
+    file_release(file);
+
+ret:
+    irqlock_release(&irqlock);
+    return ret;
 }
 
 static void free_mapped_range(struct process *proc, virt_addr_t addr, virt_size_t mapped_len) {

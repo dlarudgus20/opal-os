@@ -8,9 +8,6 @@
 - 단독 빌드:
   - `make -C opsh`
 
-## syscall 인터페이스
-- 구현: `opsh/src/syscall.c`, `opsh/src/syscall.h`
-
 ## initramfs 연동
 - ISO 생성 시 `opsh.elf`가 initramfs에 복사됩니다.
 - 커널에서 `exec /opsh.elf`로 실행할 수 있습니다.

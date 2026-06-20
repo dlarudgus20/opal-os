@@ -9,3 +9,5 @@ _start:
     mov rax, 1
     int 0x80
     jmp $
+
+; TODO: try referencing _panic_format symbol here
