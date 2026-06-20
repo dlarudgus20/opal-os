@@ -1,3 +1,4 @@
+#include "opal/fs/types.h"
 #include <kc/string.h>
 
 #include <opal/tty.h>
@@ -37,7 +38,7 @@ static intptr_t syscall_open(uintptr_t arg1) {
     memcpy(kpath, upath, len);
 
     struct file *file;
-    fs_ssize_t result = vfs_open_path(NULL, kpath, &file);
+    fs_ssize_t result = vfs_open_path(NULL, kpath, OPEN_READ, &file);
     kfree(kpath, len + 1);
     if (!kerrno_ok(result)) {
         return result;
@@ -65,27 +66,24 @@ static intptr_t syscall_close(uintptr_t arg1) {
 
 static intptr_t syscall_readc(uintptr_t arg1, uintptr_t arg2) {
     if (arg1 > FD_MAX) {
-        goto err;
+        return OPAL_EINVAL;
     }
+    (void)arg2;
 
     struct file *file = process_get_file(process_current(), (fd_t)arg1);
     if (!file) {
-        goto err;
+        return OPAL_ENOENT;
     }
 
-    char ch = '\0';
-    fs_ssize_t n = file->ops->read(file, (fs_size_t)arg2, &ch, 1);
-    if (n != 1) {
-        goto err_file;
+    unsigned char byte;
+    fs_ssize_t ret = file_read(file, &byte, 1);
+    file_release(file);
+
+    if (!kerrno_ok(ret)) {
+        return fs_ssize_errno(ret);
     }
 
-    file_release(file);
-    return (unsigned char)ch;
-
-err_file:
-    file_release(file);
-err:
-    return -1;
+    return ret == 0 ? OPAL_EIO : byte;
 }
 
 struct sysret syscall_dispatch(uintptr_t arg0, uintptr_t arg1, uintptr_t arg2, uintptr_t arg3,

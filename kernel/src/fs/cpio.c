@@ -1,3 +1,4 @@
+#include "opal/fs/vfs.h"
 #include <kc/string.h>
 #include <kc/stdlib.h>
 
@@ -14,7 +15,6 @@
 
 struct cpio_node {
     struct inode inode;
-    struct file file;
 
     struct cpio_node *parent;
     struct linkedlist children;
@@ -23,6 +23,11 @@ struct cpio_node {
 
     const unsigned char *data;
     fs_size_t size;
+};
+
+struct cpio_file {
+    struct file file;
+    struct cpio_node *node;
 };
 
 struct cpio_sb {
@@ -84,8 +89,7 @@ static struct cpio_node *alloc_node(
     }
 
     inode_init(&node->inode, &g_cpio_inode_ops);
-    file_init(&node->file, &g_cpio_file_ops);
-    node->inode.flags = is_dir ? FS_INODE_DIR : 0;
+    node->inode.flags = is_dir ? INODE_DIR : 0;
     node->parent = parent;
     node->data = NULL;
     node->size = 0;
@@ -136,7 +140,7 @@ static kerrno_t ensure_dir_child(struct cpio_sb *sb, struct cpio_node *parent, c
         return OPAL_OK;
     }
 
-    if (!(child->inode.flags & FS_INODE_DIR)) {
+    if (!(child->inode.flags & INODE_DIR)) {
         return OPAL_EINVAL;
     }
 
@@ -163,17 +167,17 @@ static kerrno_t upsert_leaf(struct cpio_sb *sb, struct cpio_node *parent, const 
     }
 
     if (is_dir) {
-        child->inode.flags |= FS_INODE_DIR;
+        child->inode.flags |= INODE_DIR;
         child->data = NULL;
         child->size = 0;
         return OPAL_OK;
     }
 
-    if (child->inode.flags & FS_INODE_DIR) {
+    if (child->inode.flags & INODE_DIR) {
         if (!linkedlist_is_empty(&child->children)) {
             return OPAL_EINVAL;
         }
-        child->inode.flags &= ~FS_INODE_DIR;
+        child->inode.flags &= ~INODE_DIR;
     }
     child->data = data;
     child->size = size;
@@ -249,19 +253,31 @@ static void cpio_umount(struct superblock *base) {
 
 static void cpio_inode_close(struct inode *) {}
 
-static kerrno_t cpio_inode_open(struct inode *inode, struct file **file_out) {
-    if (inode->flags & FS_INODE_DIR) {
+static kerrno_t cpio_inode_open(struct inode *inode, enum open_mode mode, struct file **file_out) {
+    if (inode->flags & INODE_DIR) {
         return OPAL_EISDIR;
     }
 
+    enum open_mode fmode = mode & OPEN_MASK_FMODE;
+    if (fmode != OPEN_NONE && fmode != OPEN_READ) {
+        return OPAL_ENOTSUPP;
+    }
+
     struct cpio_node *node = container_of(inode, struct cpio_node, inode);
-    *file_out = &node->file;
-    file_retain(*file_out);
+    struct cpio_file *file = kzalloc(sizeof(*file));
+    if (!file) {
+        return OPAL_ENOMEM;
+    }
+
+    file_init(&file->file, &g_cpio_file_ops, fmode_from_omode(mode) | FILE_POSLOCK);
+    inode_retain(inode);
+    file->node = node;
+    *file_out = &file->file;
     return OPAL_OK;
 }
 
 static kerrno_t cpio_inode_lookup(struct inode *inode, struct path_entry *pe) {
-    if (!(inode->flags & FS_INODE_DIR)) {
+    if (!(inode->flags & INODE_DIR)) {
         return OPAL_ENOTDIR;
     }
 
@@ -292,12 +308,16 @@ static kerrno_t cpio_inode_create(struct inode *, struct path_entry *, enum inod
     return OPAL_ENOTSUPP;
 }
 
-static void cpio_file_close(struct file *) {}
+static void cpio_file_close(struct file *base) {
+    struct cpio_file *file = container_of(base, struct cpio_file, file);
+    inode_release(&file->node->inode);
+    kfree(file, sizeof(*file));
+}
 
-static kerrno_t cpio_file_seek(
-    struct file *file, fs_off_t offset, enum fs_seek origin, fs_size_t *pos) {
-    struct cpio_node *node = container_of(file, struct cpio_node, file);
-    if (node->inode.flags & FS_INODE_DIR) {
+static fs_ssize_t cpio_file_seek(struct file *base, fs_off_t offset, enum fs_seek origin) {
+    struct cpio_file *file = container_of(base, struct cpio_file, file);
+    struct cpio_node *node = file->node;
+    if (node->inode.flags & INODE_DIR) {
         return OPAL_EISDIR;
     }
 
@@ -305,40 +325,43 @@ static kerrno_t cpio_file_seek(
         if (offset < 0 || (fs_size_t)offset > node->size) {
             return OPAL_ERANGE;
         }
-        *pos = (fs_size_t)offset;
-        return OPAL_OK;
+        return offset;
     }
     if (origin == FS_SEEK_END) {
         if (offset > 0 || offset < -(fs_off_t)node->size) {
             return OPAL_ERANGE;
         }
-        *pos = (fs_size_t)((fs_off_t)node->size + offset);
-        return OPAL_OK;
+        return (fs_off_t)node->size + offset;
     }
 
     return OPAL_EINVAL;
 }
 
-static fs_ssize_t cpio_file_read(struct file *file, fs_size_t pos, void *buffer, fs_size_t size) {
-    struct cpio_node *node = container_of(file, struct cpio_node, file);
-    if (node->inode.flags & FS_INODE_DIR) {
+static fs_ssize_t cpio_file_read(struct file *base, fs_size_t *pos, void *buffer, fs_size_t size) {
+    struct cpio_file *file = container_of(base, struct cpio_file, file);
+    struct cpio_node *node = file->node;
+    if (!(base->mode & FILE_READ)) {
+        return OPAL_ENOTSUPP;
+    }
+    if (node->inode.flags & INODE_DIR) {
         return OPAL_EISDIR;
     }
-    if (pos > node->size) {
+    if (*pos > node->size) {
         return OPAL_ERANGE;
     }
-    if (size > node->size - pos) {
-        size = node->size - pos;
+    if (size > node->size - *pos) {
+        size = node->size - *pos;
     }
     if (size == 0) {
         return 0;
     }
 
-    memcpy(buffer, node->data + pos, (size_t)size);
+    memcpy(buffer, node->data + *pos, (size_t)size);
+    *pos += size;
     return (fs_ssize_t)size;
 }
 
-static fs_ssize_t cpio_file_write(struct file *, fs_size_t, const void *, fs_size_t, bool) {
+static fs_ssize_t cpio_file_write(struct file *, fs_size_t *, const void *, fs_size_t) {
     return OPAL_ENOTSUPP;
 }
 

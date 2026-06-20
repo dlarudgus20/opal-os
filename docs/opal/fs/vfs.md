@@ -5,7 +5,20 @@
 - 구현: `kernel/src/fs/vfs.c`, `kernel/src/fs/hstr.c`
 - 목적:
   - 파일시스템 공통 경로 해석/생성/오픈 계층 제공
-  - inode 구현(FAT/CPIO 등)과 shell 사이의 계약을 통일
+  - fs/inode/file 구현과 vfs API 사이의 계약을 통일
+
+## 파일 열기/모드 계약
+- `enum open_mode`
+  - `OPEN_READ`, `OPEN_WRITE`, `OPEN_APPEND`: 열린 파일의 I/O 모드
+  - `OPEN_CREATE`: 없으면 생성
+  - `OPEN_NONEXIST`: 이미 있으면 실패
+  - `OPEN_TRUNC`: 기존 파일을 열 때 길이 0으로 truncate
+- `enum file_mode`
+  - `FILE_READ`, `FILE_WRITE`, `FILE_APPEND`: file handle에 저장되는 I/O 권한
+  - `FILE_POSLOCK`: 공용 file position을 `pos_mutex`로 보호하는 모드
+- `file_read()`/`file_write()`는 `struct file`의 현재 위치를 사용하고, 성공한 바이트 수만큼 위치를 이동한다.
+- 각 파일시스템의 `file_ops.read/write`는 음수 errno 또는 성공 바이트 수를 `fs_ssize_t`로 반환한다.
+- `file_ioctl()`은 장치별 제어 op를 파일 계층에 전달한다.
 
 ## Path Entry
 - `struct path_entry`
@@ -29,14 +42,14 @@
   - 같은 이름의 positive entry가 있으면 `OPAL_EEXIST`
   - 같은 이름의 negative entry가 있으면 재사용
   - 성공 시 새 positive entry 또는 재사용된 entry를 retain해 `out`에 반환
-- `path_entry_create(pe, flags, truncate, &file_out)`
+- `path_entry_create(pe, flags, mode, &file_out)`
   - `pe->inode == NULL`(negative entry)이면:
-    - `pe`가 루트라면 `OPAL_ENOENT`
-    - 부모 inode에 대해 `inode_ops.create(parent_inode, pe, flags)` 호출
+    - `OPEN_CREATE`가 없거나 `pe`가 루트라면 `OPAL_ENOENT`
+    - `OPEN_CREATE`가 있으면 부모 inode에 대해 `inode_ops.create(parent_inode, pe, flags)` 호출
     - 성공 후 생성된 inode를 `open`하여 `file_out` 반환
   - `pe->inode != NULL`(이미 존재)이면:
-    - `truncate == false`: `OPAL_EEXIST`
-    - `truncate == true`: 기존 inode를 `open` 후 `truncate(0)` 수행
+    - `OPEN_NONEXIST`가 있으면 `OPAL_EEXIST`
+    - `OPEN_TRUNC`가 있으면 기존 inode를 `open` 후 `truncate(0)` 수행
   - 성공 시 열린 file 참조를 `file_out`에 반환하며 호출자가 `file_release` 해야 함
 
 ## hstr
@@ -99,16 +112,20 @@
       - `OPAL_EINVAL`
       - `found`: `NULL`
       - `unresolved_path`: 입력 `path` 그대로
-- `vfs_open_path(base, path, &file_out)`
-  - 경로 해석 후 대상 inode `open` 호출
+- `vfs_open_path(base, path, mode, &file_out)`
+  - `vfs_create_path(base, path, INODE_NORMAL, mode, &file_out)`의 wrapper이다.
+  - 별도의 open-only 경로를 갖지 않는다.
   - 성공 시 열린 file 참조를 `file_out`에 반환하며 호출자가 `file_release` 해야 함
-- `vfs_create_path(base, path, flags, truncate, &file_out)`
+- `vfs_create_path(base, path, flags, mode, &file_out)`
   - 내부 흐름:
     - `vfs_lookup_path(base, path, &found, &unresolved_path)` 호출
     - `found == NULL` 또는 `*unresolved_path != '\0'`이면 lookup 결과 그대로 실패 반환
-    - 경로가 완전히 해석되면 `path_entry_create(found, flags, truncate, &file_out)` 호출
+    - 경로가 완전히 해석되면 `path_entry_create(found, flags, mode, &file_out)` 호출
   - 즉, 생성/기존 파일 처리 정책은 `path_entry_create`가 담당한다.
+  - `flags`는 새 inode를 만들 때 parent `inode_ops.create()`로 전달된다.
   - 성공 시 열린 file 참조를 `file_out`에 반환하며 호출자가 `file_release` 해야 함
+- `path_entry_open(pe, mode, &file_out)`
+  - `path_entry_create(pe, INODE_NORMAL, mode, &file_out)`의 wrapper이다.
 - `path_entry_mount_super(pe, sb)`
   - `sb->root`가 유효한 디렉터리 inode여야 한다.
   - `pe->inode != NULL`이면 `OPAL_EBUSY`.

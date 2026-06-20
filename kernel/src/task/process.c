@@ -385,3 +385,68 @@ kerrno_t process_load_elf(struct process *proc, void *elf, size_t size, taskptr_
 
     return OPAL_OK;
 }
+
+static kerrno_t read_file_all(struct file *file, void **buf_out, size_t *len_out) {
+    fs_ssize_t len = file->ops->seek(file, 0, FS_SEEK_END);
+    if (!kerrno_ok(len)) {
+        return fs_ssize_errno(len);
+    }
+    if (len == 0) {
+        return OPAL_EBADIMAGE;
+    }
+
+    void *buf = kzalloc(len);
+    if (!buf) {
+        return OPAL_ENOMEM;
+    }
+
+    kerrno_t result = OPAL_OK;
+    fs_ssize_t n = file->ops->read(file, &(fs_size_t){ 0 }, buf, len);
+    if (n < 0) {
+        result = fs_ssize_errno(n);
+        goto err_buf;
+    }
+    if (n != len) {
+        result = OPAL_EIO;
+        goto err_buf;
+    }
+
+    *buf_out = buf;
+    *len_out = len;
+    return OPAL_OK;
+
+err_buf:
+    kfree(buf, len);
+    return result;
+}
+
+kerrno_t process_load_elf_file(struct file *file, procptr_t *proc_out, taskptr_t *task_out) {
+    void *buf;
+    size_t len;
+    kerrno_t result = read_file_all(file, &buf, &len);
+    if (!kerrno_ok(result)) {
+        return result;
+    }
+
+    procptr_t proc = process_create();
+    if (!proc.ptr) {
+        result = OPAL_ENOMEM;
+        goto err_buf;
+    }
+
+    taskptr_t task;
+    result = process_load_elf(proc.ptr, buf, len, &task);
+    if (!kerrno_ok(result)) {
+        process_release(proc);
+        goto err_buf;
+    }
+
+    kfree(buf, len);
+    *proc_out = proc;
+    *task_out = task;
+    return OPAL_OK;
+
+err_buf:
+    kfree(buf, len);
+    return result;
+}

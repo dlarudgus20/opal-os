@@ -43,10 +43,12 @@ fd_t process_open_file(struct process *proc, struct file *file);
 struct file *process_get_file(struct process *proc, fd_t fd);
 bool process_close_file(struct process *proc, fd_t fd);
 
-[[nodiscard]] taskptr_t process_create_usertask(
-    struct process *proc, virt_addr_t entry, virt_addr_t stack, virt_size_t stack_size, enum task_priority priority
-);
+[[nodiscard]] taskptr_t process_create_usertask(struct process *proc, virt_addr_t entry,
+    virt_addr_t stack, virt_size_t stack_size, enum task_priority priority);
 
-[[nodiscard]] kerrno_t process_load_elf(struct process *proc, void *elf, size_t size, taskptr_t *out);
+[[nodiscard]] kerrno_t process_load_elf(
+    struct process *proc, void *elf, size_t size, taskptr_t *out);
+[[nodiscard]] kerrno_t process_load_elf_file(
+    struct file *file, procptr_t *proc_out, taskptr_t *task_out);
 
 #endif

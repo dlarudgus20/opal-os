@@ -20,7 +20,7 @@ void fat_table_init(struct fat_table *file, struct fat_sb *sb) {
         ops = &g_fat32_ops.ops;
     }
 
-    file_init(&file->file, ops);
+    file_init(&file->file, ops, FILE_READ | FILE_WRITE);
     file->sb = sb;
     file->buffer = NULL;
 }
@@ -33,7 +33,7 @@ static void fat_table_close(struct file *base) {
     }
 }
 
-static kerrno_t fat_table_seek(struct file *, fs_off_t, enum fs_seek, fs_size_t *) {
+static fs_ssize_t fat_table_seek(struct file *, fs_off_t, enum fs_seek) {
     return OPAL_ENOTSUPP;
 }
 
@@ -59,15 +59,15 @@ static kerrno_t fat_table_readall(struct fat_table *file) {
     return result;
 }
 
-static fs_ssize_t fat_table_read(struct file *base, fs_size_t pos, void *buffer, fs_size_t size) {
+static fs_ssize_t fat_table_read(struct file *base, fs_size_t *pos, void *buffer, fs_size_t size) {
     struct fat_table *file = container_of(base, struct fat_table, file);
 
     uint32_t fat_bytes = file->sb->layout.fat_sectors * file->sb->layout.bytes_per_sector;
-    if (pos > fat_bytes) {
+    if (*pos > fat_bytes) {
         return OPAL_ERANGE;
     }
-    if (size > (fs_size_t)(fat_bytes - pos)) {
-        size = fat_bytes - pos;
+    if (size > (fs_size_t)(fat_bytes - *pos)) {
+        size = fat_bytes - *pos;
     }
 
     if (size == 0) {
@@ -79,18 +79,15 @@ static fs_ssize_t fat_table_read(struct file *base, fs_size_t pos, void *buffer,
         return result;
     }
 
-    memcpy(buffer, file->buffer + pos, size);
+    memcpy(buffer, file->buffer + *pos, size);
+    *pos += size;
     return (fs_ssize_t)size;
 }
 
 static fs_ssize_t fat_table_write(
-    struct file *base, fs_size_t pos, const void *buffer, fs_size_t size, bool append) {
+    struct file *base, fs_size_t *pos, const void *buffer, fs_size_t size) {
     struct fat_table *file = container_of(base, struct fat_table, file);
     struct fat_sb *sb = file->sb;
-
-    if (append) {
-        return OPAL_ENOSPC;
-    }
 
     if (size > FS_SSIZE_MAX) {
         return OPAL_EINVAL;
@@ -98,11 +95,11 @@ static fs_ssize_t fat_table_write(
 
     uint32_t fat_bytes = file->sb->layout.fat_sectors * file->sb->layout.bytes_per_sector;
     uint32_t fat_sectors = fat_bytes / DISK_SECTOR_SIZE;
-    if (pos > fat_bytes) {
+    if (*pos > fat_bytes) {
         return OPAL_ERANGE;
     }
-    if (size > fat_bytes - pos) {
-        size = fat_bytes - pos;
+    if (size > fat_bytes - *pos) {
+        size = fat_bytes - *pos;
     }
 
     if (size == 0) {
@@ -114,14 +111,14 @@ static fs_ssize_t fat_table_write(
         return result;
     }
 
-    memcpy(file->buffer + pos, buffer, size);
+    memcpy(file->buffer + *pos, buffer, size);
 
     uint32_t lsec = file->sb->layout.bytes_per_sector / DISK_SECTOR_SIZE;
     uint32_t fat_offset = file->sb->layout.reserved_sectors * lsec;
 
-    fs_size_t sector_pos = pos / DISK_SECTOR_SIZE;
+    fs_size_t sector_pos = *pos / DISK_SECTOR_SIZE;
     fs_size_t front_pos = sector_pos * DISK_SECTOR_SIZE;
-    fs_size_t front_gap = pos - front_pos;
+    fs_size_t front_gap = *pos - front_pos;
     fs_size_t sectors = (front_gap + size + DISK_SECTOR_SIZE - 1) / DISK_SECTOR_SIZE;
     for (uint8_t fati = 0; fati < sb->layout.num_fats; fati++) {
         uint32_t lba = fat_offset + fat_sectors * fati;
@@ -131,6 +128,7 @@ static fs_ssize_t fat_table_write(
         }
     }
 
+    *pos += size;
     return (fs_ssize_t)size;
 }
 
@@ -160,9 +158,10 @@ kerrno_t fat_table_append(struct fat_table *file, uint32_t cluster, uint32_t *ne
 
 static kerrno_t fat12_table_at(struct fat_table *file, uint32_t cluster, uint32_t *value) {
     unsigned char entry[2];
-    fs_ssize_t n = fat_table_read(&file->file, cluster * 3 / 2, entry, 2);
+    const fs_size_t pos = cluster * 3 / 2;
+    fs_ssize_t n = fat_table_read(&file->file, &(fs_size_t){ pos }, entry, 2);
     if (n < 0) {
-        return n;
+        return fs_ssize_errno(n);
     } else if (n != 2) {
         return OPAL_ERANGE;
     }
@@ -181,9 +180,10 @@ static kerrno_t fat12_table_at(struct fat_table *file, uint32_t cluster, uint32_
 
 static kerrno_t fat12_table_set(struct fat_table *file, uint32_t cluster, uint32_t value) {
     unsigned char entry[2];
-    fs_ssize_t n = fat_table_read(&file->file, cluster * 3 / 2, entry, 2);
+    const fs_size_t pos = cluster * 3 / 2;
+    fs_ssize_t n = fat_table_read(&file->file, &(fs_size_t){ pos }, entry, 2);
     if (n < 0) {
-        return n;
+        return fs_ssize_errno(n);
     } else if (n != 2) {
         return OPAL_ERANGE;
     }
@@ -196,9 +196,9 @@ static kerrno_t fat12_table_set(struct fat_table *file, uint32_t cluster, uint32
         entry[1] = (uint8_t)(value >> 4);
     }
 
-    n = fat_table_write(&file->file, cluster * 3 / 2, entry, 2, false);
+    n = fat_table_write(&file->file, &(fs_size_t){ pos }, entry, 2);
     if (n < 0) {
-        return n;
+        return fs_ssize_errno(n);
     } else if (n != 2) {
         return OPAL_ERANGE;
     }
@@ -240,9 +240,10 @@ static kerrno_t fat12_table_alloc(struct fat_table *file, uint32_t *cluster_out)
 
 static kerrno_t fat16_table_at(struct fat_table *file, uint32_t cluster, uint32_t *value) {
     uint16_t entry;
-    fs_ssize_t n = fat_table_read(&file->file, cluster * 2, &entry, 2);
+    const fs_size_t pos = cluster * 2;
+    fs_ssize_t n = fat_table_read(&file->file, &(fs_size_t){ pos }, &entry, 2);
     if (n < 0) {
-        return n;
+        return fs_ssize_errno(n);
     } else if (n != 2) {
         return OPAL_ERANGE;
     }
@@ -256,9 +257,10 @@ static kerrno_t fat16_table_at(struct fat_table *file, uint32_t cluster, uint32_
 
 static kerrno_t fat16_table_set(struct fat_table *file, uint32_t cluster, uint32_t value) {
     uint16_t entry = (uint16_t)value;
-    fs_ssize_t n = fat_table_write(&file->file, cluster * 2, &entry, 2, false);
+    const fs_size_t pos = cluster * 2;
+    fs_ssize_t n = fat_table_write(&file->file, &(fs_size_t){ pos }, &entry, 2);
     if (n < 0) {
-        return n;
+        return fs_ssize_errno(n);
     } else if (n != 2) {
         return OPAL_ERANGE;
     }
@@ -287,9 +289,10 @@ found:
 
 static kerrno_t fat32_table_at(struct fat_table *file, uint32_t cluster, uint32_t *value) {
     uint32_t entry = 0;
-    fs_ssize_t n = fat_table_read(&file->file, cluster * 4, &entry, 4);
+    const fs_size_t pos = cluster * 4;
+    fs_ssize_t n = fat_table_read(&file->file, &(fs_size_t){ pos }, &entry, 4);
     if (n < 0) {
-        return n;
+        return fs_ssize_errno(n);
     } else if (n != 4) {
         return OPAL_ERANGE;
     }
@@ -299,9 +302,10 @@ static kerrno_t fat32_table_at(struct fat_table *file, uint32_t cluster, uint32_
 }
 
 static kerrno_t fat32_table_set(struct fat_table *file, uint32_t cluster, uint32_t value) {
-    fs_ssize_t n = fat_table_write(&file->file, cluster * 4, &value, 4, false);
+    const fs_size_t pos = cluster * 4;
+    fs_ssize_t n = fat_table_write(&file->file, &(fs_size_t){ pos }, &value, 4);
     if (n < 0) {
-        return n;
+        return fs_ssize_errno(n);
     } else if (n != 4) {
         return OPAL_ERANGE;
     }
