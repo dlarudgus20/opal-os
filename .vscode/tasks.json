@@ -4,7 +4,8 @@
         {
             "label": "clangd: generate compile_commands.json",
             "type": "shell",
-            "command": "LC_ALL=C compiledb --full-path -n make -B"
+            "command": "LC_ALL=C compiledb --full-path -n make -B iso",
+            "problemMatcher": []
         }
     ]
 }
