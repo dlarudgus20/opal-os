@@ -14,6 +14,7 @@ enum syscall_index : uint64_t {
     SYS_WRITE,
     SYS_IOCTL,
     SYS_MOUNT,
+    SYS_PIPE,
 };
 
 struct sysret {

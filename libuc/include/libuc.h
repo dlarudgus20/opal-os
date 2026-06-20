@@ -42,4 +42,6 @@ ssize_t write(int fd, const void *buffer, size_t size);
 long ioctl(int fd, unsigned long op, unsigned long arg);
 int mount(const char *fstype, int arg, const char *path);
 
+int pipe(int fds[2]);
+
 #endif

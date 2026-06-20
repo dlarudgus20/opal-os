@@ -5,6 +5,7 @@
 #include <opal/fs/vfs.h>
 #include <opal/fs/fs_type.h>
 #include <opal/fs/globals.h>
+#include <opal/fs/pipefs.h>
 #include <opal/task/task.h>
 #include <opal/task/process.h>
 #include <opal/syscall/syscall.h>
@@ -180,6 +181,58 @@ err_path:
     return err;
 }
 
+static void syscall_pipe(struct sysret *sysret) {
+    kerrno_t result = OPAL_ENOMEM;
+
+    struct pipefs *pipe = pipefs_create();
+    if (!pipe) {
+        result = OPAL_ENOMEM;
+        goto err;
+    }
+
+    struct file *read_file = pipefs_open_reader(pipe);
+    if (!read_file) {
+        goto err_pipe;
+    }
+
+    struct file *write_file = pipefs_open_writer(pipe);
+    if (!write_file) {
+        goto err_read_file;
+    }
+
+    struct process *proc = process_current();
+    fd_t read_fd = process_open_file(proc, FD_INVALID, read_file);
+    if (read_fd == FD_INVALID) {
+        result = OPAL_ENOSPC;
+        goto err_write_file;
+    }
+
+    fd_t write_fd = process_open_file(proc, FD_INVALID, write_file);
+    if (write_fd == FD_INVALID) {
+        result = OPAL_ENOSPC;
+        goto err_read_fd;
+    }
+
+    sysret->ret0 = read_fd;
+    sysret->ret1 = write_fd;
+
+    file_release(write_file);
+    file_release(read_file);
+    inode_release(&pipe->inode);
+    return;
+
+err_read_fd:
+    process_close_file(proc, read_fd);
+err_write_file:
+    file_release(write_file);
+err_read_file:
+    file_release(read_file);
+err_pipe:
+    inode_release(&pipe->inode);
+err:
+    sysret->ret0 = result;
+}
+
 struct sysret syscall_dispatch(uintptr_t arg0, uintptr_t arg1, uintptr_t arg2, uintptr_t arg3,
     uintptr_t arg4, uintptr_t arg5) {
     struct sysret sysret = { -1, 0, 0 };
@@ -208,6 +261,9 @@ struct sysret syscall_dispatch(uintptr_t arg0, uintptr_t arg1, uintptr_t arg2, u
             break;
         case SYS_MOUNT:
             sysret.ret0 = syscall_mount(arg1, arg2, arg3);
+            break;
+        case SYS_PIPE:
+            syscall_pipe(&sysret);
             break;
     }
     (void)arg4;

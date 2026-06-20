@@ -13,6 +13,7 @@ enum inode_flags {
     INODE_NORMAL = 0,
     INODE_DIR = 0x1,
     INODE_DEV = 0x2,
+    INODE_PIPE = 0x4,
 };
 
 enum open_mode : uint16_t {

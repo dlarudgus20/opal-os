@@ -17,6 +17,7 @@ enum syscall_index : uint64_t {
     SYS_WRITE,
     SYS_IOCTL,
     SYS_MOUNT,
+    SYS_PIPE,
 };
 
 typedef struct sysret {
@@ -132,4 +133,14 @@ long ioctl(int fd, unsigned long op, unsigned long arg) {
 int mount(const char *fstype, int arg, const char *path) {
     sysret_t ret = syscall(SYS_MOUNT, (uint64_t)fstype, (uint64_t)arg, (uint64_t)path);
     return (int)ret.ret0;
+}
+
+int pipe(int fds[2]) {
+    sysret_t ret = syscall(SYS_PIPE, 0, 0, 0);
+    if (ret.ret0 < 0) {
+        return (int)ret.ret0;
+    }
+    fds[0] = (int)ret.ret0;
+    fds[1] = (int)ret.ret1;
+    return 0;
 }

@@ -131,6 +131,45 @@ static void test_file_read(void) {
     close_checked("close(/opsh.elf)", fd);
 }
 
+static void test_pipe(void) {
+    int fds[2];
+    int ret = pipe(fds);
+    check_int("pipe()", ret, 0);
+    if (ret < 0) {
+        return;
+    }
+
+    const char input[] = "pipe";
+    char output[sizeof(input)];
+    ssize_t n = write(fds[1], input, sizeof(input));
+    check_long("write(pipe)", n, (long)sizeof(input));
+    if (n != (ssize_t)sizeof(input)) {
+        close_checked("close(pipe read)", fds[0]);
+        close_checked("close(pipe write)", fds[1]);
+        return;
+    }
+
+    n = read(fds[0], output, sizeof(output));
+    check_long("read(pipe)", n, (long)sizeof(output));
+    if (n != (ssize_t)sizeof(output)) {
+        close_checked("close(pipe read)", fds[0]);
+        close_checked("close(pipe write)", fds[1]);
+        return;
+    }
+
+    int ok = 1;
+    for (size_t i = 0; i < sizeof(input); i++) {
+        if (input[i] != output[i]) {
+            ok = 0;
+            break;
+        }
+    }
+    check_int("pipe data", ok, 1);
+
+    close_checked("close(pipe read)", fds[0]);
+    close_checked("close(pipe write)", fds[1]);
+}
+
 int main(void) {
     if (mount("devfs", 0, "/dev") < 0) {
         return 1;
@@ -146,6 +185,7 @@ int main(void) {
     test_fbcon();
     test_hid();
     test_file_read();
+    test_pipe();
 
     fbcon_newline();
     raw_print("opsh: ");

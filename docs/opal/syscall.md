@@ -28,6 +28,7 @@
 - `SYS_WRITE`: `fd`, `buffer`, `size`를 받아 `file_write()` 결과를 반환합니다.
 - `SYS_IOCTL`: `fd`, `op`, `arg`를 받아 `file_ioctl()` 결과를 반환합니다.
 - `SYS_MOUNT`: `fstype`, `arg`, `path`를 받아 파일시스템을 마운트합니다. 현재 block device 인자(`arg != 0`)는 지원하지 않습니다.
+- `SYS_PIPE`: pipe를 만들고 `ret0=read_fd`, `ret1=write_fd`를 반환합니다.
 
 ## 파일 디스크립터 동작
 - FD 소유자는 프로세스(`struct process`)입니다.

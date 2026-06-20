@@ -23,4 +23,5 @@
 - [`fs/vfs.md`](fs/vfs.md): VFS 경로 해석, path entry, inode/file 계약
 - [`fs/fat.md`](fs/fat.md): FAT(v0) 연동 범위와 이름/오류 처리 정책
 - [`fs/cpio.md`](fs/cpio.md): initramfs용 CPIO 읽기 전용 파일시스템
+- [`fs/pipefs.md`](fs/pipefs.md): pipe inode, reader/writer file 제공 파일시스템
 - [`drivers/pata.md`](drivers/pata.md): PATA(ATA PIO) 드라이버 구조와 요청/완료 모델

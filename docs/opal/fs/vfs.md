@@ -142,3 +142,4 @@
 - `vfs_fstype_get(name)`은 등록된 `struct fs_type`을 이름으로 조회한다.
 - `devfs`는 block device 없이 마운트되는 전역 `kobjfs` 인스턴스다.
 - `kobjfs`는 커널 객체 inode를 디렉터리 트리로 노출하는 특수 파일시스템이다.
+- `pipefs`는 `SYS_PIPE`에서 생성되는 익명 pipe inode/file 구현이다. VFS 경로에 이름으로 붙지 않고 FD로만 전달된다.
