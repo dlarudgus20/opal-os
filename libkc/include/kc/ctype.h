@@ -33,4 +33,8 @@ static inline int isspace(int ch) {
     return ch == ' ' || ch == '\t' || ch == '\n' || ch == '\r' || ch == '\f' || ch == '\v';
 }
 
+static inline int isprint(int ch) {
+    return ch >= ' ' && ch <= '~';
+}
+
 #endif

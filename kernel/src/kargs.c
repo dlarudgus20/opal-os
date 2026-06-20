@@ -7,6 +7,7 @@
 #include <opal/fs/cpio.h>
 #include <opal/fs/vfs.h>
 #include <opal/mm/pfn.h>
+#include <opal/task/process.h>
 #include <opal/platform/boot/bootinfo.h>
 
 static struct kargs g_kargs;
@@ -208,6 +209,27 @@ static void postboot_initramfs(void) {
 
 void kargs_postboot(void) {
     postboot_initramfs();
+}
+
+void kargs_run_uinit(void) {
+    struct file *file = NULL;
+    kerrno_t result = vfs_open_path(NULL, "/uinit", OPEN_READ, &file);
+    if (!kerrno_ok(result)) {
+        kwarn("kargs: failed to open /uinit: %s (%d)", kerrno_str(result), result);
+        return;
+    }
+
+    procptr_t proc;
+    taskptr_t task;
+    result = process_load_elf_file(file, &proc, &task);
+    file_release(file);
+    if (!kerrno_ok(result)) {
+        kwarn("kargs: failed to load /uinit: %s (%d)", kerrno_str(result), result);
+        return;
+    }
+
+    task_release(task);
+    process_release(proc);
 }
 
 void kargs_print_log(void) {

@@ -27,6 +27,7 @@ static void drivers_init(void) {
 static void run_user(void) {
     unit_test_run();
     shell_start();
+    kargs_run_uinit();
 }
 
 static void all_disks_register_bdev(void) {
