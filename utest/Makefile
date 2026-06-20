@@ -1,4 +1,4 @@
-TARGET_NAME := opsh
+TARGET_NAME := utest
 TARGET_TYPE := executable
 STATIC_REFS := libuc libkc libkubsan
 

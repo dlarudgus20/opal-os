@@ -43,5 +43,7 @@ long ioctl(int fd, unsigned long op, unsigned long arg);
 int mount(const char *fstype, int arg, const char *path);
 
 int pipe(int fds[2]);
+pid_t fork(void);
+int exec(int fd);
 
 #endif

@@ -455,6 +455,17 @@ void vmtree_init(struct vmtree *tree) {
     tree->root = node_tag(&tree->root_node, true);
 }
 
+void vmtree_move(struct vmtree *dst, struct vmtree *src) {
+    kassert(dst);
+    kassert(src);
+    kassert(dst != src);
+
+    bool leaf = node_is_leaf(src->root);
+    dst->root_node = src->root_node;
+    dst->root = node_tag(&dst->root_node, leaf);
+    vmtree_init(src);
+}
+
 void vmtree_destroy(struct vmtree *tree) {
     if (!tree) {
         return;

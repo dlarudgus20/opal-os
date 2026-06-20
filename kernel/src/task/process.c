@@ -12,7 +12,9 @@
 #include <opal/mm/page.h>
 #include <opal/mm/kmalloc.h>
 #include <opal/fs/vfs.h>
+#include <opal/platform/interrupt.h>
 #include <opal/platform/mm/pagetable.h>
+#include <opal/platform/task/context.h>
 
 #define MAX_REFC INT_MAX
 #define PID_END INT_MAX
@@ -26,6 +28,17 @@ static int pid_compare_to(struct process *a, pid_t b) {
 }
 
 RBTREE_TEMPLATE(struct process, pid_t, pid_node, pid_compare, pid_compare_to, process, static)
+
+struct vm_area {
+    page_entry_t ptbl_flags;
+};
+
+struct process_image {
+    struct pagetable *pagetable;
+    struct vmtree vmtree;
+};
+
+static void free_mapped_range(struct pagetable *ptbl, virt_addr_t addr, virt_size_t mapped_len);
 
 static struct rbtree g_pid_tree;
 static unsigned g_pid_next;
@@ -66,18 +79,52 @@ procptr_t process_create(void) {
     return (procptr_t){ .ptr = proc };
 }
 
-static void free_mapped_pages_all(struct process *proc) {
-    struct vmtree_iter iter = vmtree_before_begin(&proc->vmtree);
+static void process_image_init(struct process_image *image, struct pagetable *ptbl) {
+    image->pagetable = ptbl;
+    vmtree_init(&image->vmtree);
+}
+
+static kerrno_t process_image_create(struct process_image *image) {
+    struct pagetable *ptbl = pagetable_create();
+    if (!ptbl) {
+        return OPAL_ENOMEM;
+    }
+
+    process_image_init(image, ptbl);
+    return OPAL_OK;
+}
+
+static void free_mapped_pages_all(struct pagetable *ptbl, struct vmtree *vmtree) {
+    struct vmtree_iter iter = vmtree_before_begin(vmtree);
     struct vmtree_entry entry;
     while (vmtree_iter_next(&iter, &entry)) {
         for (uintptr_t va = entry.start; va < entry.end; va += PAGE_SIZE) {
             phys_addr_t pa;
-            if (!pagetable_lookup(proc->pagetable, va, &pa)) {
+            if (!pagetable_lookup(ptbl, va, &pa)) {
                 continue;
             }
             mm_free_page(phys_to_pfn(pa & PTE_MASK_ADDR), 0);
         }
     }
+}
+
+static void free_vm_areas_all(struct vmtree *vmtree) {
+    struct vmtree_iter iter = vmtree_before_begin(vmtree);
+    struct vmtree_entry entry;
+    while (vmtree_iter_next(&iter, &entry)) {
+        kfree(entry.entry, sizeof(struct vm_area));
+    }
+}
+
+static void process_image_destroy_parts(struct pagetable *ptbl, struct vmtree *vmtree) {
+    free_mapped_pages_all(ptbl, vmtree);
+    free_vm_areas_all(vmtree);
+    pagetable_destroy(ptbl);
+    vmtree_destroy(vmtree);
+}
+
+static void process_image_destroy(struct process_image *image) {
+    process_image_destroy_parts(image->pagetable, &image->vmtree);
 }
 
 static void process_free(struct process *proc) {
@@ -86,9 +133,7 @@ static void process_free(struct process *proc) {
     }
     filetable_destroy(&proc->open_files);
     rbtree_remove(&g_pid_tree, &proc->pid_node);
-    free_mapped_pages_all(proc);
-    pagetable_destroy(proc->pagetable);
-    vmtree_destroy(&proc->vmtree);
+    process_image_destroy_parts(proc->pagetable, &proc->vmtree);
     kfree(proc, sizeof(*proc));
 }
 
@@ -188,22 +233,163 @@ ret:
     return ret;
 }
 
-static void free_mapped_range(struct process *proc, virt_addr_t addr, virt_size_t mapped_len) {
+static bool process_has_current_task_only(struct process *proc) {
+    irqlock_t irqlock = irqlock_acquire();
+
+    struct task *current = task_current();
+    struct linkedlist_link *head = linkedlist_head(&proc->task_list);
+    bool result = !linkedlist_is_nil(&proc->task_list, head) && head == &current->proc_link
+        && head->next == linkedlist_nil(&proc->task_list);
+
+    irqlock_release(&irqlock);
+    return result;
+}
+
+static kerrno_t clone_vmem_range(
+    struct process *child, struct process *parent, struct vmtree_entry entry) {
+    struct vm_area *src_area = entry.entry;
+    struct vm_area *dst_area = kzalloc(sizeof(*dst_area));
+    if (!dst_area) {
+        return OPAL_ENOMEM;
+    }
+
+    *dst_area = *src_area;
+
+    vmtree_status_t insertion = vmtree_insert(&child->vmtree, entry.start, entry.end, dst_area);
+    if (insertion != VMTREE_OK) {
+        kfree(dst_area, sizeof(*dst_area));
+        return insertion == VMTREE_ERR_EXISTS ? OPAL_EEXIST : OPAL_ENOMEM;
+    }
+
+    kerrno_t result = OPAL_OK;
+    virt_addr_t current_addr = entry.start;
+    for (; current_addr < entry.end; current_addr += PAGE_SIZE) {
+        phys_addr_t src_pa;
+        if (!pagetable_lookup(parent->pagetable, current_addr, &src_pa)) {
+            result = OPAL_EINVAL;
+            goto err;
+        }
+
+        pfn_t dst_pfn = mm_alloc_page(0);
+        if (dst_pfn == PFN_INVALID) {
+            result = OPAL_ENOMEM;
+            goto err;
+        }
+
+        memcpy(pfn_to_direct_ptr(dst_pfn), phys_to_direct_ptr(src_pa & PTE_MASK_ADDR), PAGE_SIZE);
+
+        if (pagetable_map(child->pagetable, current_addr, pfn_to_phys(dst_pfn), PAGE_SIZE,
+                dst_area->ptbl_flags)
+            == 0) {
+            mm_free_page(dst_pfn, 0);
+            result = OPAL_ENOMEM;
+            goto err;
+        }
+    }
+
+    return OPAL_OK;
+
+err:
+    free_mapped_range(child->pagetable, entry.start, current_addr - entry.start);
+    pagetable_unmap(child->pagetable, entry.start, current_addr - entry.start, false);
+    vmtree_remove(&child->vmtree, entry.start, entry.end);
+    kfree(dst_area, sizeof(*dst_area));
+    return result;
+}
+
+static kerrno_t process_clone_vmem(struct process *child, struct process *parent) {
+    struct vmtree_iter iter = vmtree_before_begin(&parent->vmtree);
+    struct vmtree_entry entry;
+    while (vmtree_iter_next(&iter, &entry)) {
+        kerrno_t result = clone_vmem_range(child, parent, entry);
+        if (!kerrno_ok(result)) {
+            return result;
+        }
+    }
+
+    return OPAL_OK;
+}
+
+static void fork_entry(void) {
+    struct isr_stackframe *kstack = task_current()->kstack;
+    stackframe_set_return_value(kstack, 0);
+    return_to_userland(kstack);
+}
+
+kerrno_t process_fork(
+    const struct isr_stackframe *frame, procptr_t *proc_out, taskptr_t *task_out) {
+    struct process *parent = process_current();
+    procptr_t child = process_create();
+    if (!child.ptr) {
+        return OPAL_ENOMEM;
+    }
+
+    kerrno_t result = OPAL_OK;
+
+    irqlock_t irqlock = irqlock_acquire();
+    result = filetable_clone(&child.ptr->open_files, &parent->open_files);
+    irqlock_release(&irqlock);
+    if (!kerrno_ok(result)) {
+        goto err_child;
+    }
+
+    result = process_clone_vmem(child.ptr, parent);
+    if (!kerrno_ok(result)) {
+        goto err_child;
+    }
+
+    taskptr_t task = task_create(child.ptr, fork_entry, TASK_PRIORITY_NORMAL);
+    if (!task.ptr) {
+        result = OPAL_ENOMEM;
+        goto err_child;
+    }
+
+    struct isr_stackframe *kstack = task.ptr->kstack;
+    *kstack = *frame;
+
+    *proc_out = child;
+    *task_out = task;
+    return OPAL_OK;
+
+err_child:
+    process_release(child);
+    return result;
+}
+
+static page_entry_t elf_flags_to_ptbl_flags(uint32_t flags) {
+    page_entry_t ptbl_flags = PTBL_USER;
+    if (flags & ELF_PF_W) {
+        ptbl_flags |= PTBL_WRITABLE;
+    }
+    return ptbl_flags;
+}
+
+static void free_mapped_range(struct pagetable *ptbl, virt_addr_t addr, virt_size_t mapped_len) {
     for (virt_size_t off = 0; off < mapped_len; off += PAGE_SIZE) {
         phys_addr_t pa;
-        if (!pagetable_lookup(proc->pagetable, addr + off, &pa)) {
+        if (!pagetable_lookup(ptbl, addr + off, &pa)) {
             continue;
         }
         mm_free_page(phys_to_pfn(pa & PTE_MASK_ADDR), 0);
     }
 }
 
-static kerrno_t map_section(struct process *proc, void *data, size_t filesz, virt_addr_t addr,
-    virt_size_t memsz, uint32_t flags) {
+static kerrno_t map_section(struct pagetable *ptbl, struct vmtree *vmtree, void *data,
+    size_t filesz, virt_addr_t addr, virt_size_t memsz, uint32_t flags) {
+    if (memsz == 0) {
+        return OPAL_OK;
+    }
+
+    struct vm_area *area = kzalloc(sizeof(*area));
+    if (!area) {
+        return OPAL_ENOMEM;
+    }
+    area->ptbl_flags = elf_flags_to_ptbl_flags(flags);
+
     irqlock_t irqlock = irqlock_acquire();
     kerrno_t result = OPAL_ENOMEM;
 
-    vmtree_status_t insertion = vmtree_insert(&proc->vmtree, addr, addr + memsz, proc);
+    vmtree_status_t insertion = vmtree_insert(vmtree, addr, addr + memsz, area);
     if (insertion != VMTREE_OK) {
         if (insertion == VMTREE_ERR_EXISTS) {
             result = OPAL_EBADIMAGE;
@@ -235,13 +421,8 @@ static kerrno_t map_section(struct process *proc, void *data, size_t filesz, vir
             continue;
         }
 
-        page_entry_t ptbl_flags = PTBL_USER;
-        if (flags & ELF_PF_W) {
-            ptbl_flags |= PTBL_WRITABLE;
-        }
-
         virt_addr_t map_rs =
-            pagetable_map(proc->pagetable, current_addr, pfn_to_phys(pfn), size, ptbl_flags);
+            pagetable_map(ptbl, current_addr, pfn_to_phys(pfn), size, area->ptbl_flags);
         if (map_rs == 0) {
             mm_free_page(pfn, order);
             goto err_alloc;
@@ -273,10 +454,11 @@ static kerrno_t map_section(struct process *proc, void *data, size_t filesz, vir
     return OPAL_OK;
 
 err_alloc:
-    free_mapped_range(proc, addr, current_addr - addr);
-    pagetable_unmap(proc->pagetable, addr, current_addr - addr, false);
-    vmtree_remove(&proc->vmtree, addr, addr + memsz);
+    free_mapped_range(ptbl, addr, current_addr - addr);
+    pagetable_unmap(ptbl, addr, current_addr - addr, false);
+    vmtree_remove(vmtree, addr, addr + memsz);
 err:
+    kfree(area, sizeof(*area));
     irqlock_release(&irqlock);
     return result;
 }
@@ -286,8 +468,8 @@ static void process_entry(void) {
     enter_userland(kstack[0], kstack[1]);
 }
 
-taskptr_t process_create_usertask(struct process *proc, virt_addr_t entry, virt_addr_t stack,
-    virt_size_t stack_size, enum task_priority priority) {
+static taskptr_t process_create_usertask_suspended(struct process *proc, virt_addr_t entry,
+    virt_addr_t stack, virt_size_t stack_size, enum task_priority priority) {
     taskptr_t task = task_create(proc, process_entry, priority);
     if (!task.ptr) {
         return task;
@@ -296,12 +478,21 @@ taskptr_t process_create_usertask(struct process *proc, virt_addr_t entry, virt_
     virt_addr_t *kstack = task.ptr->kstack;
     kstack[0] = entry;
     kstack[1] = stack + stack_size;
-    task_resume(task.ptr);
 
     return task;
 }
 
-kerrno_t process_load_elf(struct process *proc, void *elf, size_t size, taskptr_t *out) {
+taskptr_t process_create_usertask(struct process *proc, virt_addr_t entry, virt_addr_t stack,
+    virt_size_t stack_size, enum task_priority priority) {
+    taskptr_t task = process_create_usertask_suspended(proc, entry, stack, stack_size, priority);
+    if (task.ptr) {
+        task_resume(task.ptr);
+    }
+    return task;
+}
+
+static kerrno_t load_elf_image(struct pagetable *ptbl, struct vmtree *vmtree, void *elf,
+    size_t size, virt_addr_t *entry_out, virt_addr_t *stack_out, virt_size_t *stack_size_out) {
     if (size < sizeof(struct elf64_header)) {
         return OPAL_EBADIMAGE;
     }
@@ -394,20 +585,36 @@ kerrno_t process_load_elf(struct process *proc, void *elf, size_t size, taskptr_
             return OPAL_ENOEXEC;
         }
 
-        kerrno_t result = map_section(
-            proc, bytes + phdr->offset, phdr->filesz, phdr->vaddr, phdr->memsz, phdr->flags);
+        kerrno_t result = map_section(ptbl, vmtree, bytes + phdr->offset, phdr->filesz, phdr->vaddr,
+            phdr->memsz, phdr->flags);
         if (!kerrno_ok(result)) {
             return result;
         }
     }
 
-    kerrno_t result = map_section(proc, NULL, 0, ustack_bottom, PAGE_SIZE, ELF_PF_R | ELF_PF_W);
+    kerrno_t result =
+        map_section(ptbl, vmtree, NULL, 0, ustack_bottom, PAGE_SIZE, ELF_PF_R | ELF_PF_W);
     if (!kerrno_ok(result)) {
         return result;
     }
 
-    *out =
-        process_create_usertask(proc, hdr->entry, ustack_bottom, PAGE_SIZE, TASK_PRIORITY_NORMAL);
+    *entry_out = hdr->entry;
+    *stack_out = ustack_bottom;
+    *stack_size_out = PAGE_SIZE;
+    return OPAL_OK;
+}
+
+kerrno_t process_load_elf(struct process *proc, void *elf, size_t size, taskptr_t *out) {
+    virt_addr_t entry;
+    virt_addr_t stack;
+    virt_size_t stack_size;
+    kerrno_t result =
+        load_elf_image(proc->pagetable, &proc->vmtree, elf, size, &entry, &stack, &stack_size);
+    if (!kerrno_ok(result)) {
+        return result;
+    }
+
+    *out = process_create_usertask(proc, entry, stack, stack_size, TASK_PRIORITY_NORMAL);
     if (!out->ptr) {
         return OPAL_ENOMEM;
     }
@@ -444,6 +651,62 @@ static kerrno_t read_file_all(struct file *file, void **buf_out, size_t *len_out
     *len_out = len;
     return OPAL_OK;
 
+err_buf:
+    kfree(buf, len);
+    return result;
+}
+
+kerrno_t process_exec_elf_file(struct process *proc, struct file *file, taskptr_t *task_out) {
+    if (!process_has_current_task_only(proc)) {
+        return OPAL_EBUSY;
+    }
+
+    void *buf;
+    size_t len;
+    kerrno_t result = read_file_all(file, &buf, &len);
+    if (!kerrno_ok(result)) {
+        return result;
+    }
+
+    struct process_image image;
+    result = process_image_create(&image);
+    if (!kerrno_ok(result)) {
+        goto err_buf;
+    }
+
+    virt_addr_t entry;
+    virt_addr_t stack;
+    virt_size_t stack_size;
+    result = load_elf_image(image.pagetable, &image.vmtree, buf, len, &entry, &stack, &stack_size);
+    if (!kerrno_ok(result)) {
+        goto err_image;
+    }
+
+    taskptr_t task =
+        process_create_usertask_suspended(proc, entry, stack, stack_size, TASK_PRIORITY_NORMAL);
+    if (!task.ptr) {
+        result = OPAL_ENOMEM;
+        goto err_image;
+    }
+
+    struct pagetable *old_ptbl = proc->pagetable;
+    struct vmtree old_vmtree;
+    vmtree_move(&old_vmtree, &proc->vmtree);
+
+    proc->pagetable = image.pagetable;
+    vmtree_move(&proc->vmtree, &image.vmtree);
+    if (proc == process_current()) {
+        pagetable_apply(proc->pagetable);
+    }
+
+    process_image_destroy_parts(old_ptbl, &old_vmtree);
+    kfree(buf, len);
+
+    *task_out = task;
+    return OPAL_OK;
+
+err_image:
+    process_image_destroy(&image);
 err_buf:
     kfree(buf, len);
     return result;

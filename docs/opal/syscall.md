@@ -29,6 +29,8 @@
 - `SYS_IOCTL`: `fd`, `op`, `arg`를 받아 `file_ioctl()` 결과를 반환합니다.
 - `SYS_MOUNT`: `fstype`, `arg`, `path`를 받아 파일시스템을 마운트합니다. 현재 block device 인자(`arg != 0`)는 지원하지 않습니다.
 - `SYS_PIPE`: pipe를 만들고 `ret0=read_fd`, `ret1=write_fd`를 반환합니다.
+- `SYS_FORK`: 현재 프로세스를 복제합니다. parent는 child pid, child는 `0`을 반환합니다.
+- `SYS_EXEC`: FD로 열린 ELF를 현재 프로세스 이미지로 교체합니다. 성공하면 호출 태스크로 반환하지 않습니다.
 
 ## 파일 디스크립터 동작
 - FD 소유자는 프로세스(`struct process`)입니다.

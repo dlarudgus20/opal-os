@@ -50,3 +50,31 @@ enter_userland_asm:
     xor r14, r14
     xor r15, r15
     iretq
+
+; void return_to_userland(const struct isr_stackframe *frame);
+global return_to_userland
+return_to_userland:
+    cli
+    mov rsp, rdi
+    pop gs
+    pop fs
+    pop rax
+    mov es, ax
+    pop rax
+    mov ds, ax
+    pop r15
+    pop r14
+    pop r13
+    pop r12
+    pop r11
+    pop r10
+    pop r9
+    pop r8
+    pop rsi
+    pop rdi
+    pop rdx
+    pop rcx
+    pop rbx
+    pop rax
+    pop rbp
+    iretq

@@ -17,6 +17,7 @@
 - [`utils/xarray.md`](utils/xarray.md): 희소 인덱스 압축 배열
 - [`task/task.md`](task/task.md): 태스크/스케줄러
 - [`task/process.md`](task/process.md): 프로세스 수명/ELF 로딩/FD 테이블
+- [`task/fork-exec.md`](task/fork-exec.md): fork/exec 구현 구조
 - [`task/coroutine.md`](task/coroutine.md): 코루틴 워커 큐와 핸들러 상태 전이 계약
 - [`fs/disk.md`](fs/disk.md): 물리 disk 계층, 요청 큐/완료 모델, 파티션 스캔/리셋
 - [`fs/block_device.md`](fs/block_device.md): block device 공통 계층과 요청 큐 모델

@@ -233,8 +233,46 @@ err:
     sysret->ret0 = result;
 }
 
-struct sysret syscall_dispatch(uintptr_t arg0, uintptr_t arg1, uintptr_t arg2, uintptr_t arg3,
-    uintptr_t arg4, uintptr_t arg5) {
+static intptr_t syscall_fork(struct isr_stackframe *frame) {
+    procptr_t proc;
+    taskptr_t task;
+    kerrno_t result = process_fork(frame, &proc, &task);
+    if (!kerrno_ok(result)) {
+        return result;
+    }
+
+    pid_t pid = proc.ptr->id;
+    task_resume(task.ptr);
+    task_release(task);
+    process_release(proc);
+    return pid;
+}
+
+static intptr_t syscall_exec(uintptr_t arg1) {
+    if (arg1 > FD_MAX) {
+        return OPAL_EINVAL;
+    }
+
+    struct process *proc = process_current();
+    struct file *file = process_get_file(proc, (fd_t)arg1);
+    if (!file) {
+        return OPAL_ENOENT;
+    }
+
+    taskptr_t task;
+    kerrno_t result = process_exec_elf_file(proc, file, &task);
+    file_release(file);
+    if (!kerrno_ok(result)) {
+        return result;
+    }
+
+    task_resume(task.ptr);
+    task_release(task);
+    task_exit();
+}
+
+struct sysret syscall_dispatch(struct isr_stackframe *frame, uintptr_t arg0, uintptr_t arg1,
+    uintptr_t arg2, uintptr_t arg3, uintptr_t arg4, uintptr_t arg5) {
     struct sysret sysret = { -1, 0, 0 };
     switch (arg0) {
         case SYS_TASK_EXIT:
@@ -264,6 +302,12 @@ struct sysret syscall_dispatch(uintptr_t arg0, uintptr_t arg1, uintptr_t arg2, u
             break;
         case SYS_PIPE:
             syscall_pipe(&sysret);
+            break;
+        case SYS_FORK:
+            sysret.ret0 = syscall_fork(frame);
+            break;
+        case SYS_EXEC:
+            sysret.ret0 = syscall_exec(arg1);
             break;
     }
     (void)arg4;

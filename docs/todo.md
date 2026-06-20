@@ -62,3 +62,9 @@
    - 내용: `fat_mount()`는 VBR를 읽고 `parse_bpb()`만 수행하며, `vbr.buffer[510..511] == 0x55,0xAA` 확인이 없다.
    - 영향: 손상/비정상 섹터가 BPB 필드만 우연히 맞으면 FAT로 오인 마운트될 수 있다.
    - 개선점: `fat_mount()`에서 `parse_bpb()` 이전에 시그니처를 먼저 검증하고, 불일치 시 `OPAL_ENOENT` 반환.
+
+8. fops 직접 read 호출 시 file mode 검사 우회
+   - 위치: `kernel/src/task/process.c:read_file_all()`, `kernel/src/fs/vfs.c:file_read()`
+   - 내용: `file_read()`는 `FILE_READ` 권한과 file position lock을 처리하지만, `read_file_all()`은 `file->ops->read`를 직접 호출한다.
+   - 영향: fops 구현별로 자체 mode 검사가 없으면 쓰기 전용 fd로도 파일 내용을 읽는 경로가 생긴다. `fat_file_read()`와 `pipe_file_read()` 등은 현재 공통 `file_read()` 검사를 전제로 한다.
+   - 개선점: `read_file_all()`이 `file_read()`/`file_seek()` 같은 공통 wrapper를 사용하게 하거나, fops 직접 호출 전 `FILE_READ` 계약을 명시적으로 검사한다.

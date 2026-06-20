@@ -26,7 +26,7 @@ ifeq ($(QEMU_DISPNONE),1)
 QEMU_FLAGS += -display none
 endif # QEMU_DISPNONE
 
-SUBDIRS     := test-pch kernel libkubsan libkc libpanicimpl libcoll
+SUBDIRS     := test-pch kernel uinit utest opsh libkubsan libkc libpanicimpl libcoll
 
 all: build
 
@@ -47,11 +47,24 @@ $(ISO_FILE): build
 	cp $(KERNEL_BIN) $(ISO_DIR)/boot/kernel.sys
 	grub-mkrescue -o $(ISO_FILE) $(ISO_DIR)
 
-$(INITRAMFS): .FORCE
+UINIT := uinit/$(BUILD_DIR)/uinit.elf
+$(UINIT): .FORCE
+	$(MAKE) -C uinit
+
+UTEST := utest/$(BUILD_DIR)/utest.elf
+$(UTEST): .FORCE
+	$(MAKE) -C utest
+
+OPSH := opsh/$(BUILD_DIR)/opsh.elf
+$(OPSH): .FORCE
 	$(MAKE) -C opsh
+
+$(INITRAMFS): $(UINIT) $(UTEST) $(OPSH) .FORCE
 	rm -rf $(INITRAMFS_DIR)
 	cp -rT initramfs $(INITRAMFS_DIR)
-	cp opsh/$(BUILD_DIR)/opsh.elf $(INITRAMFS_DIR)/opsh.elf
+	cp $(UINIT) $(INITRAMFS_DIR)/uinit
+	cp $(UTEST) $(INITRAMFS_DIR)/utest
+	cp $(OPSH) $(INITRAMFS_DIR)/opsh
 	@mkdir -p $(dir $@)
 	(cd $(INITRAMFS_DIR); find .) | cpio -o -H newc -D $(INITRAMFS_DIR) > $(INITRAMFS)
 

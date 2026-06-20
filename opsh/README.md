@@ -1,13 +1,9 @@
 # opsh
 
-`opsh`는 사용자 모드에서 동작하는 테스트 프로그램입니다.
+`opsh`는 exec 테스트용 프로그램입니다.
 
 ## 빌드
 - 루트 빌드에 포함:
   - `make iso` 시 `$(MAKE) -C opsh`가 수행됩니다.
 - 단독 빌드:
   - `make -C opsh`
-
-## initramfs 연동
-- ISO 생성 시 `opsh.elf`가 initramfs에 복사됩니다.
-- 커널에서 `exec /opsh.elf`로 실행할 수 있습니다.

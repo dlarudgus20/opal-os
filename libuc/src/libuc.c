@@ -18,6 +18,8 @@ enum syscall_index : uint64_t {
     SYS_IOCTL,
     SYS_MOUNT,
     SYS_PIPE,
+    SYS_FORK,
+    SYS_EXEC,
 };
 
 typedef struct sysret {
@@ -37,6 +39,13 @@ static sysret_t syscall(enum syscall_index index, uint64_t arg0, uint64_t arg1, 
         : "memory", "cc"
     ); // clang-format on
     return (sysret_t){ rax, rcx, r11 };
+}
+
+static int assume_int(int64_t ret) {
+    if (ret < INT_MIN || ret > INT_MAX) {
+        unreachable();
+    }
+    return (int)ret;
 }
 
 void task_exit(void) {
@@ -103,27 +112,27 @@ void _panic_format(const char *msg, const char *file, const char *func, unsigned
 
 int open(int fd, const char *path, enum open_mode mode) {
     sysret_t ret = syscall(SYS_OPEN, (uint64_t)fd, (uint64_t)path, mode);
-    return (int)ret.ret0;
+    return assume_int(ret.ret0);
 }
 
 int close(int fd) {
     sysret_t ret = syscall(SYS_CLOSE, (uint64_t)fd, 0, 0);
-    return (int)ret.ret0;
+    return assume_int(ret.ret0);
 }
 
 int dup(int oldfd, int newfd) {
     sysret_t ret = syscall(SYS_DUP, (uint64_t)oldfd, (uint64_t)newfd, 0);
-    return (int)ret.ret0;
+    return assume_int(ret.ret0);
 }
 
 ssize_t read(int fd, void *buffer, size_t size) {
     sysret_t ret = syscall(SYS_READ, (uint64_t)fd, (uint64_t)buffer, size);
-    return (ssize_t)ret.ret0;
+    return ret.ret0;
 }
 
 ssize_t write(int fd, const void *buffer, size_t size) {
     sysret_t ret = syscall(SYS_WRITE, (uint64_t)fd, (uint64_t)buffer, size);
-    return (ssize_t)ret.ret0;
+    return ret.ret0;
 }
 
 long ioctl(int fd, unsigned long op, unsigned long arg) {
@@ -132,15 +141,25 @@ long ioctl(int fd, unsigned long op, unsigned long arg) {
 
 int mount(const char *fstype, int arg, const char *path) {
     sysret_t ret = syscall(SYS_MOUNT, (uint64_t)fstype, (uint64_t)arg, (uint64_t)path);
-    return (int)ret.ret0;
+    return assume_int(ret.ret0);
 }
 
 int pipe(int fds[2]) {
     sysret_t ret = syscall(SYS_PIPE, 0, 0, 0);
     if (ret.ret0 < 0) {
-        return (int)ret.ret0;
+        return assume_int(ret.ret0);
     }
-    fds[0] = (int)ret.ret0;
-    fds[1] = (int)ret.ret1;
+    fds[0] = assume_int(ret.ret0);
+    fds[1] = assume_int(ret.ret1);
     return 0;
+}
+
+pid_t fork(void) {
+    sysret_t ret = syscall(SYS_FORK, 0, 0, 0);
+    return assume_int(ret.ret0);
+}
+
+int exec(int fd) {
+    sysret_t ret = syscall(SYS_EXEC, (uint64_t)fd, 0, 0);
+    return assume_int(ret.ret0);
 }
