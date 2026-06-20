@@ -2,7 +2,8 @@
 
 - [`boot.md`](boot.md): 부팅 초기화 순서와 부트 인자 파싱
 - [`interrupt-io.md`](interrupt-io.md): 인터럽트/입력/시리얼 IO 경로
-- [`tty.md`](tty.md): `tty0`, framebuffer TTY, UART TTY, 입력 버퍼 경로
+- [`tty.md`](tty.md): 커널 `tty0`, UART TTY, 커널 입력 버퍼 경로
+- [`devices.md`](devices.md): 커널이 제공하는 장치 파일 계약
 - [`shell.md`](shell.md): 커널 shell 구현
 - [`syscall.md`](syscall.md): syscall ABI와 커널 디스패치 경로
 - [`klog.md`](klog.md): 커널 로그 버퍼와 읽기/쓰기 API 계약

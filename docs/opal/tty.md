@@ -1,21 +1,18 @@
-# TTY / Console Path
+# Kernel TTY / Console Path
 
 ## 개요
 - 구현:
   - `kernel/src/tty/tty.c`
   - `kernel/src/tty/uart_tty.c`
-  - `kernel/src/tty/fb_tty.c`
-  - `kernel/src/hid/hid.c`
 - `tty0`는 전역 콘솔 fan-out 지점이다
-- 출력은 등록된 sub-tty들로 전파되고, 입력은 `tty0` 내부 ringbuffer에 모인다
+- 커널 로그와 커널 shell 출력은 등록된 sub-tty들로 전파된다
+- 커널 shell 입력은 `tty0` 내부 ringbuffer에 모인다
 
 ## 출력 경로
 - `tty0_puts()`/`tty0_printf()`는 `tty0`에 연결된 sub-tty로 fan-out 된다
 - 현재 주된 sub-tty:
-  - framebuffer TTY
   - 기본 UART TTY
 - buffered TTY는 내부 버퍼를 사용하고, 기본적으로 `'\n'`이 포함된 출력에서 flush된다
-- framebuffer TTY는 출력이 곧바로 화면 상태를 바꾸므로 flush 의미가 약하다
 - UART TTY는 상위 `tty_buffered`와 UART 내부 TX 큐를 함께 사용하므로 flush 시점이 가시성에 직접 영향을 준다
 - `tty0_getchar()`는 입력 대기 직전에 `tty0_flush()`를 호출해 지연된 prompt가 먼저 보이게 한다
 - 따라서 prompt처럼 개행 없는 출력은 입력 대기 전에 flush가 필요하다
@@ -41,10 +38,6 @@
 - 따라서 긴 줄이 들어오면 앞부분만 반환되고, 초과 입력은 복구되지 않는다
 
 ## 입력 소스별 정책
-- 키보드:
-  - `hid_report_key()` -> `process_keycode()` -> printable char -> `tty0_put_input()`
-  - 키보드 로컬 echo는 framebuffer TTY에만 출력한다
-  - lock key 상태(`CapsLock`/`NumLock`/`ScrollLock`)는 HID 계층에서 관리한다
 - 시리얼:
   - UART ISR이 RX 바이트를 소프트웨어 RX 큐에 적재
   - `IRQMSG_UART_RX` bottom-half가 `uart_try_read()` 후 `tty0_put_input()` 호출
@@ -60,4 +53,3 @@
 ## 현재 제약
 - line editing은 아직 없다. `tty0_getline()`은 `'\n'`만 줄 종료로 해석한다
 - 입력 overflow는 drop 정책이며, 손실 여부를 별도 에러로 보고하지 않는다
-- 키보드 echo와 시리얼 echo는 의도적으로 서로 분리되어 있다

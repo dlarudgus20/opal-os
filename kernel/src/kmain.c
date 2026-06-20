@@ -43,8 +43,9 @@ void kmain(void) {
 
     boot_init();
     kargs_init();
-
     mm_init();
+
+    vfs_init();
     fb_init();
     hid_init();
 
@@ -52,7 +53,6 @@ void kmain(void) {
     timer_init();
     sched_init();
 
-    vfs_init();
     drivers_init();
     all_disks_register_bdev();
 
