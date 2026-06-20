@@ -8,11 +8,7 @@
 #include <opal/fb/fb.h>
 #include <opal/locks/irqlock.h>
 
-struct hid_char {
-    bool raw;
-    char ch;
-    hid_keycode_t keycode;
-};
+#include "hid_inode.h"
 
 struct hid_keyboard_state {
     bool caps;
@@ -64,32 +60,26 @@ void hid_init(void) {
     if (fb_is_available()) {
         cursor_init();
     }
+
+    hid_inode_init();
 }
 
-static void on_key(hid_keycode_t keycode, bool pressed) {
+void hid_report_key(hid_keycode_t keycode, bool pressed) {
+    if (keycode >= HID_KEYCODE_COUNT) {
+        const char *pressed_str = pressed ? "pressed" : "released";
+        kdebug("hid: unrecognized key %u %s", keycode, pressed_str);
+        return;
+    }
+
     irqlock_t irqlock = irqlock_acquire();
 
     g_keys[keycode] = pressed;
     if (pressed) {
-        struct hid_char ch = process_keycode(keycode);
-        if (!ch.raw) {
-            tty0_put_input(&ch.ch, 1);
-            //if (fb_is_available()) {
-            //    tty_puts_len(&fb_tty_get()->tty, &ch.ch, 1);
-            //}
-        }
+        struct hid_char input = process_keycode(keycode);
+        hid_inode_onkey(&input);
     }
 
     irqlock_release(&irqlock);
-}
-
-void hid_report_key(hid_keycode_t keycode, bool pressed) {
-    if (keycode < HID_KEYCODE_COUNT) {
-        on_key(keycode, pressed);
-    } else {
-        const char *pressed_str = pressed ? "pressed" : "released";
-        kdebug("hid: unrecognized key %u %s", keycode, pressed_str);
-    }
 }
 
 void hid_report_pointer(int16_t dx, int16_t dy, uint8_t buttons) {

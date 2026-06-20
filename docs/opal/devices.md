@@ -39,3 +39,23 @@
 - `6`: scroll up
   - `arg`는 0이어야 한다
   - 화면 내용을 한 줄 위로 올리고 마지막 줄을 지운다
+
+## `/dev/hid`
+- 구현: `kernel/src/hid/hid_inode.c`
+- open mode:
+  - `OPEN_NONE`
+  - `OPEN_READ`
+- `read`는 byte stream이 아니라 `struct hid_char` packet 배열을 반환한다.
+
+```c
+struct hid_char {
+    bool raw;
+    char ch;
+    hid_keycode_t keycode;
+};
+```
+
+- `raw == false`: `ch`에 printable/input 문자가 들어 있다.
+- `raw == true`: 문자로 변환되지 않는 키이며 `keycode`를 봐야 한다.
+- read buffer 크기는 `sizeof(struct hid_char)` 이상이어야 한다.
+- 입력이 없으면 reader는 이벤트를 기다린다.

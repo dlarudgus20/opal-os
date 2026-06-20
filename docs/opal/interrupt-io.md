@@ -34,7 +34,8 @@
 - 키 이벤트:
   - `hid_report_key()`가 pressed 상태 배열 갱신
   - `CapsLock`/`NumLock`/`ScrollLock`은 HID 계층에서 토글 상태로 관리
-  - printable key는 `tty0` 입력 경로로 전달
+  - 키 입력은 `kernel/src/hid/hid_inode.c`의 `/dev/hid` packet reader로 전달
+  - printable key는 문자 packet으로, 문자로 변환되지 않는 키는 raw keycode packet으로 전달
 - 포인터 이벤트:
   - `hid_report_pointer()`가 framebuffer 경계 내로 좌표 clamp
   - 커서 사각형 invert 방식으로 이동 표시
