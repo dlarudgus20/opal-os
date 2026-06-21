@@ -10,6 +10,7 @@ enum syscall_index : uint64_t {
     SYS_OPEN,
     SYS_CLOSE,
     SYS_DUP,
+    SYS_STAT,
     SYS_READ,
     SYS_WRITE,
     SYS_IOCTL,

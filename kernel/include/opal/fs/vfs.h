@@ -9,11 +9,13 @@
 
 #define VFS_MAX_NAME UINT16_MAX
 
-enum inode_flags {
+enum inode_flags : uint16_t {
     INODE_NORMAL = 0,
     INODE_DIR = 0x1,
     INODE_DEV = 0x2,
     INODE_PIPE = 0x4,
+
+    INODE_MASK_ALL = INODE_DIR | INODE_DEV | INODE_PIPE,
 };
 
 enum open_mode : uint16_t {
@@ -64,11 +66,35 @@ struct superblock {
     struct inode *root;
 };
 
+#define INODE_DIRENT_SHORTLEN 22
+
+struct inode_dirent {
+    fs_size_t id;
+    const char *name;
+    uint16_t name_len;
+    enum inode_flags flags;
+    char shortname[INODE_DIRENT_SHORTLEN];
+};
+
+// returns false to stop the iteration.
+typedef bool (*inode_iterate_dir_cb)(
+    struct inode *inode, fs_size_t index, const struct inode_dirent *entry, void *ctx);
+
+struct dirent {
+    uint32_t next_offset;
+    uint16_t name_len;
+    uint16_t flags;
+    char name[];
+};
+
 struct inode_ops {
     void (*close)(struct inode *inode);
     kerrno_t (*open)(struct inode *inode, enum open_mode mode, struct file **file_out);
-    kerrno_t (*lookup)(struct inode *inode, struct path_entry *pe);
-    kerrno_t (*create)(struct inode *inode, struct path_entry *pe, enum inode_flags flags);
+    kerrno_t (*iterate_dir)(
+        struct inode *inode, fs_size_t start_index, inode_iterate_dir_cb callback, void *ctx);
+    kerrno_t (*get_child)(struct inode *inode, fs_size_t dirent_id, struct inode **child_out);
+    kerrno_t (*create_child)(struct inode *inode, const struct hstr *name, enum inode_flags flags,
+        struct inode **child_out);
 };
 
 struct inode {
@@ -88,6 +114,7 @@ struct file_ops {
 
 struct file {
     const struct file_ops *ops;
+    struct inode *inode;
     unsigned refcount;
     enum file_mode mode;
 
@@ -119,14 +146,16 @@ kerrno_t path_entry_open(struct path_entry *pe, enum open_mode mode, struct file
 
 void superblock_init(struct superblock *sb, const struct superblock_ops *ops);
 
-void inode_init(struct inode *inode, const struct inode_ops *ops);
+void inode_init(struct inode *inode, const struct inode_ops *ops, enum inode_flags flags);
 void inode_retain(struct inode *inode);
 void inode_release(struct inode *inode);
 
-void file_init(struct file *file, const struct file_ops *ops, enum file_mode mode);
+void file_init(
+    struct file *file, const struct file_ops *ops, enum file_mode mode, struct inode *inode);
 void file_retain(struct file *file);
 void file_release(struct file *file);
 
+fs_uint_or_err file_stat(struct file *file);
 fs_ssize_t file_seek(struct file *file, fs_off_t offset, enum fs_seek origin);
 fs_ssize_t file_read(struct file *file, void *buffer, fs_size_t size);
 fs_ssize_t file_write(struct file *file, const void *buffer, fs_size_t size);

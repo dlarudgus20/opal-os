@@ -11,6 +11,7 @@ enum kerrno {
     OPAL_EEXIST = -5,
     OPAL_ERANGE = -6,
     OPAL_EINVAL = -7,
+    OPAL_EBUFSIZE = -8,
     OPAL_ETOOBIG = -10,
     OPAL_ENOTSUPP = -11,
     OPAL_ENOSPC = -12,

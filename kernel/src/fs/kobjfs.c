@@ -10,35 +10,37 @@
 
 struct kodir_file {
     struct file file;
-    struct kodir_inode *inode;
 };
 
 static const struct superblock_ops g_sb_ops;
 static const struct inode_ops g_kodir_ops;
 static const struct file_ops g_kodir_fops;
 
-static bool kodir_init(struct kodir_inode *dir, const char *name);
+static bool kodir_init(struct kobjfs *fs, struct kodir_inode *dir, const char *name);
 
 void kobjfs_init(struct kobjfs *sb) {
     superblock_init(&sb->sb, &g_sb_ops);
-    kodir_init(&sb->root, "");
+    sb->next_ino = 1;
+    kodir_init(sb, &sb->root, "");
     sb->sb.root = &sb->root.inode;
 }
 
 void kobjfs_inode_init(struct ko_inode *inode, const struct inode_ops *ops, const char *name) {
-    inode_init(&inode->inode, ops);
-    inode->inode.flags = INODE_DEV;
+    inode_init(&inode->inode, ops, INODE_DEV);
+    inode->ino = 0;
     inode->is_kodir = false;
     inode->name = name;
 }
 
 void kobjfs_dir_add_inode(struct kodir_inode *dir, struct ko_inode *child) {
+    kassert(child->ino == 0);
     irqlock_t irqlock = irqlock_acquire();
+    child->ino = dir->fs->next_ino++;
     linkedlist_push_back(&dir->children, &child->link);
     irqlock_release(&irqlock);
 }
 
-static bool kodir_init(struct kodir_inode *dir, const char *name) {
+static bool kodir_init(struct kobjfs *fs, struct kodir_inode *dir, const char *name) {
     size_t len = strnlen_s(name, KODIR_NAME_MAXLEN + 1);
     if (len > KODIR_NAME_MAXLEN) {
         return false;
@@ -58,8 +60,9 @@ static bool kodir_init(struct kodir_inode *dir, const char *name) {
     memcpy(namebuf, name, len + 1);
     dir->ko_inode.name = namebuf;
 
-    inode_init(&dir->inode, &g_kodir_ops);
-    dir->inode.flags = INODE_DIR;
+    inode_init(&dir->inode, &g_kodir_ops, INODE_DIR);
+    dir->fs = fs;
+    dir->ko_inode.ino = fs->next_ino++;
     dir->ko_inode.is_kodir = true;
     linkedlist_init(&dir->children);
     return true;
@@ -88,7 +91,7 @@ kerrno_t kobjfs_get_subdir(struct kodir_inode *dir, const char *name, struct kod
         goto ret;
     }
 
-    if (!kodir_init(sub, name)) {
+    if (!kodir_init(dir->fs, sub, name)) {
         kfree(sub, sizeof(*sub));
         err = OPAL_ENOMEM;
         goto ret;
@@ -126,65 +129,77 @@ static kerrno_t kodir_inode_open(struct inode *inode, enum open_mode mode, struc
         return OPAL_EISDIR;
     }
 
-    struct kodir_inode *kodir = container_of(inode, typeof(*kodir), inode);
     struct kodir_file *file = kzalloc(sizeof(*file));
     if (!file) {
         return OPAL_ENOMEM;
     }
-    file_init(&file->file, &g_kodir_fops, fmode_from_omode(mode));
-    inode_retain(inode);
-    file->inode = kodir;
+    file_init(&file->file, &g_kodir_fops, fmode_from_omode(mode), inode);
     *file_out = &file->file;
     return OPAL_OK;
 }
 
-static kerrno_t kodir_inode_lookup(struct inode *inode, struct path_entry *pe) {
+static kerrno_t kodir_inode_iterate_dir(
+    struct inode *inode, fs_size_t start_index, inode_iterate_dir_cb callback, void *ctx) {
     struct kodir_inode *kodir = container_of(inode, typeof(*kodir), inode);
 
     irqlock_t irqlock = irqlock_acquire();
-    kerrno_t result = OPAL_OK;
-
-    struct path_entry *out;
+    fs_size_t index = 0;
     linkedlist_foreach(ptr, &kodir->children) {
         struct ko_inode *child = container_of(ptr, typeof(*child), link);
-
-        struct hstr name = hstrdup(child->name);
-        if (hstr_is_null(&name)) {
-            result = OPAL_ENOMEM;
-            goto err;
+        if (index++ < start_index) {
+            continue;
         }
 
-        result = path_entry_add(pe, &child->inode, &name, &out);
-        if (!kerrno_ok(result)) {
-            hstr_free(&name);
-            if (result != OPAL_EEXIST) {
-                goto err;
-            }
-        } else {
-            path_entry_release(out);
+        size_t name_len = strlen(child->name);
+        kassert(name_len <= UINT16_MAX);
+        struct inode_dirent entry = {
+            .id = child->ino,
+            .name = child->name,
+            .name_len = (uint16_t)name_len,
+            .flags = child->inode.flags,
+        };
+        if (!callback(inode, index - 1, &entry, ctx)) {
+            break;
         }
     }
 
-    result = OPAL_OK;
-err:
     irqlock_release(&irqlock);
-    return result;
+    return OPAL_OK;
 }
 
-static kerrno_t kodir_inode_create(struct inode *, struct path_entry *, enum inode_flags) {
+static kerrno_t kodir_inode_get_child(
+    struct inode *inode, fs_size_t dirent_id, struct inode **child_out) {
+    struct kodir_inode *kodir = container_of(inode, typeof(*kodir), inode);
+
+    irqlock_t irqlock = irqlock_acquire();
+    linkedlist_foreach(ptr, &kodir->children) {
+        struct ko_inode *child = container_of(ptr, typeof(*child), link);
+        if (child->ino == dirent_id) {
+            *child_out = &child->inode;
+            irqlock_release(&irqlock);
+            return OPAL_OK;
+        }
+    }
+
+    irqlock_release(&irqlock);
+    return OPAL_ENOENT;
+}
+
+static kerrno_t kodir_inode_create_child(
+    struct inode *, const struct hstr *, enum inode_flags, struct inode **) {
     return OPAL_ENOTSUPP;
 }
 
 static const struct inode_ops g_kodir_ops = {
     .close = kodir_inode_close,
     .open = kodir_inode_open,
-    .lookup = kodir_inode_lookup,
-    .create = kodir_inode_create,
+    .iterate_dir = kodir_inode_iterate_dir,
+    .get_child = kodir_inode_get_child,
+    .create_child = kodir_inode_create_child,
 };
 
 static void kodir_file_close(struct file *base) {
     struct kodir_file *file = container_of(base, typeof(*file), file);
-    inode_release(&file->inode->inode);
     kfree(file, sizeof(*file));
 }
 

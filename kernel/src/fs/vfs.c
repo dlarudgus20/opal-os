@@ -1,4 +1,5 @@
 #include <limits.h>
+#include <stdalign.h>
 
 #include <kc/kassert.h>
 #include <kc/stdlib.h>
@@ -13,6 +14,7 @@
 static struct path_entry g_root;
 
 static void path_entry_init_empty(struct path_entry *pe);
+static fs_ssize_t file_dir_read(struct file *file, fs_size_t *pos, void *buffer, fs_size_t size);
 
 void vfs_init(void) {
     path_entry_init_empty(&g_root);
@@ -223,6 +225,27 @@ static struct path_entry *find_child(struct path_entry *parent, const struct hst
     return NULL;
 }
 
+struct path_lookup_ctx {
+    const struct hstr *name;
+    struct inode_dirent entry;
+    bool found;
+};
+
+static bool path_lookup_cb(
+    struct inode *, fs_size_t, const struct inode_dirent *entry, void *ctx_) {
+    struct path_lookup_ctx *ctx = ctx_;
+    if (entry->name_len != hstrlen(ctx->name)) {
+        return true;
+    }
+    if (memcmp(entry->name, hstrget(ctx->name), entry->name_len) != 0) {
+        return true;
+    }
+
+    ctx->entry = *entry;
+    ctx->found = true;
+    return false;
+}
+
 kerrno_t path_entry_lookup(
     struct path_entry *pe, const char *name, size_t len, struct path_entry **found) {
     // On error, returns with `found == NULL`
@@ -236,6 +259,9 @@ kerrno_t path_entry_lookup(
     if (len > VFS_MAX_NAME) {
         return OPAL_ENOENT;
     }
+    if (!pe->inode || !(pe->inode->flags & INODE_DIR)) {
+        return OPAL_ENOTDIR;
+    }
 
     struct hstr hs = hstr_stack(name, len);
     struct path_entry *child = find_child(pe, &hs);
@@ -244,19 +270,42 @@ kerrno_t path_entry_lookup(
         return child->inode ? OPAL_OK : OPAL_ENOENT;
     }
 
-    kerrno_t result = pe->inode->ops->lookup(pe->inode, pe);
+    if (!pe->inode->ops->iterate_dir || !pe->inode->ops->get_child) {
+        return OPAL_ENOTSUPP;
+    }
+
+    struct path_lookup_ctx ctx = {
+        .name = &hs,
+        .found = false,
+    };
+    kerrno_t result = pe->inode->ops->iterate_dir(pe->inode, 0, path_lookup_cb, &ctx);
     if (!kerrno_ok(result)) {
         return result;
     }
-
-    child = find_child(pe, &hs);
-    if (child) {
-        *found = child;
-        return child->inode ? OPAL_OK : OPAL_ENOENT;
+    if (!ctx.found) {
+        result = create_negative(pe, &hs, found);
+        return kerrno_ok(result) ? OPAL_ENOENT : result;
     }
 
-    result = create_negative(pe, &hs, found);
-    return kerrno_ok(result) ? OPAL_ENOENT : result;
+    struct hstr child_name = hstr_clone(&hs);
+    if (hstr_is_null(&child_name)) {
+        return OPAL_ENOMEM;
+    }
+
+    struct inode *inode = NULL;
+    result = pe->inode->ops->get_child(pe->inode, ctx.entry.id, &inode);
+    if (!kerrno_ok(result)) {
+        hstr_free(&child_name);
+        return result;
+    }
+
+    result = path_entry_add(pe, inode, &child_name, found);
+    if (!kerrno_ok(result)) {
+        hstr_free(&child_name);
+        return result;
+    }
+
+    return OPAL_OK;
 }
 
 kerrno_t path_entry_create(
@@ -269,11 +318,14 @@ kerrno_t path_entry_create(
         }
 
         struct inode *pinode = pe->parent->inode;
-        kerrno_t result = pinode->ops->create(pinode, pe, flags);
+        if (!pinode->ops->create_child) {
+            return OPAL_ENOTSUPP;
+        }
+        kerrno_t result = pinode->ops->create_child(pinode, &pe->name, flags, &inode);
         if (!kerrno_ok(result)) {
             return result;
         }
-        inode = pe->inode;
+        pe->inode = inode;
     } else if (mode & OPEN_NONEXIST) {
         return OPAL_EEXIST;
     }
@@ -305,9 +357,10 @@ void superblock_init(struct superblock *sb, const struct superblock_ops *ops) {
     sb->root = NULL;
 }
 
-void inode_init(struct inode *inode, const struct inode_ops *ops) {
+void inode_init(struct inode *inode, const struct inode_ops *ops, enum inode_flags flags) {
+    kassert((flags & ~INODE_MASK_ALL) == 0);
     inode->ops = ops;
-    inode->flags = 0;
+    inode->flags = flags;
     inode->refcount = 1;
 }
 
@@ -323,8 +376,16 @@ void inode_release(struct inode *inode) {
     }
 }
 
-void file_init(struct file *file, const struct file_ops *ops, enum file_mode mode) {
+void file_init(
+    struct file *file, const struct file_ops *ops, enum file_mode mode, struct inode *inode) {
     file->ops = ops;
+    file->inode = inode;
+    if (inode) {
+        inode_retain(inode);
+        if (inode->flags & INODE_DIR) {
+            mode |= FILE_POSLOCK;
+        }
+    }
     file->refcount = 1;
     file->mode = mode;
     file->pos = 0;
@@ -338,10 +399,18 @@ void file_retain(struct file *file) {
     file->refcount++;
 }
 
+static void file_close(struct file *file) {
+    struct inode *inode = file->inode;
+    file->ops->close(file);
+    if (inode) {
+        inode_release(inode);
+    }
+}
+
 void file_release(struct file *file) {
     kassert(file->refcount > 0);
     if (--file->refcount == 0) {
-        file->ops->close(file);
+        file_close(file);
     }
 }
 
@@ -355,6 +424,13 @@ static void file_poslock_release(struct file *file) {
     if (file->mode & FILE_POSLOCK) {
         mutex_unlock(&file->pos_mutex);
     }
+}
+
+fs_uint_or_err file_stat(struct file *file) {
+    if (!file->inode) {
+        return OPAL_ENOTSUPP;
+    }
+    return file->inode->flags;
 }
 
 fs_ssize_t file_seek(struct file *file, fs_off_t offset, enum fs_seek origin) {
@@ -376,13 +452,97 @@ fs_ssize_t file_read(struct file *file, void *buffer, fs_size_t size) {
     file_poslock_acquire(file);
 
     fs_size_t pos = file->pos;
-    fs_ssize_t n = file->ops->read(file, &pos, buffer, size);
+    fs_ssize_t n;
+    if (file->inode && (file->inode->flags & INODE_DIR)) {
+        n = file_dir_read(file, &pos, buffer, size);
+    } else {
+        n = file->ops->read(file, &pos, buffer, size);
+    }
+
     if (kerrno_ok(n)) {
         file->pos = pos;
     }
 
     file_poslock_release(file);
     return n;
+}
+
+struct file_dir_read_ctx {
+    unsigned char *buffer;
+    fs_size_t size;
+    fs_size_t written;
+    fs_size_t count;
+    kerrno_t error;
+};
+
+static fs_size_t dirent_record_size(uint16_t name_len) {
+    return align_ceil_fsz_p2(sizeof(struct dirent) + name_len, alignof(struct dirent));
+}
+
+static bool file_dir_read_cb(
+    struct inode *, fs_size_t, const struct inode_dirent *entry, void *ctx_) {
+    struct file_dir_read_ctx *ctx = ctx_;
+    fs_size_t record_size = dirent_record_size(entry->name_len);
+    if (record_size > ctx->size - ctx->written) {
+        if (ctx->written == 0) {
+            ctx->error = OPAL_EBUFSIZE;
+        }
+        return false;
+    }
+
+    struct dirent *out = (struct dirent *)(ctx->buffer + ctx->written);
+    out->next_offset = 0;
+    out->name_len = entry->name_len;
+    out->flags = entry->flags;
+    memcpy(out->name, entry->name, entry->name_len);
+    memset((unsigned char *)out + sizeof(*out) + entry->name_len, 0,
+        record_size - sizeof(*out) - entry->name_len);
+
+    ctx->written += record_size;
+    ctx->count++;
+    return true;
+}
+
+static void dirent_fix_offsets(void *buffer, fs_size_t size) {
+    fs_size_t pos = 0;
+    while (pos < size) {
+        struct dirent *entry = (struct dirent *)((unsigned char *)buffer + pos);
+        fs_size_t record_size = dirent_record_size(entry->name_len);
+        if (pos + record_size >= size) {
+            entry->next_offset = 0;
+            return;
+        }
+        entry->next_offset = (uint32_t)record_size;
+        pos += record_size;
+    }
+}
+
+static fs_ssize_t file_dir_read(struct file *file, fs_size_t *pos, void *buffer, fs_size_t size) {
+    if (size == 0) {
+        return 0;
+    }
+    if (!file->inode->ops->iterate_dir) {
+        return OPAL_ENOTSUPP;
+    }
+
+    struct file_dir_read_ctx ctx = {
+        .buffer = buffer,
+        .size = size,
+        .written = 0,
+        .count = 0,
+        .error = OPAL_OK,
+    };
+    kerrno_t result = file->inode->ops->iterate_dir(file->inode, *pos, file_dir_read_cb, &ctx);
+    if (!kerrno_ok(result)) {
+        return result;
+    }
+    if (!kerrno_ok(ctx.error)) {
+        return ctx.error;
+    }
+
+    dirent_fix_offsets(buffer, ctx.written);
+    *pos += ctx.count;
+    return (fs_ssize_t)ctx.written;
 }
 
 fs_ssize_t file_write(struct file *file, const void *buffer, fs_size_t size) {

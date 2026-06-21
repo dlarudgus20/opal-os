@@ -31,7 +31,6 @@ enum {
 
 struct fbcon_file {
     struct file file;
-    struct fbcon *con;
 };
 
 static const fb_color_t g_colors[16] = {
@@ -55,6 +54,11 @@ static const fb_color_t g_colors[16] = {
 
 static const struct inode_ops g_fbcon_ops;
 static const struct file_ops g_fbcon_fops;
+
+static struct fbcon *fbcon_from_file(struct file *file) {
+    struct ko_inode *ko = container_of(file->inode, typeof(*ko), inode);
+    return container_of(ko, struct fbcon, inode);
+}
 
 static void clear_cursor(struct fbcon *con) {
     if (!con->cursor_visible) {
@@ -156,9 +160,6 @@ static void fbcon_inode_close(struct inode *) {
 }
 
 static kerrno_t fbcon_inode_open(struct inode *inode, enum open_mode mode, struct file **file_out) {
-    struct ko_inode *ko = container_of(inode, typeof(*ko), inode);
-    struct fbcon *con = container_of(ko, typeof(*con), inode);
-
     enum open_mode fmode = mode & OPEN_MASK_FMODE;
     if (fmode != OPEN_NONE && fmode != (OPEN_WRITE | OPEN_APPEND)) {
         return OPAL_ENOTSUPP;
@@ -169,32 +170,35 @@ static kerrno_t fbcon_inode_open(struct inode *inode, enum open_mode mode, struc
         return OPAL_ENOMEM;
     }
 
-    file_init(&file->file, &g_fbcon_fops, fmode_from_omode(mode));
-    inode_retain(&con->inode.inode);
-    file->con = con;
+    file_init(&file->file, &g_fbcon_fops, fmode_from_omode(mode), inode);
 
     *file_out = &file->file;
     return OPAL_OK;
 }
 
-static kerrno_t fbcon_inode_lookup(struct inode *, struct path_entry *) {
+static kerrno_t fbcon_inode_iterate_dir(struct inode *, fs_size_t, inode_iterate_dir_cb, void *) {
     return OPAL_ENOTDIR;
 }
 
-static kerrno_t fbcon_inode_create(struct inode *, struct path_entry *, enum inode_flags) {
+static kerrno_t fbcon_inode_get_child(struct inode *, fs_size_t, struct inode **) {
+    return OPAL_ENOTDIR;
+}
+
+static kerrno_t fbcon_inode_create_child(
+    struct inode *, const struct hstr *, enum inode_flags, struct inode **) {
     return OPAL_ENOTDIR;
 }
 
 static const struct inode_ops g_fbcon_ops = {
     .close = fbcon_inode_close,
     .open = fbcon_inode_open,
-    .lookup = fbcon_inode_lookup,
-    .create = fbcon_inode_create,
+    .iterate_dir = fbcon_inode_iterate_dir,
+    .get_child = fbcon_inode_get_child,
+    .create_child = fbcon_inode_create_child,
 };
 
 static void fbcon_file_close(struct file *base) {
     struct fbcon_file *file = container_of(base, typeof(*file), file);
-    inode_release(&file->con->inode.inode);
     kfree(file, sizeof(*file));
 }
 
@@ -208,7 +212,7 @@ static fs_ssize_t fbcon_file_read(struct file *, fs_size_t *, void *, fs_size_t)
 
 static fs_ssize_t fbcon_file_write(
     struct file *base, fs_size_t *pos, const void *buffer, fs_size_t size) {
-    struct fbcon_file *file = container_of(base, typeof(*file), file);
+    struct fbcon *con = fbcon_from_file(base);
     (void)pos;
 
     if (!(base->mode & FILE_WRITE)) {
@@ -221,7 +225,7 @@ static fs_ssize_t fbcon_file_write(
 
     const char *input = buffer;
     for (fs_size_t idx = 0; idx < size; idx++) {
-        write_char(file->con, input[idx]);
+        write_char(con, input[idx]);
     }
 
     return (fs_ssize_t)size;
@@ -232,8 +236,7 @@ static kerrno_t fbcon_file_truncate(struct file *, fs_size_t) {
 }
 
 static kerrno_t fbcon_file_ioctl(struct file *base, uintptr_t op, uintptr_t arg) {
-    struct fbcon_file *file = container_of(base, typeof(*file), file);
-    struct fbcon *con = file->con;
+    struct fbcon *con = fbcon_from_file(base);
 
     switch (op) {
         case FBCON_IOCTL_COLOR:

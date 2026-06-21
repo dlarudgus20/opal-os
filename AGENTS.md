@@ -34,33 +34,44 @@ Markdown 문서를 편집할 때 아래 규칙을 준수해야 합니다.
   - 테스트: `<subproject>/build/tests/.../test`
   - 커널 유닛테스트: `kernel/build/unit-test/...`
 
+## **중요** `make` 실행 출력 규칙
+- dry-run처럼 stdout 자체가 목적이 아닌 모든 `make` 실행은 기본적으로 stdout을 억제합니다.
+  - 예: `make -C kernel test CONFIG=debug PLATFORM=pc-x64 >/dev/null`
+- stdout을 억제해도 stderr와 exit code는 확인할 수 있으므로, 실패 시 필요한 로그만 다시 좁혀서 확인합니다.
+- `make run`, `make unit-test`처럼 QEMU 출력을 봐야 하는 명령은 빌드 단계와 실행 단계를 분리합니다.
+  - 먼저 `make build >/dev/null` 또는 `make build UNIT_TEST=1 >/dev/null`로 빌드합니다.
+  - 그 다음 QEMU 실행 명령은 stdout을 숨기지 않아 시리얼 출력을 확인합니다.
+
 ## 표준 명령
 ### 빌드/실행
 ```bash
-make
-make iso
+make >/dev/null
+make iso >/dev/null
+make build >/dev/null
 make run
 ```
 
 ### 테스트
 ```bash
-make test
-make -C kernel test CONFIG=debug PLATFORM=pc-x64
+make test >/dev/null
+make -C kernel test CONFIG=debug PLATFORM=pc-x64 >/dev/null
 ```
 
 LSan 환경 제약 시:
 ```bash
-ASAN_OPTIONS=detect_leaks=0 make -C kernel test
+ASAN_OPTIONS=detect_leaks=0 make -C kernel test >/dev/null
 ```
 
 ### 커널 유닛테스트
 ```bash
-make unit-test
+make build UNIT_TEST=1 >/dev/null
+make unit-test QEMU_DISPNONE=1
 ```
 
 유닛테스트 실행 규칙:
 - QEMU는 반드시 headless로 실행합니다. (`QEMU_DISPNONE=1` 사용)
 ```bash
+make build UNIT_TEST=1 >/dev/null
 make unit-test QEMU_DISPNONE=1
 ```
 - `QEMU_FLAGS`를 직접 지정해야 한다면 `-boot order=dc`를 반드시 포함합니다.
@@ -71,10 +82,10 @@ make unit-test QEMU_DISPNONE=1
 
 ### 빌드 결과물 삭제
 ```bash
-make clean           # 현재 구성만
-make clean-test      # 현재 구성 테스트만
-make clean-unit-test # 현재 구성 유닛테스트만
-make fullclean       # 전부
+make clean >/dev/null           # 현재 구성만
+make clean-test >/dev/null      # 현재 구성 테스트만
+make clean-unit-test >/dev/null # 현재 구성 유닛테스트만
+make fullclean >/dev/null       # 전부
 ```
 
 ## 작업 원칙 (권장)
@@ -106,7 +117,7 @@ make fullclean       # 전부
 ### 1) sanitizer/LSan 환경 이슈
 일부 환경에서 LeakSanitizer가 `ptrace` 제약으로 종료될 수 있습니다.
 ```bash
-ASAN_OPTIONS=detect_leaks=0 make -C kernel test CONFIG=debug PLATFORM=pc-x64
+ASAN_OPTIONS=detect_leaks=0 make -C kernel test CONFIG=debug PLATFORM=pc-x64 >/dev/null
 ```
 
 ### 2) 테스트 링크 충돌 (`libkc`)

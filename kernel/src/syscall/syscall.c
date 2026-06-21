@@ -35,8 +35,11 @@ static kerrno_t copy_user_string(uintptr_t user, size_t maxlen, char **out, size
     return OPAL_OK;
 }
 
-static intptr_t syscall_open(uintptr_t arg1, uintptr_t arg2, uintptr_t arg3) {
+static intptr_t syscall_open(uintptr_t arg1, uintptr_t arg2, uintptr_t arg3, uintptr_t arg4) {
     if (arg3 & ~OPEN_MASK_ALL) {
+        return OPAL_EINVAL;
+    }
+    if (arg4 & ~INODE_MASK_ALL) {
         return OPAL_EINVAL;
     }
 
@@ -48,7 +51,8 @@ static intptr_t syscall_open(uintptr_t arg1, uintptr_t arg2, uintptr_t arg3) {
     }
 
     struct file *file;
-    fs_ssize_t result = vfs_open_path(NULL, kpath, (enum open_mode)arg3, &file);
+    fs_ssize_t result =
+        vfs_create_path(NULL, kpath, (enum inode_flags)arg4, (enum open_mode)arg3, &file);
     kfree(kpath, kpath_len + 1);
     if (!kerrno_ok(result)) {
         return result;
@@ -77,6 +81,22 @@ static intptr_t syscall_close(uintptr_t arg1) {
 static intptr_t syscall_dup(uintptr_t arg1, uintptr_t arg2) {
     fd_t fd = process_dup_fd(process_current(), arg1, arg2);
     return fd;
+}
+
+static intptr_t syscall_stat(uintptr_t arg1) {
+    if (arg1 > FD_MAX) {
+        return OPAL_EINVAL;
+    }
+
+    struct file *file = process_get_file(process_current(), (fd_t)arg1);
+    if (!file) {
+        return OPAL_ENOENT;
+    }
+
+    fs_uint_or_err stat = file_stat(file);
+
+    file_release(file);
+    return stat;
 }
 
 static intptr_t syscall_read(uintptr_t arg1, uintptr_t arg2, uintptr_t arg3) {
@@ -273,20 +293,23 @@ static intptr_t syscall_exec(uintptr_t arg1) {
 
 struct sysret syscall_dispatch(struct isr_stackframe *frame, uintptr_t arg0, uintptr_t arg1,
     uintptr_t arg2, uintptr_t arg3, uintptr_t arg4, uintptr_t arg5) {
-    struct sysret sysret = { -1, 0, 0 };
+    struct sysret sysret = { OPAL_EUNKNOWN, 0, 0 };
     switch (arg0) {
         case SYS_TASK_EXIT:
             task_exit();
             sysret.ret0 = 0;
             break;
         case SYS_OPEN:
-            sysret.ret0 = syscall_open(arg1, arg2, arg3);
+            sysret.ret0 = syscall_open(arg1, arg2, arg3, arg4);
             break;
         case SYS_CLOSE:
             sysret.ret0 = syscall_close(arg1);
             break;
         case SYS_DUP:
             sysret.ret0 = syscall_dup(arg1, arg2);
+            break;
+        case SYS_STAT:
+            sysret.ret0 = syscall_stat(arg1);
             break;
         case SYS_READ:
             sysret.ret0 = syscall_read(arg1, arg2, arg3);
@@ -310,7 +333,6 @@ struct sysret syscall_dispatch(struct isr_stackframe *frame, uintptr_t arg0, uin
             sysret.ret0 = syscall_exec(arg1);
             break;
     }
-    (void)arg4;
     (void)arg5;
     return sysret;
 }

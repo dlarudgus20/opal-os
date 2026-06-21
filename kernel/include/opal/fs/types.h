@@ -17,6 +17,7 @@
 typedef int64_t fs_off_t;
 typedef int64_t fs_ssize_t;
 typedef uint64_t fs_size_t;
+typedef int32_t fs_uint_or_err;
 
 enum fs_seek : uint8_t {
     FS_SEEK_SET,

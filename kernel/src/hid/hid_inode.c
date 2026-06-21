@@ -90,7 +90,7 @@ static void hid_inode_close(struct inode *) {
     panic();
 }
 
-static kerrno_t hid_inode_open(struct inode *, enum open_mode mode, struct file **file_out) {
+static kerrno_t hid_inode_open(struct inode *inode, enum open_mode mode, struct file **file_out) {
     enum open_mode fmode = mode & OPEN_MASK_FMODE;
     if (fmode != OPEN_NONE && fmode != OPEN_READ) {
         return OPAL_ENOTSUPP;
@@ -101,7 +101,7 @@ static kerrno_t hid_inode_open(struct inode *, enum open_mode mode, struct file 
         return OPAL_ENOMEM;
     }
 
-    file_init(&file->file, &g_file_ops, fmode_from_omode(mode));
+    file_init(&file->file, &g_file_ops, fmode_from_omode(mode), inode);
     event_init(&file->event, true);
     file->rpos = 0;
     file->wpos = 0;
@@ -115,19 +115,26 @@ static kerrno_t hid_inode_open(struct inode *, enum open_mode mode, struct file 
     return OPAL_OK;
 }
 
-static kerrno_t hid_inode_lookup(struct inode *, struct path_entry *) {
+static kerrno_t hid_inode_iterate_dir(
+    struct inode *, fs_size_t, inode_iterate_dir_cb, void *) {
     return OPAL_ENOTDIR;
 }
 
-static kerrno_t hid_inode_create(struct inode *, struct path_entry *, enum inode_flags) {
+static kerrno_t hid_inode_get_child(struct inode *, fs_size_t, struct inode **) {
+    return OPAL_ENOTDIR;
+}
+
+static kerrno_t hid_inode_create_child(
+    struct inode *, const struct hstr *, enum inode_flags, struct inode **) {
     return OPAL_ENOTDIR;
 }
 
 static const struct inode_ops g_inode_ops = {
     .close = hid_inode_close,
     .open = hid_inode_open,
-    .lookup = hid_inode_lookup,
-    .create = hid_inode_create,
+    .iterate_dir = hid_inode_iterate_dir,
+    .get_child = hid_inode_get_child,
+    .create_child = hid_inode_create_child,
 };
 
 static void hid_file_close(struct file *file_) {

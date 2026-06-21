@@ -19,6 +19,11 @@
 
 2. `struct event` 등 waitlist 파괴 시 기존 waiter들 처리하면서 graceful destroy
 
+3. mount할떄 directory 요구
+   - vfs lookup을 inode_ops.iterate_dir 방식으로 바꿔서 mount path_entry가 ls에 안 찍힌다.
+   - mount가 directory inode를 요구하게 하면 해결.
+   - cpiofs를 정규 ramfs로 바꿔서 mkdir 가능하게 해야한다.
+
 ## Known Issues
 
 ### FAT/VFS

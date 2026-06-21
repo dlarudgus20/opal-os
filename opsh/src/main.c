@@ -18,6 +18,7 @@ struct cmd {
 static int cmd_help(int argc, char **argv);
 static int cmd_echo(char *args);
 static int cmd_cat(int argc, char **argv);
+static int cmd_ls(int argc, char **argv);
 
 // clang-format off
 static const struct cmd g_commands[] = {
@@ -26,6 +27,7 @@ static const struct cmd g_commands[] = {
     CMD_ARGV("help", "show this message", cmd_help),
     CMD_RAW("echo", "print echo", cmd_echo),
     CMD_ARGV("cat", "show file content", cmd_cat),
+    CMD_ARGV("ls", "list directory entries", cmd_ls),
 };
 // clang-format on
 
@@ -204,7 +206,7 @@ static int cmd_cat(int argc, char **argv) {
         return 1;
     }
 
-    int fd = open(FD_INVALID, argv[1], OPEN_READ);
+    int fd = open(FD_INVALID, argv[1], OPEN_READ, 0);
     if (fd < 0) {
         puts("opsh: open failed");
         return 1;
@@ -226,6 +228,56 @@ static int cmd_cat(int argc, char **argv) {
     putchar('\n');
 
 end:
+    if (close(fd) < 0) {
+        puts("opsh: close failed");
+        ec = 1;
+    }
+    return ec;
+}
+
+static int cmd_ls(int argc, char **argv) {
+    const char *path = "/";
+    if (argc == 2) {
+        path = argv[1];
+    } else if (argc != 1) {
+        puts("usage: ls [path]");
+        return 1;
+    }
+
+    int fd = open(FD_INVALID, path, OPEN_READ, 0);
+    if (fd < 0) {
+        puts("opsh: open failed");
+        return 1;
+    }
+
+    int ec = 0;
+    unsigned char buf[512];
+    while (1) {
+        ssize_t n = read(fd, buf, sizeof(buf));
+        if (n < 0) {
+            puts("opsh: read failed");
+            ec = 1;
+            break;
+        }
+        if (n == 0) {
+            break;
+        }
+
+        size_t pos = 0;
+        while (pos < (size_t)n) {
+            struct dirent *entry = (struct dirent *)(buf + pos);
+            write(FD_STDOUT, entry->name, entry->name_len);
+            if (entry->flags & INODE_DIR) {
+                putchar('/');
+            }
+            putchar('\n');
+            if (entry->next_offset == 0) {
+                break;
+            }
+            pos += entry->next_offset;
+        }
+    }
+
     if (close(fd) < 0) {
         puts("opsh: close failed");
         ec = 1;

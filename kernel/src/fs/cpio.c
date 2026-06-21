@@ -16,6 +16,8 @@ struct cpio_node {
     struct inode inode;
 
     struct cpio_node *parent;
+    fs_size_t ino;
+    bool explicit;
     struct linkedlist children;
     struct linkedlist_link link;
     struct hstr name;
@@ -26,12 +28,12 @@ struct cpio_node {
 
 struct cpio_file {
     struct file file;
-    struct cpio_node *node;
 };
 
 struct cpio_sb {
     struct superblock sb;
     struct cpio_node *root;
+    fs_size_t next_ino;
 };
 
 static struct superblock_ops g_cpio_sb_ops;
@@ -87,9 +89,10 @@ static struct cpio_node *alloc_node(
         return NULL;
     }
 
-    inode_init(&node->inode, &g_cpio_inode_ops);
-    node->inode.flags = is_dir ? INODE_DIR : 0;
+    inode_init(&node->inode, &g_cpio_inode_ops, is_dir ? INODE_DIR : INODE_NORMAL);
     node->parent = parent;
+    node->ino = sb->next_ino++;
+    node->explicit = false;
     node->data = NULL;
     node->size = 0;
     linkedlist_init(&node->children);
@@ -163,21 +166,17 @@ static kerrno_t upsert_leaf(struct cpio_sb *sb, struct cpio_node *parent, const 
         if (!child) {
             return OPAL_ENOMEM;
         }
+    } else if (child->explicit || !(is_dir && (child->inode.flags & INODE_DIR))) {
+        return OPAL_EINVAL;
     }
 
+    child->explicit = true;
     if (is_dir) {
-        child->inode.flags |= INODE_DIR;
         child->data = NULL;
         child->size = 0;
         return OPAL_OK;
     }
 
-    if (child->inode.flags & INODE_DIR) {
-        if (!linkedlist_is_empty(&child->children)) {
-            return OPAL_EINVAL;
-        }
-        child->inode.flags &= ~INODE_DIR;
-    }
     child->data = data;
     child->size = size;
     return OPAL_OK;
@@ -253,69 +252,74 @@ static void cpio_umount(struct superblock *base) {
 static void cpio_inode_close(struct inode *) {}
 
 static kerrno_t cpio_inode_open(struct inode *inode, enum open_mode mode, struct file **file_out) {
-    if (inode->flags & INODE_DIR) {
-        return OPAL_EISDIR;
-    }
-
     enum open_mode fmode = mode & OPEN_MASK_FMODE;
     if (fmode != OPEN_NONE && fmode != OPEN_READ) {
-        return OPAL_ENOTSUPP;
+        return (inode->flags & INODE_DIR) ? OPAL_EISDIR : OPAL_ENOTSUPP;
     }
 
-    struct cpio_node *node = container_of(inode, struct cpio_node, inode);
     struct cpio_file *file = kzalloc(sizeof(*file));
     if (!file) {
         return OPAL_ENOMEM;
     }
 
-    file_init(&file->file, &g_cpio_file_ops, fmode_from_omode(mode) | FILE_POSLOCK);
-    inode_retain(inode);
-    file->node = node;
+    file_init(&file->file, &g_cpio_file_ops, fmode_from_omode(mode) | FILE_POSLOCK, inode);
     *file_out = &file->file;
     return OPAL_OK;
 }
 
-static kerrno_t cpio_inode_lookup(struct inode *inode, struct path_entry *pe) {
+static kerrno_t cpio_inode_iterate_dir(
+    struct inode *inode, fs_size_t start_index, inode_iterate_dir_cb callback, void *ctx) {
     if (!(inode->flags & INODE_DIR)) {
         return OPAL_ENOTDIR;
     }
 
     struct cpio_node *node = container_of(inode, struct cpio_node, inode);
+    fs_size_t index = 0;
     linkedlist_foreach(ptr, &node->children) {
         struct cpio_node *child = container_of(ptr, struct cpio_node, link);
-        struct hstr hs = hstr_clone(&child->name);
-        if (hstr_is_null(&hs)) {
-            return OPAL_ENOMEM;
-        }
-
-        struct path_entry *out = NULL;
-        kerrno_t result = path_entry_add(pe, &child->inode, &hs, &out);
-        if (!kerrno_ok(result)) {
-            hstr_free(&hs);
-            if (result != OPAL_EEXIST) {
-                return result;
-            }
+        if (index++ < start_index) {
             continue;
         }
-        path_entry_release(out);
+
+        struct inode_dirent entry = {
+            .id = child->ino,
+            .name = hstrget(&child->name),
+            .name_len = (uint16_t)hstrlen(&child->name),
+            .flags = child->inode.flags,
+        };
+        if (!callback(inode, index - 1, &entry, ctx)) {
+            break;
+        }
     }
 
     return OPAL_OK;
 }
 
-static kerrno_t cpio_inode_create(struct inode *, struct path_entry *, enum inode_flags) {
+static kerrno_t cpio_inode_get_child(
+    struct inode *inode, fs_size_t dirent_id, struct inode **child_out) {
+    struct cpio_node *node = container_of(inode, struct cpio_node, inode);
+    linkedlist_foreach(ptr, &node->children) {
+        struct cpio_node *child = container_of(ptr, struct cpio_node, link);
+        if (child->ino == dirent_id) {
+            *child_out = &child->inode;
+            return OPAL_OK;
+        }
+    }
+    return OPAL_ENOENT;
+}
+
+static kerrno_t cpio_inode_create_child(
+    struct inode *, const struct hstr *, enum inode_flags, struct inode **) {
     return OPAL_ENOTSUPP;
 }
 
 static void cpio_file_close(struct file *base) {
     struct cpio_file *file = container_of(base, struct cpio_file, file);
-    inode_release(&file->node->inode);
     kfree(file, sizeof(*file));
 }
 
 static fs_ssize_t cpio_file_seek(struct file *base, fs_off_t offset, enum fs_seek origin) {
-    struct cpio_file *file = container_of(base, struct cpio_file, file);
-    struct cpio_node *node = file->node;
+    struct cpio_node *node = container_of(base->inode, struct cpio_node, inode);
     if (node->inode.flags & INODE_DIR) {
         return OPAL_EISDIR;
     }
@@ -337,8 +341,7 @@ static fs_ssize_t cpio_file_seek(struct file *base, fs_off_t offset, enum fs_see
 }
 
 static fs_ssize_t cpio_file_read(struct file *base, fs_size_t *pos, void *buffer, fs_size_t size) {
-    struct cpio_file *file = container_of(base, struct cpio_file, file);
-    struct cpio_node *node = file->node;
+    struct cpio_node *node = container_of(base->inode, struct cpio_node, inode);
     if (!(base->mode & FILE_READ)) {
         return OPAL_ENOTSUPP;
     }
@@ -375,8 +378,9 @@ static struct superblock_ops g_cpio_sb_ops = {
 static struct inode_ops g_cpio_inode_ops = {
     .close = cpio_inode_close,
     .open = cpio_inode_open,
-    .lookup = cpio_inode_lookup,
-    .create = cpio_inode_create,
+    .iterate_dir = cpio_inode_iterate_dir,
+    .get_child = cpio_inode_get_child,
+    .create_child = cpio_inode_create_child,
 };
 
 static struct file_ops g_cpio_file_ops = {
@@ -398,10 +402,12 @@ kerrno_t cpio_mount(void *cpio, size_t len, struct superblock **sb_out) {
         return result;
     }
     superblock_init(&sb->sb, &g_cpio_sb_ops);
+    sb->next_ino = 1;
 
     if (!alloc_node(sb, NULL, "", 0, true)) {
         goto err;
     }
+    sb->root->explicit = true;
 
     const unsigned char *buf = cpio;
     size_t off = 0;

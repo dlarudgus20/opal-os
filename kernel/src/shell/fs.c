@@ -104,11 +104,6 @@ static int print_cat_error(const char *op, kerrno_t result) {
     return 1;
 }
 
-static int print_ls_error(const char *op, kerrno_t result) {
-    tty0_printf("ls: %s: %s (%d)\n", op, kerrno_str(result), result);
-    return 1;
-}
-
 static int print_mkdir_error(const char *op, kerrno_t result) {
     tty0_printf("mkdir: %s: %s (%d)\n", op, kerrno_str(result), result);
     return 1;
@@ -198,55 +193,10 @@ int shell_cmd_cat(int argc, char **argv) {
 }
 
 int shell_cmd_ls(int argc, char **argv) {
-    const char *path = "/";
-    if (argc == 2) {
-        path = argv[1];
-    } else if (argc != 1) {
-        tty0_puts("usage: ls [path]\n");
-        return 1;
-    }
-
-    int ec = 0;
-    struct path_entry *pe = NULL;
-    kerrno_t result = vfs_lookup_path(NULL, path, &pe, NULL);
-    if (!kerrno_ok(result)) {
-        ec = print_ls_error("lookup_path", result);
-        goto end;
-    }
-    if (!pe || !pe->inode) {
-        ec = print_ls_error("lookup_path", OPAL_ENOENT);
-        goto end;
-    }
-    if (!(pe->inode->flags & INODE_DIR)) {
-        ec = print_ls_error("lookup_path", OPAL_ENOTDIR);
-        goto end;
-    }
-    if (!pe->inode->ops || !pe->inode->ops->lookup) {
-        ec = print_ls_error("lookup", OPAL_ENOTSUPP);
-        goto end;
-    }
-
-    result = pe->inode->ops->lookup(pe->inode, pe);
-    if (!kerrno_ok(result)) {
-        ec = print_ls_error("lookup", result);
-        goto end;
-    }
-
-    tty0_printf("%s:\n", path);
-    linkedlist_foreach(ptr, &pe->children) {
-        struct path_entry *child = container_of(ptr, struct path_entry, link);
-        if (!child->inode) {
-            continue;
-        }
-        bool is_dir = child->inode && (child->inode->flags & INODE_DIR);
-        tty0_printf("%s%s\n", hstrget(&child->name), is_dir ? "/" : "");
-    }
-
-end:
-    if (pe) {
-        path_entry_release(pe);
-    }
-    return ec;
+    (void)argc;
+    (void)argv;
+    tty0_puts("ls is removed from kernel shell; use opsh ls\n");
+    return 0;
 }
 
 int shell_cmd_mkdir(int argc, char **argv) {

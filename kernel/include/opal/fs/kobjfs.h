@@ -10,15 +10,19 @@
 struct ko_inode {
     struct inode inode;
     struct linkedlist_link link;
+    fs_size_t ino;
     const char *name;
     bool is_kodir;
 };
+
+struct kobjfs;
 
 struct kodir_inode {
     union {
         struct inode inode;
         struct ko_inode ko_inode;
     };
+    struct kobjfs *fs;
     struct linkedlist children;
     char namebuf[KODIR_NAMEBUF_LEN];
 };
@@ -26,6 +30,7 @@ struct kodir_inode {
 struct kobjfs {
     struct superblock sb;
     struct kodir_inode root;
+    fs_size_t next_ino;
 };
 
 void kobjfs_init(struct kobjfs *sb);

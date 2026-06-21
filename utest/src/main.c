@@ -111,7 +111,7 @@ static void test_fbcon(void) {
 }
 
 static void test_hid(void) {
-    int hid = open(FD_STDIN, "/dev/hid", OPEN_READ);
+    int hid = open(FD_STDIN, "/dev/hid", OPEN_READ, 0);
     check_int("open(/dev/hid, stdin)", hid, FD_STDIN);
     if (hid >= 0) {
         close_checked("close(stdin)", FD_STDIN);
@@ -119,7 +119,7 @@ static void test_hid(void) {
 }
 
 static void test_file_read(void) {
-    int fd = open(FD_INVALID, "/utest", OPEN_READ);
+    int fd = open(FD_INVALID, "/utest", OPEN_READ, 0);
     check_int("open(/utest)", fd, 0);
     if (fd < 0) {
         return;
@@ -173,7 +173,7 @@ static void test_pipe(void) {
 int main(void) {
     int mnt = mount("devfs", 0, "/dev");
 
-    int out = open(FD_STDOUT, "/dev/fbcon", OPEN_WRITE | OPEN_APPEND);
+    int out = open(FD_STDOUT, "/dev/fbcon", OPEN_WRITE | OPEN_APPEND, 0);
     if (out < 0) {
         return 1;
     }

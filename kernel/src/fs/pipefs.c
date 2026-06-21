@@ -8,7 +8,6 @@
 
 struct pipe_file {
     struct file file;
-    struct pipefs *pipe;
 };
 
 static const struct superblock_ops g_sb_ops;
@@ -22,8 +21,7 @@ struct pipefs *pipefs_create(void) {
     }
 
     superblock_init(&pipe->sb, &g_sb_ops);
-    inode_init(&pipe->inode, &g_pipe_ops);
-    pipe->inode.flags = INODE_PIPE;
+    inode_init(&pipe->inode, &g_pipe_ops, INODE_PIPE);
     pipe->sb.root = &pipe->inode;
     event_init(&pipe->readable, true);
     event_init(&pipe->writable, true);
@@ -57,9 +55,7 @@ static kerrno_t pipe_inode_open(struct inode *inode, enum open_mode mode, struct
         return OPAL_ENOMEM;
     }
 
-    file_init(&file->file, &g_pipe_fops, fmode_from_omode(mode));
-    inode_retain(inode);
-    file->pipe = pipe;
+    file_init(&file->file, &g_pipe_fops, fmode_from_omode(mode), inode);
 
     irqlock_t irqlock = irqlock_acquire();
     if (fmode == OPEN_READ) {
@@ -85,24 +81,30 @@ struct file *pipefs_open_writer(struct pipefs *pipe) {
     return kerrno_ok(err) ? file : NULL;
 }
 
-static kerrno_t pipe_inode_lookup(struct inode *, struct path_entry *) {
+static kerrno_t pipe_inode_iterate_dir(struct inode *, fs_size_t, inode_iterate_dir_cb, void *) {
     return OPAL_ENOTDIR;
 }
 
-static kerrno_t pipe_inode_create(struct inode *, struct path_entry *, enum inode_flags) {
+static kerrno_t pipe_inode_get_child(struct inode *, fs_size_t, struct inode **) {
+    return OPAL_ENOTDIR;
+}
+
+static kerrno_t pipe_inode_create_child(
+    struct inode *, const struct hstr *, enum inode_flags, struct inode **) {
     return OPAL_ENOTDIR;
 }
 
 static const struct inode_ops g_pipe_ops = {
     .close = pipe_inode_close,
     .open = pipe_inode_open,
-    .lookup = pipe_inode_lookup,
-    .create = pipe_inode_create,
+    .iterate_dir = pipe_inode_iterate_dir,
+    .get_child = pipe_inode_get_child,
+    .create_child = pipe_inode_create_child,
 };
 
 static void pipe_file_close(struct file *base) {
     struct pipe_file *file = container_of(base, typeof(*file), file);
-    struct pipefs *pipe = file->pipe;
+    struct pipefs *pipe = container_of(base->inode, typeof(*pipe), inode);
 
     irqlock_t irqlock = irqlock_acquire();
     if (base->mode & FILE_READ) {
@@ -117,7 +119,6 @@ static void pipe_file_close(struct file *base) {
     }
     irqlock_release(&irqlock);
 
-    inode_release(&pipe->inode);
     kfree(file, sizeof(*file));
 }
 
@@ -143,8 +144,7 @@ static fs_ssize_t pipe_file_read(struct file *base, fs_size_t *, void *buffer, f
         return 0;
     }
 
-    struct pipe_file *file = container_of(base, typeof(*file), file);
-    struct pipefs *pipe = file->pipe;
+    struct pipefs *pipe = container_of(base->inode, typeof(*pipe), inode);
 
     irqlock_t irqlock = irqlock_acquire();
     while (pipe->count == 0) {
@@ -186,8 +186,7 @@ static fs_ssize_t pipe_file_write(
         return 0;
     }
 
-    struct pipe_file *file = container_of(base, typeof(*file), file);
-    struct pipefs *pipe = file->pipe;
+    struct pipefs *pipe = container_of(base->inode, typeof(*pipe), inode);
     const unsigned char *in = buffer;
     fs_size_t written = 0;
 

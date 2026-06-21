@@ -20,7 +20,7 @@ void fat_table_init(struct fat_table *file, struct fat_sb *sb) {
         ops = &g_fat32_ops.ops;
     }
 
-    file_init(&file->file, ops, FILE_READ | FILE_WRITE);
+    file_init(&file->file, ops, FILE_READ | FILE_WRITE, NULL);
     file->sb = sb;
     file->buffer = NULL;
 }

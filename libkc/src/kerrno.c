@@ -14,6 +14,7 @@ const char *kerrno_str(kerrno_t err) {
         case OPAL_EEXIST: return "OPAL_EEXIST";
         case OPAL_ERANGE: return "OPAL_ERANGE";
         case OPAL_EINVAL: return "OPAL_EINVAL";
+        case OPAL_EBUFSIZE: return "OPAL_EBUFSIZE";
         case OPAL_ETOOBIG: return "OPAL_ETOOBIG";
         case OPAL_ENOTSUPP: return "OPAL_ENOTSUPP";
         case OPAL_ENOSPC: return "OPAL_ENOSPC";

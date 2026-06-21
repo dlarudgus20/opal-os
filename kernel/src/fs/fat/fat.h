@@ -164,7 +164,6 @@ struct fat_inode {
 
 struct fat_file {
     struct file file;
-    struct fat_inode_base *inode;
 };
 
 struct fat_table_ops {

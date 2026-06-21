@@ -244,10 +244,10 @@ static void printerr(const char *msg) {
 int main(void) {
     mount("devfs", 0, "/dev");
 
-    if (open(FD_STDIN, "/dev/hid", OPEN_READ) < 0) {
+    if (open(FD_STDIN, "/dev/hid", OPEN_READ, 0) < 0) {
         return 1;
     }
-    if (open(FD_STDOUT, "/dev/fbcon", OPEN_WRITE | OPEN_APPEND) < 0) {
+    if (open(FD_STDOUT, "/dev/fbcon", OPEN_WRITE | OPEN_APPEND, 0) < 0) {
         return 1;
     }
     if (dup(FD_STDOUT, FD_STDERR) < 0) {
@@ -299,7 +299,7 @@ int main(void) {
             close(in_pipe[0]);
             close(in_pipe[1]);
 
-            int shfd = open(FD_INVALID, "/opsh", OPEN_READ);
+            int shfd = open(FD_INVALID, "/opsh", OPEN_READ, 0);
             if (exec(shfd) < 0) {
                 printerr("cannot exec shell process");
             }
