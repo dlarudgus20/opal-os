@@ -1,6 +1,9 @@
 #include <stdint.h>
+
 #include <kc/ctype.h>
 #include <kc/string.h>
+
+#include <opalsys/opalsys.h>
 #include <libuc.h>
 
 #define MAX_ARGV 16

@@ -14,7 +14,7 @@
 - 마지막 컬럼에서 더 쓰면 커서는 더 이동하지 않는다. 스크롤은 ioctl로 명시적으로 요청해야 한다.
 
 ### fbcon ioctl
-상수는 커널 공용 헤더가 아니라 `fbcon.c`와 사용자 프로그램 쪽에 로컬로 유지한다.
+사용자 공간 ioctl 상수는 `opalsys/fbcon.h`의 `FBCON_IOCTL_*`로 제공한다.
 
 - `0`: color
   - `arg == 0xffff`: foreground/background 기본값으로 reset
@@ -46,6 +46,7 @@
   - `OPEN_NONE`
   - `OPEN_READ`
 - `read`는 byte stream이 아니라 `struct hid_char` packet 배열을 반환한다.
+- 사용자 공간 packet/keycode 정의는 `opalsys/hid.h`로 제공한다.
 
 ```c
 struct hid_char {

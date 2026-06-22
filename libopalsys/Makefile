@@ -1,6 +1,5 @@
-TARGET_NAME := libuc
+TARGET_NAME := libopalsys
 TARGET_TYPE := static-lib
-STATIC_REFS := libkc libopalsys
 
 all: build
 

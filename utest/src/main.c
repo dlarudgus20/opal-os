@@ -1,3 +1,4 @@
+#include <opalsys/opalsys.h>
 #include <libuc.h>
 
 enum {

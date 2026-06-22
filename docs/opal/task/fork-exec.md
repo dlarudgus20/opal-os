@@ -220,7 +220,7 @@ commit 이후에는 새 pagetable/vmtree가 process에 들어간 상태이므로
 - 성공하면 새 task를 resume하고 현재 task를 종료한다.
 - 실패하면 음수 errno를 반환한다.
 
-libuc에는 다음 wrapper가 추가됐다.
+libopalsys에는 다음 syscall wrapper가 있다.
 
 - `pid_t fork(void)`
 - `int exec(int fd)`
@@ -231,21 +231,3 @@ libuc에는 다음 wrapper가 추가됐다.
 
 exec는 single-thread 조건에서 동작하도록 설계했다. multi-thread process에서 exec를 호출하면
 `OPAL_EBUSY`로 실패한다.
-
-## 검증 상태
-
-이번 구현 후 확인한 명령은 다음과 같다.
-
-```sh
-make -C kernel build CONFIG=debug PLATFORM=pc-x64
-make -C libuc build CONFIG=debug PLATFORM=pc-x64
-make -C uinit build CONFIG=debug PLATFORM=pc-x64
-ASAN_OPTIONS=detect_leaks=0 make -C kernel test CONFIG=debug PLATFORM=pc-x64
-```
-
-결과:
-
-- kernel debug build 성공
-- libuc debug build 성공
-- uinit debug build/link 성공
-- kernel hosted test 27개 통과

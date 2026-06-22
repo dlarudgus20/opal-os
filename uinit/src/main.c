@@ -1,26 +1,11 @@
 #include <stddef.h>
-#include <libuc.h>
+
 #include <kc/ctype.h>
 
-enum {
-    HID_KEY_BACKSPACE = 30,
-};
-
-struct hid_char {
-    bool raw;
-    char ch;
-    unsigned char keycode;
-};
-
-enum {
-    FBCON_IOCTL_COLOR = 0,
-    FBCON_IOCTL_GET_CURSOR = 1,
-    FBCON_IOCTL_GOTOXY = 2,
-    FBCON_IOCTL_SET_CURSOR_VISIBLE = 3,
-    FBCON_IOCTL_PUT_AT = 4,
-    FBCON_IOCTL_ERASE_LINE = 5,
-    FBCON_IOCTL_SCROLL_UP = 6,
-};
+#include <opalsys/opalsys.h>
+#include <opalsys/fbcon.h>
+#include <opalsys/hid.h>
+#include <libuc.h>
 
 #define TTY_LINE_MAX 256
 

@@ -26,7 +26,7 @@ ifeq ($(QEMU_DISPNONE),1)
 QEMU_FLAGS += -display none
 endif # QEMU_DISPNONE
 
-SUBDIRS     := test-pch kernel uinit utest opsh libkubsan libkc libpanicimpl libcoll
+SUBDIRS     := test-pch kernel uinit utest opsh libkubsan libkc libpanicimpl libcoll libopalsys libuc
 
 all: build
 

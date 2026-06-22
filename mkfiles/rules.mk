@@ -24,6 +24,7 @@ TEST_EXECUTABLE     := $(BUILD_DIR)/test
 OBJECTS             := $(filter-out $(TEST_EXCLUDE_OBJ),$(OBJECTS))
 STATIC_REFS         += $(TEST_STATIC_REFS)
 SHARED_REFS         += $(TEST_SHARED_REFS)
+INCLUDE_REFS        += $(TEST_INCLUDE_REFS)
 
 TEST_PCH_DIR        := ../test-pch
 TEST_PCH_FILE       := test-pch.h
@@ -38,7 +39,7 @@ endif # IS_TEST_BUILD
 
 REFS_STATIC_FILES   := $(foreach ref,$(STATIC_REFS),../$(ref)/$(BUILD_DIR_REF)/$(ref).a)
 REFS_SHARED_FILES   := $(foreach ref,$(SHARED_REFS),../$(ref)/$(BUILD_DIR_REF)/$(ref).so)
-REFS_INCS           := $(foreach ref,$(STATIC_REFS) $(SHARED_REFS),../$(ref)/include ../$(ref)/platform/$(PLATFORM)/include)
+REFS_INCS           := $(foreach ref,$(STATIC_REFS) $(SHARED_REFS) $(INCLUDE_REFS),../$(ref)/include ../$(ref)/platform/$(PLATFORM)/include)
 
 LIBRARIES           += $(REFS_STATIC_FILES) $(REFS_SHARED_FILES)
 INCLUDES            += $(REFS_INCS)

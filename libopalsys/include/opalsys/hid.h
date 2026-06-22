@@ -1,5 +1,5 @@
-#ifndef OPAL_HID_KEYCODE_H
-#define OPAL_HID_KEYCODE_H
+#ifndef OPALSYS_HID_H
+#define OPALSYS_HID_H
 
 #include <stdint.h>
 
@@ -151,5 +151,11 @@ enum hid_keycode : uint8_t {
 };
 
 typedef enum hid_keycode hid_keycode_t;
+
+struct hid_char {
+    bool raw;
+    char ch;
+    hid_keycode_t keycode;
+};
 
 #endif

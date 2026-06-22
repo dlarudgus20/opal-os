@@ -7,6 +7,8 @@
 #include <opal/fs/globals.h>
 #include <opal/mm/kmalloc.h>
 
+#include <opalsys/fbcon.h>
+
 #include "fbcon.h"
 
 #define CW 8
@@ -18,16 +20,6 @@
 #define BORDER_COLOR 15
 #define DEFAULT_FG 15
 #define DEFAULT_BG 0
-
-enum {
-    FBCON_IOCTL_COLOR = 0,
-    FBCON_IOCTL_GET_CURSOR = 1,
-    FBCON_IOCTL_GOTOXY = 2,
-    FBCON_IOCTL_SET_CURSOR_VISIBLE = 3,
-    FBCON_IOCTL_PUT_AT = 4,
-    FBCON_IOCTL_ERASE_LINE = 5,
-    FBCON_IOCTL_SCROLL_UP = 6,
-};
 
 struct fbcon_file {
     struct file file;

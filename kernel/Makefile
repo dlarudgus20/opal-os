@@ -1,9 +1,12 @@
 TARGET_NAME := kernel
 TARGET_TYPE := executable
 STATIC_REFS := libkc libcoll
+INCLUDE_REFS := libopalsys
 
 TEST_SHARED_REFS := libpanicimpl
 LDFLAGS_ON_TEST := -Wl,--exclude-libs=libkc
+
+CFLAGS += -DOPAL_KERNEL
 
 all: build
 

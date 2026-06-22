@@ -87,8 +87,10 @@
 - `tests/*.cpp`는 `g++` + `gtest`로 링크된 `test` 실행 파일 생성
 - `TEST_DO_NOT_LINK=1`이면 대상 라이브러리 직접 링크 대신 `-ldl`만 사용
 
-### 참조 라이브러리
+### 참조 프로젝트
 - `STATIC_REFS`, `SHARED_REFS`를 받아 하위 프로젝트 산출물을 의존성으로 추가
+- `INCLUDE_REFS`를 받아 링크 대상은 아니지만 include path만 필요한 하위 프로젝트를 참조
+- 테스트 빌드에서는 `TEST_STATIC_REFS`, `TEST_SHARED_REFS`, `TEST_INCLUDE_REFS`가 각각 위 목록에 추가됨
 
 ### 빌드 시스템 제한사항
 - 서로 다른 `make` invocation을 동시에 실행하지 않습니다.
@@ -101,7 +103,8 @@
 각 프로젝트 [`Makefile`](../kernel/Makefile)은 보통 다음만 정의합니다.
 - `TARGET_NAME`
 - `TARGET_TYPE`
-- `STATIC_REFS`/`SHARED_REFS`/`TEST_SHARED_REFS`
+- `STATIC_REFS`/`SHARED_REFS`/`INCLUDE_REFS`
+- `TEST_STATIC_REFS`/`TEST_SHARED_REFS`/`TEST_INCLUDE_REFS`
 - (필요 시) `LDFLAGS_ON_TEST`, `TEST_DO_NOT_LINK`
 - 이후 `include [../mkfiles/conf.mk](../mkfiles/conf.mk)` + `include [../mkfiles/rules.mk](../mkfiles/rules.mk)`
 
@@ -110,6 +113,7 @@
 TARGET_NAME := <프로젝트 이름>
 TARGET_TYPE := <프로젝트 타입>
 STATIC_REFS := <프로젝트 static-lib 참조>
+INCLUDE_REFS := <include path만 필요한 프로젝트 참조>
 
 # libkc 사용하는 경우
 TEST_SHARED_REFS := libpanicimpl
@@ -155,6 +159,7 @@ make unit-test QEMU_DISPNONE=1
 - 리소스를 사용하는 소스 타깃에 의존성 추가
 
 예시:
+<!-- markdownlint-disable MD010 -->
 ```makefile
 RESOURCES := res/gen/example.bin
 
@@ -164,6 +169,7 @@ res/gen/example.bin: res.mk
 	@mkdir -p $(dir $@)
 	$(PYTHON) ../tools/some-generator.py $@
 ```
+<!-- markdownlint-enable MD010 -->
 
 핵심 포인트:
 - 생성 리소스는 `src/res.c`(또는 해당 리소스를 `#embed`하는 소스)의 선행 의존성으로 둡니다.

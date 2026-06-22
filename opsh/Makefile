@@ -1,6 +1,6 @@
 TARGET_NAME := opsh
 TARGET_TYPE := executable
-STATIC_REFS := libuc libkc libkubsan
+STATIC_REFS := libuc libopalsys libkc libkubsan
 
 LDFLAGS := -Wl,-u,_panic_format
 

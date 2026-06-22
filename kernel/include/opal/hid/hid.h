@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 
-#include <opal/hid/keycode.h>
+#include <opalsys/hid.h>
 
 enum hid_button {
     HID_BUTTON_LEFT = 1u << 0,
