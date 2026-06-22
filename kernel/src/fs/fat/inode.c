@@ -100,16 +100,24 @@ static bool pack_filename(const char *filename, size_t len, char out[11]) {
     return i + 1 + j == len;
 }
 
+static bool dentry_is_end(const struct fat_dentry *dentry) {
+    return dentry->name[0] == 0;
+}
+
+static bool dentry_is_special(const struct fat_dentry *dentry) {
+    unsigned char flag = (unsigned char)dentry->name[0];
+    return flag == 0xe5 || flag == '.' || (dentry->attr & FAT_ATTR_VLABEL);
+}
+
 static kerrno_t dentry_iterate(struct inode *base, struct fat_dentry *dentries, uint32_t count,
     fs_size_t start_index, inode_iterate_dir_cb callback, void *ctx) {
     fs_size_t index = 0;
     for (uint32_t idx = 0; idx < count; idx++) {
         struct fat_dentry *dentry = &dentries[idx];
 
-        unsigned char flag = (unsigned char)dentry->name[0];
-        if (flag == 0) {
+        if (dentry_is_end(dentry)) {
             break;
-        } else if (flag == 0xe5 || flag == '.' || (dentry->attr & FAT_ATTR_VLABEL)) {
+        } else if (dentry_is_special(dentry)) {
             continue;
         }
 
@@ -136,10 +144,16 @@ static kerrno_t dentry_iterate(struct inode *base, struct fat_dentry *dentries, 
     return OPAL_OK;
 }
 
-static kerrno_t dentry_get_child(
-    struct fat_inode_base *parent, fs_size_t dirent_id, struct inode **child_out) {
-    if (dirent_id > UINT32_MAX) {
+static kerrno_t dentry_get_child(struct fat_inode_base *parent, fs_size_t dirent_id,
+    uint32_t dentries_len, struct inode **child_out) {
+    if (dirent_id >= dentries_len) {
         return OPAL_ERANGE;
+    }
+
+    struct fat_dentry *dentries = (struct fat_dentry *)parent->buffer;
+    struct fat_dentry *dentry = &dentries[dirent_id];
+    if (dentry_is_end(dentry) || dentry_is_special(dentry)) {
+        return OPAL_ENOENT;
     }
 
     struct fat_inode *child = kzalloc(sizeof(*child));
@@ -147,8 +161,6 @@ static kerrno_t dentry_get_child(
         return OPAL_ENOMEM;
     }
 
-    struct fat_dentry *dentries = (struct fat_dentry *)parent->buffer;
-    struct fat_dentry *dentry = &dentries[dirent_id];
     uint32_t first_cluster = dentry_get_first_cluster(dentry, parent->sb->layout.bits);
     fat_inode_init(child, parent->sb, parent, (uint32_t)dirent_id, first_cluster);
     child->parent = parent;
@@ -250,10 +262,7 @@ static kerrno_t root_inode_iterate_dir(
 static kerrno_t root_inode_get_child(
     struct inode *base, fs_size_t dirent_id, struct inode **child_out) {
     struct fat_root_inode *inode = container_of(base, struct fat_root_inode, inode);
-    if (dirent_id >= inode->entries) {
-        return OPAL_ERANGE;
-    }
-    return dentry_get_child(&inode->base, dirent_id, child_out);
+    return dentry_get_child(&inode->base, dirent_id, inode->entries, child_out);
 }
 
 static kerrno_t fat_inode_create_child(struct inode *base, const struct hstr *child_name,
@@ -575,10 +584,12 @@ static kerrno_t fat_inode_iterate_dir(
 static kerrno_t fat_inode_get_child(
     struct inode *base, fs_size_t dirent_id, struct inode **child_out) {
     struct fat_inode *inode = container_of(base, struct fat_inode, inode);
-    if (dirent_id >= inode->filesize / sizeof(struct fat_dentry)) {
-        return OPAL_ERANGE;
+    const struct fat_dentry *dentry = get_dentry(inode);
+    if (dentry && !(dentry->attr & FAT_ATTR_DIRECTORY)) {
+        return OPAL_ENOTDIR;
     }
-    return dentry_get_child(&inode->base, dirent_id, child_out);
+    uint32_t dentries_len = inode->filesize / sizeof(struct fat_dentry);
+    return dentry_get_child(&inode->base, dirent_id, dentries_len, child_out);
 }
 
 static void fat_file_close(struct file *base) {

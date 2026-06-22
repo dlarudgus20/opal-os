@@ -23,12 +23,17 @@
 - 아카이브 전체를 파싱해 in-memory 트리(`cpio_node`)를 구성
 - 파일 데이터는 원본 CPIO 버퍼를 가리키며 복사하지 않음
 - `.` 세그먼트는 허용, `..` 세그먼트는 거부
-- 동일 경로가 중복되면 마지막 엔트리로 갱신될 수 있음(파서 upsert 동작)
+- 경로 중간에 필요한 implicit directory는 생성할 수 있음
+- implicit directory가 뒤에서 explicit directory 엔트리로 확인되는 것은 허용
+- 이미 explicit inode가 있는 경로가 다시 나오거나 file/dir 충돌이 있으면 깨진 archive로 보고 mount 실패
 
 ## VFS 연동
 - `inode_ops`:
-  - `lookup`: 디렉터리 자식 조회 지원
-  - `create`: 미지원 (`OPAL_ENOTSUPP`)
+  - `iterate_dir`: 디렉터리 자식 순회 지원
+  - `get_child`: synthetic inode id로 자식 inode 조회
+  - `create_child`: 미지원 (`OPAL_ENOTSUPP`)
+- 각 `cpio_node`는 VFS dirent id로 사용할 synthetic inode id를 가진다.
+- `get_child`는 성공 시 기존 `cpio_node` inode를 retain해 반환한다.
 - `file_ops`:
   - `seek`, `read` 지원
   - `write`, `truncate` 미지원 (`OPAL_ENOTSUPP`)

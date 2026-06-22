@@ -302,6 +302,7 @@ kerrno_t path_entry_lookup(
     result = path_entry_add(pe, inode, &child_name, found);
     if (!kerrno_ok(result)) {
         hstr_free(&child_name);
+        inode_release(inode);
         return result;
     }
 

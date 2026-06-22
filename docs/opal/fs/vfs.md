@@ -18,7 +18,20 @@
   - `FILE_POSLOCK`: 공용 file position을 `pos_mutex`로 보호하는 모드
 - `file_read()`/`file_write()`는 `struct file`의 현재 위치를 사용하고, 성공한 바이트 수만큼 위치를 이동한다.
 - 각 파일시스템의 `file_ops.read/write`는 음수 errno 또는 성공 바이트 수를 `fs_ssize_t`로 반환한다.
+- 디렉터리 inode에 대한 `file_read()`는 파일시스템의 `file_ops.read`를 호출하지 않고 VFS 공통 디렉터리 read 경로를 사용한다.
 - `file_ioctl()`은 장치별 제어 op를 파일 계층에 전달한다.
+
+## 디렉터리 read 형식
+- 디렉터리 file을 읽으면 `struct dirent` 레코드들이 연속된 바이트 스트림으로 반환된다.
+- `struct dirent`
+  - `next_offset`: 다음 레코드까지의 바이트 오프셋. 마지막 레코드는 `0`.
+  - `name_len`: `name[]`의 길이. 이름은 NUL-terminated가 아니다.
+  - `flags`: 해당 엔트리의 `enum inode_flags`.
+  - `name[]`: 엔트리 이름 바이트.
+- 레코드는 `alignof(struct dirent)` 기준으로 정렬된다.
+- 디렉터리 file의 `pos`는 바이트 오프셋이 아니라 visible directory entry index이다.
+- 첫 레코드조차 호출자가 준 buffer에 들어가지 않으면 EOF와 구분할 수 있게 `OPAL_EBUFSIZE`를 반환한다.
+- 일부 레코드가 들어간 뒤 다음 레코드가 buffer에 맞지 않으면, 들어간 레코드들의 바이트 수를 성공 반환하고 다음 read에서 이어서 읽는다.
 
 ## Path Entry
 - `struct path_entry`
@@ -28,7 +41,9 @@
   - `name`: `struct hstr` 기반 이름 저장
   - `refcount`: active 참조 카운트
 - `path_entry_lookup(pe, name, len, &found)`
-  - 캐시에 없으면 `inode->ops->lookup`를 호출해 디렉터리를 재스캔
+  - 캐시에 없으면 `inode->ops->iterate_dir`로 디렉터리를 순회해 이름을 찾는다.
+  - 이름을 찾으면 `inode->ops->get_child`로 해당 child inode를 받아 `path_entry`에 연결한다.
+  - `get_child`는 성공 시 retained inode를 반환하며, VFS가 그 참조를 `path_entry` 소유로 넘긴다.
   - 재스캔 후에도 없으면 negative entry 생성 시도
   - negative 생성 메모리 부족은 `OPAL_ENOMEM`으로 전파
   - `found` 출력값:
@@ -36,16 +51,17 @@
     - `OPAL_ENOENT`: 해당 path가 없는 경우.
       - negative entry가 없다면 생성. 그 후 negative entry를 retain해 반환.
       - `len > VFS_MAX_NAME`일 경우 `found == NULL`
-      - inode_ops lookup이 `OPAL_ENOENT` 에러를 줬다면 `found == NULL`
+      - `iterate_dir`/`get_child`가 `OPAL_ENOENT` 에러를 줬다면 `found == NULL`
     - 그 외 실패: `found == NULL`
 - `path_entry_add(parent, inode, &name, &out)`
   - 같은 이름의 positive entry가 있으면 `OPAL_EEXIST`
   - 같은 이름의 negative entry가 있으면 재사용
   - 성공 시 새 positive entry 또는 재사용된 entry를 retain해 `out`에 반환
+  - `inode`가 `NULL`이 아니면 호출자가 넘긴 inode 참조를 성공한 `path_entry`가 소유한다.
 - `path_entry_create(pe, flags, mode, &file_out)`
   - `pe->inode == NULL`(negative entry)이면:
     - `OPEN_CREATE`가 없거나 `pe`가 루트라면 `OPAL_ENOENT`
-    - `OPEN_CREATE`가 있으면 부모 inode에 대해 `inode_ops.create(parent_inode, pe, flags)` 호출
+    - `OPEN_CREATE`가 있으면 부모 inode에 대해 `inode_ops.create_child(parent_inode, name, flags, &inode)` 호출
     - 성공 후 생성된 inode를 `open`하여 `file_out` 반환
   - `pe->inode != NULL`(이미 존재)이면:
     - `OPEN_NONEXIST`가 있으면 `OPAL_EEXIST`
@@ -105,7 +121,7 @@
       - `found`: 해당 non-dir 엔트리
       - `unresolved_path`: 아직 해석되지 않은 나머지 경로 시작 위치
     - inode lookup 실패 시 / 메모리 부족 시:
-      - `inode->ops->lookup` 에러코드 그대로 전파 / `OPAL_ENOMEM`
+      - `inode->ops->iterate_dir/get_child` 에러코드 그대로 전파 / `OPAL_ENOMEM`
       - `found`: 에러가 발생하기 전 path entry
       - `unresolved_path`: 아직 해석되지 않은 나머지 경로 시작 위치
     - 입력이 invalid(`path[0]=='\0'`, 상대 경로인데 `base==NULL`)인 경우:
@@ -122,7 +138,7 @@
     - `found == NULL` 또는 `*unresolved_path != '\0'`이면 lookup 결과 그대로 실패 반환
     - 경로가 완전히 해석되면 `path_entry_create(found, flags, mode, &file_out)` 호출
   - 즉, 생성/기존 파일 처리 정책은 `path_entry_create`가 담당한다.
-  - `flags`는 새 inode를 만들 때 parent `inode_ops.create()`로 전달된다.
+  - `flags`는 새 inode를 만들 때 parent `inode_ops.create_child()`로 전달된다.
   - 성공 시 열린 file 참조를 `file_out`에 반환하며 호출자가 `file_release` 해야 함
 - `path_entry_open(pe, mode, &file_out)`
   - `path_entry_create(pe, INODE_NORMAL, mode, &file_out)`의 wrapper이다.
@@ -135,6 +151,8 @@
 - 트리 연결(`parent->children`)은 active 참조를 의미하지 않는다.
 - active 핸들만 `path_entry_retain/release`로 관리한다.
 - 구현은 `refcount == 0` 상태의 캐시 엔트리를 허용한다.
+- `inode_ops.get_child()`는 성공 시 retained inode를 반환한다.
+- `path_entry_lookup()`은 `path_entry_add()` 성공 시 그 inode 참조를 path entry 소유로 넘기고, 실패 시 release한다.
 
 ## 파일시스템 타입/특수 파일시스템
 - `vfs_globals_init()`은 파일시스템 타입 리스트와 전역 devfs(`vfs_globals()->devfs`)를 초기화한다.
@@ -143,3 +161,4 @@
 - `devfs`는 block device 없이 마운트되는 전역 `kobjfs` 인스턴스다.
 - `kobjfs`는 커널 객체 inode를 디렉터리 트리로 노출하는 특수 파일시스템이다.
 - `pipefs`는 `SYS_PIPE`에서 생성되는 익명 pipe inode/file 구현이다. VFS 경로에 이름으로 붙지 않고 FD로만 전달된다.
+- 현재 디렉터리 read 결과는 inode의 `iterate_dir()` 결과만 포함한다. VFS path entry에만 존재하는 mount point 노출은 `docs/todo.md`의 후속 작업으로 남아 있다.

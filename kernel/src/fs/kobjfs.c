@@ -175,6 +175,7 @@ static kerrno_t kodir_inode_get_child(
     linkedlist_foreach(ptr, &kodir->children) {
         struct ko_inode *child = container_of(ptr, typeof(*child), link);
         if (child->ino == dirent_id) {
+            inode_retain(&child->inode);
             *child_out = &child->inode;
             irqlock_release(&irqlock);
             return OPAL_OK;

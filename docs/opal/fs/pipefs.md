@@ -57,8 +57,8 @@ Opal에는 아직 signal/EPIPE 모델이 없으므로, reader가 없는 pipe에 
 
 ## 수명/참조 규약
 - `pipefs_create()`는 pipe inode의 초기 참조를 가진 상태로 반환한다.
-- endpoint 파일을 열 때 `inode_retain()`을 수행한다.
-- endpoint 파일이 닫히면 reader/writer 카운터를 줄이고 `inode_release()`를 수행한다.
+- endpoint 파일을 열 때 `file_init(..., inode)` 경로가 inode를 retain한다.
+- endpoint 파일이 닫히면 reader/writer 카운터를 줄이고 file release 공통 경로가 inode를 release한다.
 - `SYS_PIPE` 성공 경로는 read/write endpoint를 FD table에 등록한 뒤 로컬 file 참조와 초기 inode 참조를 해제한다.
 - 마지막 inode 참조가 해제되면 pipe inode close 경로에서 `struct pipefs` 전체가 해제된다.
 
@@ -66,7 +66,7 @@ Opal에는 아직 signal/EPIPE 모델이 없으므로, reader가 없는 pipe에 
 - `inode_ops.open`
   - `OPEN_READ` 또는 `OPEN_WRITE`만 허용한다.
   - read/write 동시 지정이나 append/create/truncate 계열 동작은 지원하지 않는다.
-- `inode_ops.lookup`, `inode_ops.create`
+- `inode_ops.iterate_dir`, `inode_ops.get_child`, `inode_ops.create_child`
   - pipe inode는 디렉터리가 아니므로 `OPAL_ENOTDIR`를 반환한다.
 - `file_ops`
   - `read`, `write`, `close` 지원

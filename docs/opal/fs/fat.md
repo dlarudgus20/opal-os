@@ -37,21 +37,24 @@
 - 포맷 실패 시 단계별로 `OPAL_E*`를 전파하며 partial state를 완전 복구하지는 않는다.
 
 ## 디렉터리/엔트리 조회
-- 디렉터리 조회는 `inode->ops->lookup` 경로로 들어온다.
+- 디렉터리 조회는 `inode_ops.iterate_dir/get_child` 경로로 들어온다.
   - root(FAT12/16): 고정 root 영역을 읽어 dentry 순회
   - 일반 inode: cluster chain 전체를 읽어 dentry 순회
-- dentry 순회(`dentry_lookup`) 규칙:
+- dentry 순회(`dentry_iterate`) 규칙:
   - `name[0] == 0`: end marker, 순회 종료
   - `0xe5`(삭제), `.` 시작, 볼륨 라벨은 스킵
-  - 나머지는 `struct path_entry`로 등록
-- 캐시 등록 실패 처리:
-  - `OPAL_EEXIST`: 이미 캐시에 있으므로 무시하고 계속
-  - 그 외(`OPAL_ENOMEM` 등): 즉시 에러 전파
+  - 나머지는 visible entry로 `struct inode_dirent`를 callback에 전달
+- `inode_dirent.id`는 FAT directory table의 raw dentry index이다.
+- `get_child`는 raw dentry index를 받아 필요한 child inode만 materialize한다.
+  - `dirent_id`가 dentry 배열 범위 밖이면 `OPAL_ERANGE`
+  - 범위 안이지만 end marker, 삭제 엔트리, `.`/`..`, 볼륨 라벨이면 `OPAL_ENOENT`
+  - 일반 파일 inode에 대해 호출되면 `OPAL_ENOTDIR`
+  - 성공 시 새로 할당된 retained inode를 반환
 
 ## `fat_root_inode` / `fat_inode` 구현 상세
 - 공통 베이스:
   - 두 타입 모두 `fat_inode_base` 레이아웃(`inode`, `file`, `sb`, `buffer`, `buflen`)을 공유한다.
-  - `ops`는 `struct fat_inode_ops`로 연결되어 `lookup/create/write_dentry/alloc_dentry`를 제공한다.
+  - `ops`는 `struct fat_inode_ops`로 연결되어 `iterate_dir/get_child/create_child/write_dentry/alloc_dentry`를 제공한다.
 - `fat_root_inode` (FAT12/16 root 전용):
   - 필드: `offset`(root 시작 섹터), `entries`(고정 root dentry 개수)
   - 데이터 로드: `root_inode_readall`이 root 영역 전체를 한 번에 메모리로 읽음
@@ -75,8 +78,8 @@
   - `sb->root32`는 `fat_sb` 내부 인스턴스라 `kfree`하지 않는다.
 
 ## 생성/이름 정책
-- 생성은 `inode_ops.create(parent_inode, pe, flags)`로 처리된다.
-- 이름 변환(`pack_filename`)은 `pe->name`을 FAT 8.3으로 변환:
+- 생성은 `inode_ops.create_child(parent_inode, name, flags, &child_out)`로 처리된다.
+- 이름 변환(`pack_filename`)은 생성할 child 이름을 FAT 8.3으로 변환:
   - 허용: `A-Z`, `0-9`, `!#$%&'()-@^_`{}~`
   - 소문자/기타 문자는 `OPAL_EINVAL`
   - base 8자 + 확장자 3자 제한

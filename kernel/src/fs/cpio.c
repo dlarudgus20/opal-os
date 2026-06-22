@@ -301,6 +301,7 @@ static kerrno_t cpio_inode_get_child(
     linkedlist_foreach(ptr, &node->children) {
         struct cpio_node *child = container_of(ptr, struct cpio_node, link);
         if (child->ino == dirent_id) {
+            inode_retain(&child->inode);
             *child_out = &child->inode;
             return OPAL_OK;
         }

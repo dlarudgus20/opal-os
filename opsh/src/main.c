@@ -152,11 +152,11 @@ static int handle_command(char *line) {
     enum parse_argv_result parse_result = parse_argv(input, argv, MAX_ARGV, &argc);
     if (parse_result != PARSE_OK) {
         if (parse_result == PARSE_TOO_MANY_ARGS) {
-            printf("shell: too many arguments (max=%d)\n", MAX_ARGV);
+            printf("opsh: too many arguments (max=%d)\n", MAX_ARGV);
         } else if (parse_result == PARSE_UNTERMINATED_QUOTE) {
-            puts("shell: unterminated quote");
+            puts("opsh: unterminated quote");
         } else {
-            puts("shell: trailing escape");
+            puts("opsh: trailing escape");
         }
         return 1;
     }
@@ -208,7 +208,7 @@ static int cmd_cat(int argc, char **argv) {
 
     int fd = open(FD_INVALID, argv[1], OPEN_READ, 0);
     if (fd < 0) {
-        puts("opsh: open failed");
+        puts("cat: open failed");
         return 1;
     }
 
@@ -229,7 +229,7 @@ static int cmd_cat(int argc, char **argv) {
 
 end:
     if (close(fd) < 0) {
-        puts("opsh: close failed");
+        puts("cat: close failed");
         ec = 1;
     }
     return ec;
@@ -246,16 +246,28 @@ static int cmd_ls(int argc, char **argv) {
 
     int fd = open(FD_INVALID, path, OPEN_READ, 0);
     if (fd < 0) {
-        puts("opsh: open failed");
+        puts("ls: open failed");
         return 1;
     }
 
     int ec = 0;
+    int flags = stat(fd);
+    if (flags < 0) {
+        puts("ls: stat failed");
+        ec = 1;
+        goto end;
+    }
+    if (!(flags & INODE_DIR)) {
+        puts("ls: not a directory");
+        ec = 1;
+        goto end;
+    }
+
     unsigned char buf[512];
     while (1) {
         ssize_t n = read(fd, buf, sizeof(buf));
         if (n < 0) {
-            puts("opsh: read failed");
+            puts("ls: read failed");
             ec = 1;
             break;
         }
@@ -278,8 +290,9 @@ static int cmd_ls(int argc, char **argv) {
         }
     }
 
+end:
     if (close(fd) < 0) {
-        puts("opsh: close failed");
+        puts("ls: close failed");
         ec = 1;
     }
     return ec;
