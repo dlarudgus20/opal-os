@@ -296,6 +296,14 @@ taskptr_t task_create(struct process *proc, void (*entry)(void), enum task_prior
 
     irqlock_t irqlock = irqlock_acquire();
 
+    // Temporary guard until process lifetime grows a real zombie/reap state.
+    // This probes whether the process has already completed exit.
+    if (completion_wait(&proc->exit_compl, 0)) {
+        irqlock_release(&irqlock);
+        mm_free_page_ptr(kstack, 0);
+        return (taskptr_t){ .ptr = NULL };
+    }
+
     struct task *task = slab_alloc(&g_sched.task_slab);
     if (!task) {
         irqlock_release(&irqlock);
@@ -353,10 +361,22 @@ static void task_free_stack(struct task *task) {
 
 static void task_free(struct task *task) {
     task_free_stack(task);
+
+    procptr_t proc = task->process;
     linkedlist_remove(&task->proc_link);
-    process_release(task->process);
+    if (linkedlist_is_empty(&proc.ptr->task_list)) {
+        completion_signal(&proc.ptr->exit_compl);
+    }
+    process_release(proc);
+
     rbtree_remove(&g_sched.tid_tree, &task->tid_node);
     slab_free(&g_sched.task_slab, task);
+}
+
+static void task_before_dying(struct task *task) {
+    set_dead(task);
+    wait_list_wake_all(&task->join_list);
+    context_destroy(task);
 }
 
 void task_terminate(taskptr_t task) {
@@ -376,10 +396,7 @@ void task_terminate(taskptr_t task) {
             break;
     }
 
-    set_dead(task.ptr);
-    wait_list_wake_all(&task.ptr->join_list);
-
-    context_destroy(task.ptr);
+    task_before_dying(task.ptr);
     task_free_stack(task.ptr);
     task_release(task);
 
@@ -388,14 +405,13 @@ void task_terminate(taskptr_t task) {
 
 [[noreturn]] void task_exit(void) {
     irqlock_t irqlock = irqlock_acquire();
+    struct task *task = g_sched.current;
 
-    set_dead(g_sched.current);
-    wait_list_wake_all(&g_sched.current->join_list);
+    task_before_dying(task);
 
-    context_destroy(g_sched.current);
-
-    g_sched.current->refcount++;
-    linkedlist_push_back(&g_sched.dead_list, &g_sched.current->queue_link);
+    kassert(task->refcount < MAX_REFC);
+    task->refcount++;
+    linkedlist_push_back(&g_sched.dead_list, &task->queue_link);
 
     schedule();
 

@@ -16,6 +16,7 @@ enum syscall_index : uintptr_t {
     SYS_PIPE,
     SYS_FORK,
     SYS_EXEC,
+    SYS_WAITPID,
 };
 
 struct sysret {

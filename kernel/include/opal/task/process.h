@@ -1,6 +1,8 @@
 #ifndef OPAL_TASK_PROCESS_H
 #define OPAL_TASK_PROCESS_H
 
+#include <limits.h>
+
 #include <kc/kerrno.h>
 
 #include <collections/linkedlist.h>
@@ -8,9 +10,11 @@
 
 #include <opal/task/task.h>
 #include <opal/task/filetable.h>
+#include <opal/task/completion.h>
 #include <opal/utils/vmtree.h>
 
 #define PID_INVALID -1
+#define PID_MAX INT_MAX
 
 typedef int pid_t;
 
@@ -27,6 +31,7 @@ struct process {
     struct vmtree vmtree;
     struct pagetable *pagetable;
 
+    struct completion exit_compl;
     struct filetable open_files;
 };
 
@@ -35,10 +40,12 @@ void proc_tree_init(void);
 void process_init(struct process *proc, struct pagetable *ptbl);
 [[nodiscard]] procptr_t process_create(void);
 
-struct process *process_current(void);
+[[nodiscard]] struct process *process_current(void);
 [[nodiscard]] procptr_t process_from_id(pid_t id);
 [[nodiscard]] procptr_t process_retain(struct process *proc);
 pid_t process_release(procptr_t proc);
+
+bool process_join(struct process *proc, uint64_t timeout);
 
 fd_t process_open_file(struct process *proc, fd_t fd, struct file *file);
 struct file *process_get_file(struct process *proc, fd_t fd);

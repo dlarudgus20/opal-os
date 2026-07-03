@@ -22,6 +22,8 @@ static int cmd_help(int argc, char **argv);
 static int cmd_echo(char *args);
 static int cmd_cat(int argc, char **argv);
 static int cmd_ls(int argc, char **argv);
+static int cmd_exec(int argc, char **argv);
+static int cmd_exit(int argc, char **argv);
 
 // clang-format off
 static const struct cmd g_commands[] = {
@@ -31,6 +33,8 @@ static const struct cmd g_commands[] = {
     CMD_RAW("echo", "print echo", cmd_echo),
     CMD_ARGV("cat", "show file content", cmd_cat),
     CMD_ARGV("ls", "list directory entries", cmd_ls),
+    CMD_ARGV(".", "execute binary", cmd_exec),
+    CMD_ARGV("exit", "exit shell", cmd_exit),
 };
 // clang-format on
 
@@ -299,4 +303,41 @@ end:
         ec = 1;
     }
     return ec;
+}
+
+static int cmd_exec(int argc, char **argv) {
+    if (argc != 2) {
+        puts("usage: . [path]");
+        return 1;
+    }
+
+    int fd = open(FD_INVALID, argv[1], OPEN_READ, 0);
+    if (fd < 0) {
+        puts("exec: open failed");
+        return 1;
+    }
+
+    pid_t pid = fork();
+    if (pid < 0) {
+        printf("opsh: fork() failed: %d\n", pid);
+        close(fd);
+        return 1;
+    } else if (pid > 0) {
+        waitpid(pid);
+        close(fd);
+        return 0;
+    } else {
+        int ret = exec(fd);
+        printf("opsh: exec() failed: %d\n", ret);
+        close(fd);
+        task_exit();
+    }
+}
+
+static int cmd_exit(int argc, char **) {
+    if (argc != 1) {
+        puts("usage: exit");
+        return 1;
+    }
+    task_exit();
 }

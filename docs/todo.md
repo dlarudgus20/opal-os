@@ -24,6 +24,23 @@
    - mount가 directory inode를 요구하게 하면 해결.
    - cpiofs를 정규 ramfs로 바꿔서 mkdir 가능하게 해야한다.
 
+4. waitpid zombie/child ownership 모델 정리
+   - 현재 waitpid는 pid tree에서 process를 찾아 exit completion을 기다리는 임시 구현이다.
+   - child가 parent의 waitpid 호출 전에 완전히 정리되면 pid tree에서 사라져 waitpid가 `OPAL_ENOENT`를 반환할 수 있다.
+   - parent가 wait/reap할 때까지 child process ref를 보존하는 zombie 목록 또는 parent-child ownership 모델이 필요하다.
+   - wait 대상 권한(parent-child 관계 검증 등)은 해당 모델을 정할 때 함께 확정한다.
+
+5. `uinit` TTY reader 수명 정리
+   - `opsh`에서 `exit`를 반복 입력하면 다음 형태로 deterministic하게 입력이 꼬일 수 있다.
+     - `opsh: /> exit`
+     - `opsh: /> exit`
+     - `exit`
+     - `unknown command: xtexit`
+   - `uinit`은 `/dev/hid`를 한 번 열고 fork로 상속하므로, shell 종료 후 이전 `read_tty()` 프로세스가 살아 있으면 새 reader와 같은 HID file/event를 공유한다.
+   - HID event는 auto-reset event라 입력 하나당 waiter 하나만 깨우고, wait queue가 FIFO라 이전 reader와 새 reader가 입력 문자를 번갈아 받을 수 있다.
+   - 두 번째 `exit\n`에서 이전 reader가 `e`, `i`, `\n`을 받고 종료하면 새 reader에는 `x`, `t`가 line buffer에 남는다. 세 번째 `exit\n`가 이어져 새 shell에는 `xtexit\n`가 전달된다.
+   - shell 프로세스 종료 시 해당 세션의 TTY reader를 함께 정리하거나, `uinit`의 TTY I/O 구조를 reader 누적이 불가능한 방식으로 바꿔야 한다.
+
 ## Known Issues
 
 ### FAT/VFS

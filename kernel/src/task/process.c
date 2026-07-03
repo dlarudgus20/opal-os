@@ -57,7 +57,9 @@ void process_init(struct process *proc, struct pagetable *ptbl) {
 
     linkedlist_init(&proc->task_list);
     vmtree_init(&proc->vmtree);
+    completion_init(&proc->exit_compl);
     filetable_init(&proc->open_files);
+
     rbtree_insert_process(&g_pid_tree, proc);
 }
 
@@ -181,6 +183,10 @@ pid_t process_release(procptr_t proc) {
 
     irqlock_release(&irqlock);
     return id;
+}
+
+bool process_join(struct process *proc, uint64_t timeout) {
+    return completion_wait(&proc->exit_compl, timeout);
 }
 
 fd_t process_open_file(struct process *proc, fd_t fd, struct file *file) {

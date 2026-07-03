@@ -18,6 +18,7 @@ const char *kerrno_str(kerrno_t err) {
         case OPAL_ETOOBIG: return "OPAL_ETOOBIG";
         case OPAL_ENOTSUPP: return "OPAL_ENOTSUPP";
         case OPAL_ENOSPC: return "OPAL_ENOSPC";
+        case OPAL_ETIMEOUT: return "OPAL_ETIMEOUT";
 
         case OPAL_EISDIR: return "OPAL_EISDIR";
         case OPAL_ENOTDIR: return "OPAL_ENOTDIR";

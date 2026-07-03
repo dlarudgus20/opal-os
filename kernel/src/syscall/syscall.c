@@ -291,6 +291,43 @@ static intptr_t syscall_exec(uintptr_t arg1) {
     task_exit();
 }
 
+static intptr_t syscall_waitpid(uintptr_t arg1, uintptr_t arg2) {
+    if (arg1 > PID_MAX) {
+        return OPAL_EINVAL;
+    }
+
+    uint64_t now = timer_get_tick();
+    uint64_t timeout;
+    if (arg2 == UINT64_MAX) {
+        timeout = TIMEOUT_INFINITY;
+    } else {
+        if (UINT64_MAX - now < arg2) {
+            return OPAL_EINVAL;
+        }
+        timeout = now + arg2;
+    }
+
+    procptr_t proc = process_from_id((pid_t)arg1);
+    if (!proc.ptr) {
+        return OPAL_ENOENT;
+    }
+
+    kerrno_t result = OPAL_OK;
+    if (proc.ptr == process_current()) {
+        result = OPAL_EINVAL;
+        goto ret;
+    }
+
+    if (!process_join(proc.ptr, timeout)) {
+        result = OPAL_ETIMEOUT;
+        goto ret;
+    }
+
+ret:
+    process_release(proc);
+    return result;
+}
+
 struct sysret syscall_dispatch(struct isr_stackframe *frame, uintptr_t arg0, uintptr_t arg1,
     uintptr_t arg2, uintptr_t arg3, uintptr_t arg4, uintptr_t arg5) {
     struct sysret sysret = { OPAL_EUNKNOWN, 0, 0 };
@@ -331,6 +368,9 @@ struct sysret syscall_dispatch(struct isr_stackframe *frame, uintptr_t arg0, uin
             break;
         case SYS_EXEC:
             sysret.ret0 = syscall_exec(arg1);
+            break;
+        case SYS_WAITPID:
+            sysret.ret0 = syscall_waitpid(arg1, arg2);
             break;
     }
     (void)arg5;

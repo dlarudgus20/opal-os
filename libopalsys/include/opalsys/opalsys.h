@@ -28,5 +28,6 @@ int mount(const char *fstype, int arg, const char *path);
 int pipe(int fds[2]);
 pid_t fork(void);
 int exec(int fd);
+int waitpid(pid_t pid);
 
 #endif

@@ -15,6 +15,7 @@ enum kerrno {
     OPAL_ETOOBIG = -10,
     OPAL_ENOTSUPP = -11,
     OPAL_ENOSPC = -12,
+    OPAL_ETIMEOUT = -13,
 
     OPAL_EISDIR = -100,
     OPAL_ENOTDIR = -101,

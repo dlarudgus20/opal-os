@@ -93,3 +93,8 @@ int exec(int fd) {
     sysret_t ret = syscall(SYS_EXEC, (uint64_t)fd, 0, 0, 0);
     return assume_int(ret.ret0);
 }
+
+int waitpid(pid_t pid) {
+    sysret_t ret = syscall(SYS_WAITPID, (uint64_t)pid, UINT64_MAX, 0, 0);
+    return assume_int(ret.ret0);
+}
