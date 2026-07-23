@@ -8,6 +8,7 @@
 - [`kernel-unit-test.md`](kernel-unit-test.md): 커널 유닛 테스트 프레임워크 상세
 - [`troubleshooting.md`](troubleshooting.md): 자주 발생하는 빌드/테스트 이슈
 - [`todo.md`](todo.md): 다음 작업 TODO
+- [`agents/README.md`](agents/README.md): 브랜치별 에이전트 작업 계획
 - [`opal/README.md`](opal/README.md): 커널 내부 동작 문서
 - [`user/README.md`](user/README.md): 사용자 공간 동작 문서
 - [`libcoll/README.md`](libcoll/README.md): libcoll 자료구조 문서
