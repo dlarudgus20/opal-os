@@ -1,21 +1,19 @@
 #include <opal/test.h>
 #include <opal/utils/ringbuffer.h>
-#include <kc/stdio.h>
 
-DEFINE_TEST(utils_memmove_overlap) {
-    char buffer[] = "abcdef";
-    memmove(buffer + 1, buffer, 5);
-    TEST_EXPECT_STREQ("aabcde", buffer);
-    memmove(buffer, buffer + 1, 6);
-    TEST_EXPECT_STREQ("abcde", buffer);
-}
+DEFINE_TEST(utils_ringbuffer_single_capacity) {
+    unsigned storage;
+    struct ringbuffer queue;
+    ringbuffer_init(&queue, &storage, 1);
+    TEST_EXPECT_TRUE(ringbuffer_is_empty(&queue));
+    TEST_EXPECT_FALSE(ringbuffer_is_full(&queue));
 
-DEFINE_TEST(utils_snprintf) {
-    char buffer[16];
-    TEST_ASSERT_EQ(6, ksnprintf(buffer, sizeof(buffer), "%s-%u", "opal", 7u));
-    TEST_EXPECT_STREQ("opal-7", buffer);
-    TEST_EXPECT_EQ(6, ksnprintf(buffer, 5, "%s-%u", "opal", 7u));
-    TEST_EXPECT_STREQ("opal", buffer);
+    ringbuffer_push(&queue, unsigned, 100u);
+    TEST_EXPECT_TRUE(ringbuffer_is_full(&queue));
+    TEST_ASSERT_FALSE(ringbuffer_is_empty(&queue));
+    TEST_EXPECT_EQ(100u, ringbuffer_pop(&queue, unsigned));
+    TEST_EXPECT_TRUE(ringbuffer_is_empty(&queue));
+    TEST_EXPECT_FALSE(ringbuffer_is_full(&queue));
 }
 
 DEFINE_TEST(utils_ringbuffer_wraparound) {

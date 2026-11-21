@@ -12,6 +12,7 @@
 
 void test_run(void);
 void test_run_heavy(void);
+void test_mark_panicked(void);
 void test_abort(void);
 
 #ifdef OPAL_TEST

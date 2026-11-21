@@ -4,6 +4,7 @@
 
 void test_run(void) {}
 void test_run_heavy(void) {}
+void test_mark_panicked(void) {}
 void test_abort(void) {}
 
 #else
@@ -28,17 +29,17 @@ static struct {
 static void test_begin(const char *name) {
     g_test_state.current_name = name;
     g_test_state.current_failures = 0;
+    platform_uart_printf("test %s ... ", name);
 }
 
 static void test_end(void) {
     g_test_state.run_count++;
     if (g_test_state.current_failures == 0) {
         g_test_state.pass_count++;
-        platform_uart_printf("[       OK ] %s\n", g_test_state.current_name);
+        platform_uart_printf("ok\n");
     } else {
         g_test_state.fail_count++;
-        platform_uart_printf("[  FAILED  ] %s (%u failures)\n", g_test_state.current_name,
-            g_test_state.current_failures);
+        platform_uart_printf("\n");
     }
     g_test_state.current_name = 0;
 }
@@ -48,25 +49,32 @@ static void test_print_summary(void) {
         g_test_state.pass_count, g_test_state.fail_count);
 }
 
-void test_condition_failed(const char *check, const char *expr, const char *file, unsigned line) {
+static void test_record_failure(void) {
     g_test_state.current_failures++;
-    platform_uart_printf("  Failure %s:%u: %s(%s)\n", file, line, check, expr);
+    if (g_test_state.current_failures == 1) {
+        platform_uart_printf("FAILED\n");
+    } else {
+        platform_uart_printf("\n");
+    }
+}
+
+void test_condition_failed(const char *check, const char *expr, const char *file, unsigned line) {
+    test_record_failure();
+    platform_uart_printf("  %s:%u: %s(%s)", file, line, check, expr);
 }
 
 void test_expect_eq_u64_failed(const char *expected_expr, const char *actual_expr,
     uint64_t expected, uint64_t actual, const char *file, unsigned line) {
-    g_test_state.current_failures++;
-    platform_uart_printf("  Failure %s:%u: EXPECT_EQ(%s, %s), expected=0x%llx actual=0x%llx\n",
-        file, line, expected_expr, actual_expr, (unsigned long long)expected,
-        (unsigned long long)actual);
+    test_record_failure();
+    platform_uart_printf("  %s:%u: EXPECT_EQ(%s, %s), expected=0x%llx actual=0x%llx", file, line,
+        expected_expr, actual_expr, (unsigned long long)expected, (unsigned long long)actual);
 }
 
 void test_expect_streq_failed(const char *expected_expr, const char *actual_expr,
     const char *expected, const char *actual, const char *file, unsigned line) {
-    g_test_state.current_failures++;
-    platform_uart_printf("  Failure %s:%u: EXPECT_STREQ(%s, %s), expected=\"%s\" actual=\"%s\"\n",
-        file, line, expected_expr, actual_expr, expected ? expected : "(null)",
-        actual ? actual : "(null)");
+    test_record_failure();
+    platform_uart_printf("  %s:%u: EXPECT_STREQ(%s, %s), expected=\"%s\" actual=\"%s\"", file, line,
+        expected_expr, actual_expr, expected ? expected : "(null)", actual ? actual : "(null)");
 }
 
 static void debug_exit(bool ok) {
@@ -93,6 +101,7 @@ static void run_test_group(bool heavy) {
     g_test_state.current_name = 0;
     g_test_state.running = true;
     platform_uart_printf("\n==== test run ====\n");
+
     for (const struct test_info *const *pp = test_start__; pp < test_end__; pp++) {
         if (!*pp) {
             continue;
@@ -100,15 +109,16 @@ static void run_test_group(bool heavy) {
         const struct test_info *p = *pp;
         bool is_heavy = strncmp(p->item, "heavy__", 7) == 0;
         if (is_heavy == heavy) {
-            platform_uart_printf("[ RUN      ] %s\n", p->item);
             test_begin(p->item);
             p->fn();
             test_end();
         }
     }
+
     test_print_summary();
     if (g_test_state.fail_count != 0) {
-        panicf("test failed: %u", g_test_state.fail_count);
+        platform_uart_printf("  %u test(s) failed\n", g_test_state.fail_count);
+        debug_exit(false);
     }
     g_test_state.running = false;
 
@@ -123,6 +133,13 @@ void test_run_heavy(void) {
     run_test_group(true);
 }
 
+void test_mark_panicked(void) {
+    if (!g_test_state.running) {
+        return;
+    }
+    test_record_failure();
+}
+
 void test_abort(void) {
     if (!g_test_state.running) {
         return;
@@ -130,7 +147,6 @@ void test_abort(void) {
     g_test_state.running = false;
 
     if (g_test_state.current_name) {
-        platform_uart_printf("[  FAILED  ] %s (aborted)\n", g_test_state.current_name);
         g_test_state.current_name = 0;
         g_test_state.run_count++;
         g_test_state.fail_count++;

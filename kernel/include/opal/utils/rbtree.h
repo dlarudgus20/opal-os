@@ -1,4 +1,5 @@
-#pragma once
+#ifndef OPAL_UTILS_RBTREE_H
+#define OPAL_UTILS_RBTREE_H
 
 #include <kc/stdlib.h>
 
@@ -29,12 +30,13 @@ void rbtree_init(struct rbtree *tree);
 [[nodiscard]] struct rbtree_node *rbtree_first(struct rbtree *tree);
 [[nodiscard]] struct rbtree_node *rbtree_next(struct rbtree_node *node);
 
-void rbtree_link_insert(struct rbtree *tree, struct rbtree_node *parent, struct rbtree_node **link, struct rbtree_node *node);
+void rbtree_link_insert(struct rbtree *tree, struct rbtree_node *parent, struct rbtree_node **link,
+    struct rbtree_node *node);
 void rbtree_remove(struct rbtree *tree, struct rbtree_node *node);
 
 #define RBTREE_INSERT_TEMPLATE(type, node_, comp, postfix, ...) \
     __VA_ARGS__ \
-    void rbtree_insert_##postfix(struct rbtree* tree, type* data) { \
+    void rbtree_insert_##postfix(struct rbtree *tree, type *data) { \
         struct rbtree_node **link = &tree->root; \
         struct rbtree_node *parent = NULL; \
         while (*link) { \
@@ -55,9 +57,9 @@ void rbtree_remove(struct rbtree *tree, struct rbtree_node *node);
 #define RBTREE_TEMPLATE(type, keytype, node_, comp, comp_to, postfix, ...) \
     RBTREE_INSERT_TEMPLATE(type, node_, comp, postfix __VA_OPT__(,) __VA_ARGS__) \
     [[nodiscard]] __VA_ARGS__ \
-    struct rbtree_find_result rbtree_find_##postfix(struct rbtree* tree, keytype key) { \
+    struct rbtree_find_result rbtree_find_##postfix(struct rbtree *tree, keytype key) { \
         struct rbtree_find_result result = { .lower = NULL, .upper = NULL }; \
-        struct rbtree_node* node = tree->root; \
+        struct rbtree_node *node = tree->root; \
         while (node) { \
             type *found = container_of(node, type, node_); \
             int order = (comp_to)(found, key); \
@@ -74,3 +76,5 @@ void rbtree_remove(struct rbtree *tree, struct rbtree_node *node);
         } \
         return result; \
     }
+
+#endif

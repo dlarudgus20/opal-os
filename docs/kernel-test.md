@@ -29,7 +29,7 @@ DEFINE_TEST(snprintf_unsigned) {
 
 `TEST_EXPECT_*`는 실패를 기록하고 현재 테스트를 계속합니다. `TEST_ASSERT_*`는 실패를 기록하고 현재 테스트 함수에서 즉시 반환하므로, 후속 검증에 필요한 전제 조건을 검사할 때 사용합니다. 실행기는 같은 그룹의 다음 테스트를 이어서 실행합니다.
 
-테스트는 초기 부팅 단계에서 실행되므로 필요한 상태를 각 테스트에서 직접 준비하고, 다른 테스트의 실행 순서에 의존하지 않도록 작성합니다. [기존 테스트 예시](../kernel/tests/utils.c)
+테스트는 초기 부팅 단계에서 실행되므로 필요한 상태를 각 테스트에서 직접 준비하고, 다른 테스트의 실행 순서에 의존하지 않도록 작성합니다. [기존 테스트 예시](../kernel/tests/utils/ringbuffer.c)
 
 ## 3. 등록과 링크
 
@@ -43,15 +43,28 @@ DEFINE_TEST(snprintf_unsigned) {
 
 1. `kmain()`이 `test_run()`을 호출합니다. 실행기는 첫 실행에서 COM1을 초기화한 뒤 `==== test run ====`을 출력합니다.
 2. `test_run()`은 이름이 `heavy__`로 시작하지 않는 테스트를 실행합니다. `heavy__`로 시작하는 테스트를 실행하려면 `test_run_heavy()`를 명시적으로 호출합니다. 두 함수는 호출마다 자신의 실행 결과를 새로 집계합니다.
-3. 각 테스트의 시작과 종료에 `[ RUN      ]`, `[       OK ]` 또는 `[  FAILED  ]`가 표시됩니다. 검증 실패에는 소스 파일, 줄 번호, 조건이나 비교식이 표시됩니다. 값 비교의 경우 기대값과 실제값도 출력됩니다.
-4. 실행기가 `==== test end ====`와 함께 결과를 출력합니다. `run`, `pass`, `fail`은 테스트 함수의 개수입니다. 한 테스트에서 검증이 여러 번 실패해도 `fail`에는 테스트 한 건으로 집계됩니다. 실패한 테스트가 있으면 요약을 출력한 뒤 panic합니다.
+3. 테스트를 시작할 때 `test <이름> ... `를 줄바꿈 없이 출력합니다. 성공하면 같은 줄에 `ok`를 붙입니다. 첫 검증 실패는 `FAILED`로 줄을 닫고, 각 실패의 소스 파일, 줄 번호와 검증식을 두 칸 들여써서 이어서 출력합니다. 값 비교의 경우 기대값과 실제값도 출력됩니다.
+4. 실행기가 `==== test end ====`와 함께 결과를 출력합니다. `run`, `pass`, `fail`은 테스트 함수의 개수입니다. 한 테스트에서 검증이 여러 번 실패해도 `fail`에는 테스트 한 건으로 집계됩니다. 실패한 테스트가 있는 그룹이 끝까지 실행되면 요약 다음 줄에 `<개수> test(s) failed`를 출력하고 QEMU 실패 종료를 요청합니다.
 
-테스트 함수에서 panic이 발생하면 `test_abort()`가 해당 테스트를 실패로 집계하고 중단 표시와 요약을 출력한 뒤 QEMU 실패 종료를 요청합니다. 테스트 그룹이 실행 중이 아닐 때 `test_abort()`는 즉시 반환합니다.
-
-세 테스트가 모두 통과한 경우 마지막 줄은 다음과 같습니다.
+검증 실패가 있는 그룹이 끝까지 실행된 경우의 예시입니다.
 
 ```text
-==== test end ==== run=3 pass=3 fail=0
+==== test run ====
+test utils_memmove_overlap ... ok
+test check_bounds ... FAILED
+  tests/utils/example.c:12: EXPECT_EQ(20, value), expected=0x14 actual=0x1e
+  tests/utils/example.c:13: EXPECT_FALSE(is_empty)
+==== test end ==== run=2 pass=1 fail=1
+  1 test(s) failed
+```
+
+테스트 함수에서 바로 panic이 발생하면 `FAILED`로 결과 줄을 닫고, 다음 줄에 한 칸 들여쓴 panic 진단을 출력합니다. 앞서 검증 실패로 `FAILED`를 출력했다면 마지막 검증 진단 다음 줄에 panic 진단을 이어서 출력합니다. `test_abort()`는 현재 테스트를 실패로 집계하고 요약을 출력한 뒤 QEMU 실패 종료를 요청합니다. 테스트 그룹이 실행 중이 아닐 때 `test_abort()`는 즉시 반환합니다.
+
+```text
+==== test run ====
+test panic_probe ... FAILED
+ [tests/utils/example.c:20 test_func__panic_probe()] panic : probe
+==== test end ==== run=1 pass=0 fail=1
 ```
 
 ## 5. 빌드와 실행

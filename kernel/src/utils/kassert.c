@@ -8,9 +8,11 @@
     static bool panicking;
     interrupts_disable();
 
+    test_mark_panicked();
+
     if (!panicking) {
         panicking = true;
-        platform_uart_printf("[%s:%u %s()] ", file, line, func);
+        platform_uart_printf(" [%s:%u %s()] ", file, line, func);
 
         va_list args;
         va_start(args, line);

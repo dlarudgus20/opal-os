@@ -15,11 +15,11 @@
 
 ## 템플릿 매크로 계약
 - `RBTREE_TEMPLATE(type, keytype, node_, comp, comp_to, postfix, ...)`
-  - `comp(type* a, type* b)`:
+  - `comp(type *a, type *b)`:
     - `<0`: `a < b`
     - `>0`: `a > b`
     - `0`: 동일 key (중복 삽입 거부)
-  - `comp_to(type* a, keytype key)`:
+  - `comp_to(type *a, keytype key)`:
     - `<0`: `a->key < key`
     - `>0`: `a->key > key`
     - `0`: 동일 key
@@ -42,13 +42,13 @@ struct mynode {
     struct rbtree_node node;
 };
 
-static int cmp_node(const struct mynode* a, const struct mynode* b) {
+static int cmp_node(const struct mynode *a, const struct mynode *b) {
     if (a->key < b->key) return -1;
     if (a->key > b->key) return 1;
     return 0;
 }
 
-static int cmp_key(const struct mynode* a, int key) {
+static int cmp_key(const struct mynode *a, int key) {
     if (a->key < key) return -1;
     if (a->key > key) return 1;
     return 0;
