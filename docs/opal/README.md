@@ -1,28 +1,5 @@
-# opal-os 내부 문서
+# opal-os kernel
 
-- [`boot.md`](boot.md): 부팅 초기화 순서와 부트 인자 파싱
-- [`interrupt-io.md`](interrupt-io.md): 인터럽트/입력/시리얼 IO 경로
-- [`tty.md`](tty.md): 커널 `tty0`, UART TTY, 커널 입력 버퍼 경로
-- [`devices.md`](devices.md): 커널이 제공하는 장치 파일 계약
-- [`shell.md`](shell.md): 커널 shell 구현
-- [`syscall.md`](syscall.md): syscall ABI와 커널 디스패치 경로
-- [`klog.md`](klog.md): 커널 로그 버퍼와 읽기/쓰기 API 계약
-- [`mm/memory-map.md`](mm/memory-map.md): 메모리 맵 요약
-- [`mm/pagetable.md`](mm/pagetable.md): 페이지테이블 map/unmap/lookup 경로
-- [`mm/vmap.md`](mm/vmap.md): 물리 주소 범위의 커널 vmap 매핑 API
-- [`mm/buddy.md`](mm/buddy.md): 버디 페이지 할당기
-- [`mm/slab.md`](mm/slab.md): 슬랩 오브젝트 할당기
-- [`utils/dynarray.md`](utils/dynarray.md): 커널 동적 배열 버퍼(kmalloc 기반)
-- [`utils/vmtree.md`](utils/vmtree.md): 프로세스 가상주소 구간 B-Tree
-- [`utils/xarray.md`](utils/xarray.md): 희소 인덱스 압축 배열
-- [`task/task.md`](task/task.md): 태스크/스케줄러
-- [`task/process.md`](task/process.md): 프로세스 수명/ELF 로딩/FD 테이블
-- [`task/fork-exec.md`](task/fork-exec.md): fork/exec 구현 구조
-- [`task/coroutine.md`](task/coroutine.md): 코루틴 워커 큐와 핸들러 상태 전이 계약
-- [`fs/disk.md`](fs/disk.md): 물리 disk 계층, 요청 큐/완료 모델, 파티션 스캔/리셋
-- [`fs/block_device.md`](fs/block_device.md): block device 공통 계층과 요청 큐 모델
-- [`fs/vfs.md`](fs/vfs.md): VFS 경로 해석, path entry, inode/file 계약
-- [`fs/fat.md`](fs/fat.md): FAT(v0) 연동 범위와 이름/오류 처리 정책
-- [`fs/cpio.md`](fs/cpio.md): initramfs용 CPIO 읽기 전용 파일시스템
-- [`fs/pipefs.md`](fs/pipefs.md): pipe inode, reader/writer file 제공 파일시스템
-- [`drivers/pata.md`](drivers/pata.md): PATA(ATA PIO) 드라이버 구조와 요청/완료 모델
+- [부트스트랩](boot.md)
+- [부트스트랩 메모리 맵](mm/memory-map.md)
+- [커널 자료구조](utils/README.md)

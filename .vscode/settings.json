@@ -1,8 +1,9 @@
 {
-    "testMate.cpp.test.executables": "**/{build,Build,BUILD,out,Out,OUT}/**/*{test,Test,TEST}*",
     "clangd.arguments": [
         "--query-driver=/home/ikh/.local/x86_64-elf/bin/x86_64-elf-gcc"
     ],
     "C_Cpp.intelliSenseEngine": "disabled",
-    "makefile.configureOnOpen": false
+    "makefile.configureOnOpen": false,
+    "clangd.onConfigChanged": "restart",
+    "clangd.onConfigChangedForceEnable": true
 }

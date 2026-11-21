@@ -11,4 +11,4 @@ make -C libkubsan build CONFIG=debug PLATFORM=pc-x64
 ```
 
 ## 의존성
-- `libkc`
+- `libkc`의 `kassert.h`, include only

@@ -2,6 +2,12 @@
     "version": "2.0.0",
     "tasks": [
         {
+            "label": "clangd: generate compile_commands.json (test)",
+            "type": "shell",
+            "command": "LC_ALL=C compiledb --full-path -n make -B iso TEST=1",
+            "problemMatcher": []
+        },
+        {
             "label": "clangd: generate compile_commands.json",
             "type": "shell",
             "command": "LC_ALL=C compiledb --full-path -n make -B iso",

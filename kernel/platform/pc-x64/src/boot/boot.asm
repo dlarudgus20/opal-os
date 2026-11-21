@@ -16,9 +16,6 @@ mb2_header_start:
     dd mb2_header_end - mb2_header_start
     dd -(MB2_MAGIC + (mb2_header_end - mb2_header_start))
 align 8, db 0
-    dw 5, 1                         ; framebuffer, optional
-    dd 20, 1024, 768, 32            ; width/height/bpp
-align 8, db 0
     dd 0, 8                         ; end tag
 mb2_header_end:
 
@@ -27,16 +24,12 @@ section .bss
 align 4096
 tmp_table: resb 0x5000
 
-global g_mb2_info
-g_mb2_info: resd 1
-
 section .startup alloc exec progbits
 
 bits 32
 global _start
 _start:
     cli
-    mov [g_mb2_info - DISPLACEMENT], ebx
     mov esp, __stack_top_lba
 
     ; PML4(0)

@@ -1,36 +1,19 @@
-TARGET_NAME := kernel
-TARGET_TYPE := executable
-STATIC_REFS := libkc libcoll
-INCLUDE_REFS := libopalsys
+TARGET_NAME         := kernel
+TARGET_TYPE         := executable
+STATIC_REFS         := libkc libkubsan
+INCLUDE_REFS        := libopalsys
 
-TEST_SHARED_REFS := libpanicimpl
-LDFLAGS_ON_TEST := -Wl,--exclude-libs=libkc
-
-CFLAGS += -DOPAL_KERNEL
-
-all: build
-
-# configurations
-
-include ../mkfiles/conf.mk
+include ../mkfiles/config.mk
 -include platform/$(PLATFORM)/config.mk
 include res.mk
 
-ifneq ($(IS_TEST),1)
-STATIC_REFS += libkubsan
-endif # IS_TEST
+CFLAGS              += -DOPAL_KERNEL
 
-# rules
+KERNEL_BIN          := $(BUILD_DIR)/kernel.sys
 
 include ../mkfiles/rules.mk
 
-ifneq ($(IS_TEST),1)
-TARGET_STRIPPED := $(BUILD_DIR)/kernel.sys
+build: $(KERNEL_BIN)
 
-$(TARGET_STRIPPED): $(TARGET)
+$(KERNEL_BIN): $(TARGET)
 	$(TOOLSET_OBJCOPY) -j .startup -j .text -j .rodata -j .data -j .bss -S $< $@
-
-TARGET := $(TARGET_STRIPPED)
-endif # IS_TEST
-
-build: $(TARGET)

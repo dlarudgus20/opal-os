@@ -8,34 +8,11 @@
             "defines": [
                 "OPAL_PLATFORM=\"pc-x64\"",
                 "OPAL_CONFIG=\"debug\"",
-                "OPAL_UNIT_TEST"
+                "OPAL_TEST"
             ],
             "compilerPath": "~/.local/x86_64-elf/bin/x86_64-elf-gcc",
             "compilerArgs": [
                 "-ffreestanding",
-                "-pedantic",
-                "-Wall",
-                "-Wextra",
-                "-Werror"
-            ],
-            "cStandard": "c23",
-            "cppStandard": "c++23",
-            "intelliSenseMode": "linux-gcc-x64"
-        },
-        {
-            "name": "test pc-x64",
-            "includePath": [
-                "${workspaceFolder}/**/include"
-            ],
-            "defines": [
-                "OPAL_PLATFORM=\"pc-x64\"",
-                "OPAL_CONFIG=\"debug\"",
-                "OPAL_TEST"
-            ],
-            "compilerPath": "/usr/bin/gcc",
-            "compilerArgs": [
-                "-iquote",
-                "${workspaceFolder}/test-pch/include",
                 "-pedantic",
                 "-Wall",
                 "-Wextra",

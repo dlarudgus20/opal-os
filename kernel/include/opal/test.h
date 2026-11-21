@@ -7,65 +7,45 @@
 #include <kc/string.h>
 #include <kc/kassert.h>
 
+#define PROTOTYPE_TEST(name) \
+    static void test_func__##name (void)
+
+void test_run(void);
+void test_run_heavy(void);
+
 #ifdef OPAL_TEST
-#define STATIC_OR_TEST
-#else
-#define STATIC_OR_TEST static
-#endif
 
-typedef void (*unit_test_ptr)(void);
-
-#define PROTOTYPE_UNIT_TEST(name) \
-    static void unit_test_func__##name (void)
-
-void unit_test_run(void);
-void unit_test_run_heavy(void);
-
-#ifdef OPAL_UNIT_TEST
-
-struct unit_test_info {
+struct test_info {
     void (*fn)(void);
     const char *item;
 };
 
 #if !__has_attribute(section)
-#error "kernel unit test requires [[gnu::section]]"
+#error "kernel test requires [[gnu::section]]"
 #elif !__has_attribute(used)
-#error "kernel unit test requires [[gnu::used]]"
+#error "kernel test requires [[gnu::used]]"
 #endif
 
-#define DEFINE_UNIT_TEST(name) \
-    PROTOTYPE_UNIT_TEST(name); \
-    static const struct unit_test_info unit_test_item__##name = { \
-        .fn = unit_test_func__##name , \
+#define DEFINE_TEST(name) \
+    PROTOTYPE_TEST(name); \
+    static const struct test_info test_item__##name = { \
+        .fn = test_func__##name , \
         .item = #name , \
     }; \
-    static const struct unit_test_info *const unit_test_ptr__##name \
-    [[maybe_unused, gnu::used, gnu::section(".unittest")]] = &unit_test_item__##name ; \
-    PROTOTYPE_UNIT_TEST(name)
+    static const struct test_info *const test_ptr__##name \
+    [[maybe_unused, gnu::used, gnu::section(".test")]] = &test_item__##name ; \
+    PROTOTYPE_TEST(name)
 
-void unit_test_expect_true_failed(const char *expr, const char *file, unsigned line);
-void unit_test_expect_eq_u64_failed(
-    const char *expected_expr,
-    const char *actual_expr,
-    uint64_t expected,
-    uint64_t actual,
-    const char *file,
-    unsigned line
-);
-void unit_test_expect_streq_failed(
-    const char *expected_expr,
-    const char *actual_expr,
-    const char *expected,
-    const char *actual,
-    const char *file,
-    unsigned line
-);
+void test_expect_true_failed(const char *expr, const char *file, unsigned line);
+void test_expect_eq_u64_failed(const char *expected_expr, const char *actual_expr,
+    uint64_t expected, uint64_t actual, const char *file, unsigned line);
+void test_expect_streq_failed(const char *expected_expr, const char *actual_expr,
+    const char *expected, const char *actual, const char *file, unsigned line);
 
 #define TEST_EXPECT_TRUE(expr) \
     do { \
         if (!(expr)) { \
-            unit_test_expect_true_failed(#expr, __FILE__, __LINE__); \
+            test_expect_true_failed(#expr, __FILE__, __LINE__); \
         } \
     } while (0)
 
@@ -76,7 +56,7 @@ void unit_test_expect_streq_failed(
         const uint64_t _test_expected = (uint64_t)(expected); \
         const uint64_t _test_actual = (uint64_t)(actual); \
         if (_test_expected != _test_actual) { \
-            unit_test_expect_eq_u64_failed(#expected, #actual, _test_expected, _test_actual, __FILE__, __LINE__); \
+            test_expect_eq_u64_failed(#expected, #actual, _test_expected, _test_actual, __FILE__, __LINE__); \
         } \
     } while (0)
 
@@ -87,14 +67,14 @@ void unit_test_expect_streq_failed(
         if ((_test_expected == 0 && _test_actual != 0) || \
             (_test_expected != 0 && _test_actual == 0) || \
             (_test_expected != 0 && _test_actual != 0 && strcmp(_test_expected, _test_actual) != 0)) { \
-            unit_test_expect_streq_failed(#expected, #actual, _test_expected, _test_actual, __FILE__, __LINE__); \
+            test_expect_streq_failed(#expected, #actual, _test_expected, _test_actual, __FILE__, __LINE__); \
         } \
     } while (0)
 
 #define TEST_ASSERT_TRUE(expr) \
     do { \
         if (!(expr)) { \
-            unit_test_expect_true_failed(#expr, __FILE__, __LINE__); \
+            test_expect_true_failed(#expr, __FILE__, __LINE__); \
             return; \
         } \
     } while (0)
@@ -106,7 +86,7 @@ void unit_test_expect_streq_failed(
         const uint64_t _test_expected = (uint64_t)(expected); \
         const uint64_t _test_actual = (uint64_t)(actual); \
         if (_test_expected != _test_actual) { \
-            unit_test_expect_eq_u64_failed(#expected, #actual, _test_expected, _test_actual, __FILE__, __LINE__); \
+            test_expect_eq_u64_failed(#expected, #actual, _test_expected, _test_actual, __FILE__, __LINE__); \
             return; \
         } \
     } while (0)
@@ -118,15 +98,15 @@ void unit_test_expect_streq_failed(
         if ((_test_expected == 0 && _test_actual != 0) || \
             (_test_expected != 0 && _test_actual == 0) || \
             (_test_expected != 0 && _test_actual != 0 && strcmp(_test_expected, _test_actual) != 0)) { \
-            unit_test_expect_streq_failed(#expected, #actual, _test_expected, _test_actual, __FILE__, __LINE__); \
+            test_expect_streq_failed(#expected, #actual, _test_expected, _test_actual, __FILE__, __LINE__); \
             return; \
         } \
     } while (0)
 
-#else
+#else /* OPAL_TEST */
 
-#define DEFINE_UNIT_TEST(name)              [[maybe_unused]] PROTOTYPE_UNIT_TEST(name)
-#define TEST_PANIC()                        panic("This executable is not configured as unit test.")
+#define DEFINE_TEST(name)                   [[maybe_unused]] PROTOTYPE_TEST(name)
+#define TEST_PANIC()                        panic("This executable is not configured for tests.")
 #define TEST_EXPECT_TRUE(expr)              do { TEST_PANIC(); (void)(expr); } while (0)
 #define TEST_EXPECT_FALSE(expr)             do { TEST_PANIC(); (void)(expr); } while (0)
 #define TEST_EXPECT_EQ(expected, actual)    do { TEST_PANIC(); (void)(expected); (void)(actual); } while (0)
@@ -136,6 +116,6 @@ void unit_test_expect_streq_failed(
 #define TEST_ASSERT_EQ(expected, actual)    do { TEST_PANIC(); (void)(expected); (void)(actual); } while (0)
 #define TEST_ASSERT_STREQ(expected, actual) do { TEST_PANIC(); (void)(expected); (void)(actual); } while (0)
 
-#endif
+#endif /* OPAL_TEST */
 
 #endif

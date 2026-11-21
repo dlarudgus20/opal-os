@@ -10,7 +10,6 @@ MEMORY {
 }
 
 SECTIONS {
-    __kernel_start_lba = KERNEL_LMA;
     __higher_half_displacement = KERNEL_VMA - KERNEL_LMA;
 
     __startup_lba = ALIGN(KERNEL_LMA, 4K);
@@ -34,14 +33,9 @@ SECTIONS {
         *(.rodata* .gnu.linkonce.r.*)
 
         . = ALIGN(8);
-        kmodule_ptr_start__ = .;
-        KEEP(*(.kmodule))
-        kmodule_ptr_end__ = .;
-
-        . = ALIGN(8);
-        unit_test_start__ = .;
-        KEEP(*(.unittest))
-        unit_test_end__ = .;
+        test_start__ = .;
+        KEEP(*(.test))
+        test_end__ = .;
     } >HIGH
 
     __rodata_end_lba = ALIGN(LOADADDR(.rodata) + SIZEOF(.rodata), 4K);
@@ -57,15 +51,9 @@ SECTIONS {
     .bss (__bss_lba + __higher_half_displacement) : AT(__bss_lba) {
         *(COMMON)
         *(.bss* .gnu.linkonce.b.*)
-        . = ALIGN(4K);
-        __before_stack_lba = . - __higher_half_displacement;
-
         . = ALIGN(2M);
         __stack_bottom_lba = . - __higher_half_displacement;
         . += 0x200000;
         __stack_top_lba = . - __higher_half_displacement;
     } >HIGH
-
-    __bss_end_lba = ALIGN(LOADADDR(.bss) + SIZEOF(.bss), 4K);
-    __kernel_end_lba = __bss_end_lba;
 }

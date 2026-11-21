@@ -3,11 +3,3 @@ Completion:
 CompileFlags:
     Add: -Wno-empty-translation-unit
     Remove: -fanalyzer
----
-If:
-    PathMatch: libpanicimpl/.*
-CompileFlags:
-    CompilationDatabase: None
-    Compiler: clang-22
-    Add:
-        - -std=c23

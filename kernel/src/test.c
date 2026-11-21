@@ -1,22 +1,17 @@
 #include <opal/test.h>
 
-#ifndef OPAL_UNIT_TEST
+#ifndef OPAL_TEST
 
-void unit_test_run(void) {}
-void unit_test_run_heavy(void) {}
+void test_run(void) {}
+void test_run_heavy(void) {}
 
 #else
 
-#include <stdarg.h>
+#include <opal/platform/drivers/uart.h>
+#include <kc/kassert.h>
 
-#include <kc/string.h>
-#include <kc/fmt.h>
-
-#include <opal/tty.h>
-#include <opal/platform/asm.h>
-
-extern const struct unit_test_info *const unit_test_start__[];
-extern const struct unit_test_info *const unit_test_end__[];
+extern const struct test_info *const test_start__[];
+extern const struct test_info *const test_end__[];
 
 static struct {
     uint32_t run_count;
@@ -26,97 +21,84 @@ static struct {
     const char *current_name;
 } g_test_state;
 
-static void unit_test_begin(const char *name) {
+static void test_begin(const char *name) {
     g_test_state.current_name = name;
     g_test_state.current_failures = 0;
 }
 
-static void unit_test_end(void) {
+static void test_end(void) {
     g_test_state.run_count++;
     if (g_test_state.current_failures == 0) {
         g_test_state.pass_count++;
-        tty0_set_fgcolor(TTY_GREEN);
-        tty0_printf("[       OK ]");
-        tty0_reset_color();
-        tty0_printf(" %s\n", g_test_state.current_name);
+        platform_uart_printf("[       OK ] %s\n", g_test_state.current_name);
     } else {
         g_test_state.fail_count++;
-        tty0_set_fgcolor(TTY_RED);
-        tty0_printf("[  FAILED  ]");
-        tty0_reset_color();
-        tty0_printf(
-            " %s (%u failures)\n", g_test_state.current_name, g_test_state.current_failures);
+        platform_uart_printf("[  FAILED  ] %s (%u failures)\n",
+            g_test_state.current_name, g_test_state.current_failures);
     }
 }
 
-void unit_test_expect_true_failed(const char *expr, const char *file, unsigned line) {
+void test_expect_true_failed(const char *expr, const char *file, unsigned line) {
     g_test_state.current_failures++;
-    tty0_set_fgcolor(TTY_RED);
-    tty0_printf("  Failure");
-    tty0_reset_color();
-    tty0_printf(" %s:%u: EXPECT_TRUE(%s)\n", file, line, expr);
+    platform_uart_printf("  Failure %s:%u: EXPECT_TRUE(%s)\n", file, line, expr);
 }
 
-void unit_test_expect_eq_u64_failed(const char *expected_expr, const char *actual_expr,
+void test_expect_eq_u64_failed(const char *expected_expr, const char *actual_expr,
     uint64_t expected, uint64_t actual, const char *file, unsigned line) {
     g_test_state.current_failures++;
-    tty0_set_fgcolor(TTY_RED);
-    tty0_printf("  Failure");
-    tty0_reset_color();
-    tty0_printf(" %s:%u: EXPECT_EQ(%s, %s), expected=0x%llx actual=0x%llx\n", file, line,
-        expected_expr, actual_expr, (unsigned long long)expected, (unsigned long long)actual);
+    platform_uart_printf("  Failure %s:%u: EXPECT_EQ(%s, %s), expected=0x%llx actual=0x%llx\n",
+        file, line, expected_expr, actual_expr, (unsigned long long)expected,
+        (unsigned long long)actual);
 }
 
-void unit_test_expect_streq_failed(const char *expected_expr, const char *actual_expr,
+void test_expect_streq_failed(const char *expected_expr, const char *actual_expr,
     const char *expected, const char *actual, const char *file, unsigned line) {
     g_test_state.current_failures++;
-    tty0_set_fgcolor(TTY_RED);
-    tty0_printf("  Failure");
-    tty0_reset_color();
-    tty0_printf(" %s:%u: EXPECT_STREQ(%s, %s), expected=\"%s\" actual=\"%s\"\n", file, line,
-        expected_expr, actual_expr, expected ? expected : "(null)", actual ? actual : "(null)");
+    platform_uart_printf("  Failure %s:%u: EXPECT_STREQ(%s, %s), expected=\"%s\" actual=\"%s\"\n",
+        file, line, expected_expr, actual_expr, expected ? expected : "(null)",
+        actual ? actual : "(null)");
 }
 
-static void test_run(bool heavy) {
+static void run_test_group(bool heavy) {
+    static bool uart_initialized;
+
+    if (!uart_initialized) {
+        platform_uart_init();
+        uart_initialized = true;
+    }
+
     g_test_state.run_count = 0;
     g_test_state.pass_count = 0;
     g_test_state.fail_count = 0;
     g_test_state.current_failures = 0;
     g_test_state.current_name = 0;
-    tty0_printf("\n==== unit test run ====\n");
-    bool intr = interrupt_is_enabled();
-    for (const struct unit_test_info *const *pp = unit_test_start__; pp < unit_test_end__; pp++) {
+    platform_uart_printf("\n==== test run ====\n");
+    for (const struct test_info *const *pp = test_start__; pp < test_end__; pp++) {
         if (!*pp) {
             continue;
         }
-        const struct unit_test_info *p = *pp;
+        const struct test_info *p = *pp;
         bool is_heavy = strncmp(p->item, "heavy__", 7) == 0;
         if (is_heavy == heavy) {
-            tty0_set_fgcolor(TTY_GREEN);
-            tty0_printf("[ RUN      ]");
-            tty0_reset_color();
-            tty0_printf(" %s\n", p->item);
-            unit_test_begin(p->item);
+            platform_uart_printf("[ RUN      ] %s\n", p->item);
+            test_begin(p->item);
             p->fn();
-            if (intr) {
-                interrupts_enable();
-            }
-            unit_test_end();
+            test_end();
         }
     }
-    tty0_printf("==== unit test end ==== run=%u pass=%u fail=%u\n", g_test_state.run_count,
+    platform_uart_printf("==== test end ==== run=%u pass=%u fail=%u\n", g_test_state.run_count,
         g_test_state.pass_count, g_test_state.fail_count);
     if (g_test_state.fail_count != 0) {
-        panicf("unit test failed: %u", g_test_state.fail_count);
+        panicf("test failed: %u", g_test_state.fail_count);
     }
 }
 
-void unit_test_run(void) {
-    test_run(false);
+void test_run(void) {
+    run_test_group(false);
 }
 
-void unit_test_run_heavy(void) {
-    test_run(true);
+void test_run_heavy(void) {
+    run_test_group(true);
 }
 
-#endif
+#endif /* OPAL_TEST */

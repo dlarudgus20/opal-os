@@ -1,13 +1,11 @@
-RESOURCES := res/gen/font.psf
+RESOURCES           := res/gen/font.psf
 
 ifeq ($(KERNEL_PSF),)
-PSF_FILE_FLAG := --psf-system
+PSF_FILE_FLAG       := --psf-system
 else # KERNEL_PSF
-PSF_FILE_FLAG := --psf "$(KERNEL_PSF)"
+PSF_FILE_FLAG       := --psf "$(KERNEL_PSF)"
 endif # KERNEL_PSF
 
-src/res.c: $(RESOURCES)
-
-res/gen/font.psf: $(KERNEL_PSF) res.mk
+res/gen/font.psf: $(KERNEL_PSF) res.mk ../tools/psfextract.py
 	@mkdir -p $(dir $@)
 	$(PYTHON) ../tools/psfextract.py --width 8 --height 16 $(PSF_FILE_FLAG) $@

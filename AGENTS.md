@@ -27,65 +27,30 @@ Markdown 문서를 편집할 때 아래 규칙을 준수해야 합니다.
 - `/review` 명령 결과를 전달하거나 요약할 때도 반드시 한국어로 작성합니다.
 
 ## 프로젝트 맥락
-- 타깃: `pc-x64`
-- 성격: freestanding 커널 + hosted 테스트(gtest)
-- 핵심 산출물:
-  - 커널: `kernel/build/.../kernel.elf`, `kernel/build/.../kernel.sys`
-  - 테스트: `<subproject>/build/tests/.../test`
-  - 커널 유닛테스트: `kernel/build/unit-test/...`
+- 타깃은 `pc-x64`입니다.
+- 커널 산출물은 `kernel/build/.../kernel.elf`와 `kernel/build/.../kernel.sys`입니다.
+- 커널 테스트의 산출물은 `kernel/build/test/...`에 위치합니다.
 
-## **중요** `make` 실행 출력 규칙
-- dry-run처럼 stdout 자체가 목적이 아닌 모든 `make` 실행은 기본적으로 stdout을 억제합니다.
-  - 예: `make -C kernel test CONFIG=debug PLATFORM=pc-x64 >/dev/null`
-- stdout을 억제해도 stderr와 exit code는 확인할 수 있으므로, 실패 시 필요한 로그만 다시 좁혀서 확인합니다.
-- `make run`, `make unit-test`처럼 QEMU 출력을 봐야 하는 명령은 빌드 단계와 실행 단계를 분리합니다.
-  - 먼저 `make build >/dev/null` 또는 `make build UNIT_TEST=1 >/dev/null`로 빌드합니다.
-  - 그 다음 QEMU 실행 명령은 stdout을 숨기지 않아 시리얼 출력을 확인합니다.
+## 빌드 및 테스트
+- dry-run처럼 stdout 자체가 목적이 아닌 `make` 실행은 stdout을 억제합니다. 실패 시 stderr와 종료 코드를 확인합니다.
+- QEMU 실행 전 빌드를 별도로 수행합니다. 다음처럼 빌드하고 시리얼 출력을 확인합니다.
 
-## 표준 명령
-### 빌드/실행
 ```bash
-make >/dev/null
-make iso >/dev/null
+make iso TEST=1 >/dev/null
+make test QEMU_DISPNONE=1
+```
+
+- 테스트는 headless로 실행합니다.
+- `QEMU_FLAGS`를 직접 지정할 때는 `-display none`과 `-boot order=dc`를 포함합니다.
+- `==== test end ====` 요약을 확인한 다음 Ctrl+C로 QEMU를 수동 종료합니다.
+
+## 예시 명령
+```bash
 make build >/dev/null
-make run
-```
-
-### 테스트
-```bash
-make test >/dev/null
-make -C kernel test CONFIG=debug PLATFORM=pc-x64 >/dev/null
-```
-
-LSan 환경 제약 시:
-```bash
-ASAN_OPTIONS=detect_leaks=0 make -C kernel test >/dev/null
-```
-
-### 커널 유닛테스트
-```bash
-make build UNIT_TEST=1 >/dev/null
-make unit-test QEMU_DISPNONE=1
-```
-
-유닛테스트 실행 규칙:
-- QEMU는 반드시 headless로 실행합니다. (`QEMU_DISPNONE=1` 사용)
-```bash
-make build UNIT_TEST=1 >/dev/null
-make unit-test QEMU_DISPNONE=1
-```
-- `QEMU_FLAGS`를 직접 지정해야 한다면 `-boot order=dc`를 반드시 포함합니다.
-  - 누락 시 하드디스크로 먼저 부팅되어 유닛테스트 시리얼 로그가 보이지 않을 수 있습니다.
-- 유닛테스트 로그가 끝나고 `root@opal:~$` 프롬프트가 보이면 QEMU를 자동 종료가 아닌 수동 종료해야 합니다.
-- 수동 종료 전 `==== unit test end ====` 마커를 확인합니다.
-- 즉, 테스트 성공 여부 확인 후 프롬프트 상태에 남아 있는 QEMU를 반드시 종료하고 명령을 마무리합니다.
-
-### 빌드 결과물 삭제
-```bash
-make clean >/dev/null           # 현재 구성만
-make clean-test >/dev/null      # 현재 구성 테스트만
-make clean-unit-test >/dev/null # 현재 구성 유닛테스트만
-make fullclean >/dev/null       # 전부
+make iso >/dev/null
+make clean >/dev/null
+make clean-test >/dev/null
+make fullclean >/dev/null
 ```
 
 ## 작업 원칙 (권장)
@@ -94,7 +59,7 @@ make fullclean >/dev/null       # 전부
 
 2. 빌드 시스템 변경은 묶어서 점검
    - Makefile을 건드리면 최소한 아래를 함께 확인합니다.
-     - `mkfiles/conf.mk`
+     - `mkfiles/config.mk`
      - `mkfiles/rules.mk`
    - 해당 서브프로젝트 `Makefile`/`makefile`
 
@@ -114,51 +79,25 @@ make fullclean >/dev/null       # 전부
   - 표 내용을 바꿔야 할 땐 기존 양식 엄수
 
 ## 자주 발생한 이슈와 예방
-### 1) sanitizer/LSan 환경 이슈
-일부 환경에서 LeakSanitizer가 `ptrace` 제약으로 종료될 수 있습니다.
-```bash
-ASAN_OPTIONS=detect_leaks=0 make -C kernel test CONFIG=debug PLATFORM=pc-x64 >/dev/null
-```
-
-### 2) 테스트 링크 충돌 (`libkc`)
-`libkc`의 libc 유사 심볼 노출로 테스트 링크 충돌 가능성이 있습니다.
-- 테스트 링크 플래그에서 `--exclude-libs=libkc` 적용 여부를 확인합니다.
-
-### 3) C23 `constexpr` compound literal 관련 오탐 방지
+### 1) C23 `constexpr` compound literal 관련 오탐 방지
 - 이 저장소는 C 소스에서 C23 `constexpr` compound literal 사용을 허용합니다.
 - 예: `((constexpr struct singlylist){ { NULL } })`
 - 해당 문법은 현재 툴체인에서 유효하므로, "C++ 전용 문법"으로 자동 판단하지 않습니다.
 - 문법 이슈를 제기하려면 최소 1회 실제 컴파일 실패 로그를 첨부합니다.
 
-### 4) release 빌드 false positive 경고 처리 원칙
+### 2) release 빌드 false positive 경고 처리 원칙
 - release 빌드에서 false positive 경고나 오탐처럼 보이는 경고가 나와도, 경고를 잠재우기 위한 임시 초기화/캐스트/분기 추가를 먼저 하지 않습니다.
 - 먼저 실제 타입 계약, 에러 값 표현, signed/unsigned 변환, narrow cast, 수명/소유권 경로를 조사해서 분석기가 혼란스러워한 근본 원인을 확인합니다.
 - 경고가 false positive로 결론나더라도, 가능하면 코드의 계약을 더 명확히 표현하는 헬퍼나 타입 경계 정리로 해결합니다.
 - 단순 우회가 필요하다고 판단한 경우에는 왜 근본 수정이 불가능하거나 과도한지 근거를 남깁니다.
 
-## 커널 유닛테스트 작성 가이드
-- 테스트 등록: `DEFINE_UNIT_TEST(name)`
+## 커널 테스트 작성 가이드
+- 테스트 등록: `DEFINE_TEST(name)`
 - 검증 매크로: `TEST_EXPECT_*`, `TEST_ASSERT_*`
 - 실패 모델:
   - `EXPECT_*`: 실패 누적
   - `ASSERT_*`: 현재 테스트 즉시 종료
 - 테스트는 작고 독립적으로 유지합니다.
-
-## 서브프로젝트별 포인트
-### kernel
-- 런타임 동작, hosted 테스트, 유닛테스트 경로를 함께 고려해야 합니다.
-
-### libkc
-- libc 호환 이름 함수가 많아 링크 노출 영향에 주의합니다.
-
-### libcoll
-- API 계약(assert 전제)과 테스트 케이스를 함께 유지합니다.
-
-### libkubsan
-- freestanding UBSAN 핸들러 제공 목적을 유지합니다.
-
-### libpanicimpl
-- hosted 테스트에서 panic/assert 심볼 제공이 목적입니다.
 
 ## 커밋/PR 전 체크리스트
 - [ ] 관련 빌드 최소 1개 성공
@@ -177,5 +116,4 @@ ASAN_OPTIONS=detect_leaks=0 make -C kernel test CONFIG=debug PLATFORM=pc-x64 >/d
 - `README.md`
 - `docs/README.md`
 - `docs/build-system.md`
-- `docs/testing.md`
-- `docs/kernel-unit-test.md`
+- `docs/kernel-test.md`

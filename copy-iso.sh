@@ -2,8 +2,8 @@
 : ${CONFIG:=debug}
 : ${PLATFORM:=pc-x64}
 : ${OUTPATH:="/mnt/d/VirtualBox VMs/opal-os/opal-os.iso"}
-if [ "$UNIT_TEST" = "1" ]; then
-    BUILD_DIR=build/unit-test
+if [ "$TEST" = "1" ]; then
+    BUILD_DIR=build/test
 else
     BUILD_DIR=build
 fi
