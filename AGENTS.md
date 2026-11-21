@@ -37,12 +37,13 @@ Markdown 문서를 편집할 때 아래 규칙을 준수해야 합니다.
 
 ```bash
 make iso TEST=1 >/dev/null
-make test QEMU_DISPNONE=1
+timeout -k 5s 15s make test QEMU_DISPNONE=1
 ```
 
 - 테스트는 headless로 실행합니다.
 - `QEMU_FLAGS`를 직접 지정할 때는 `-display none`과 `-boot order=dc`를 포함합니다.
-- `==== test end ====` 요약을 확인한 다음 Ctrl+C로 QEMU를 수동 종료합니다.
+- 기본 테스트 실행에서는 결과 출력 후 QEMU가 자동으로 종료됩니다. `==== test end ====` 요약과 `make test`의 종료 상태를 확인합니다.
+- QEMU가 종료되지 않는 경우에 대비해 테스트 실행에 타임아웃을 적용합니다. 기본 대기 시간은 15초이며 오래 걸리는 테스트는 실행 전에 늘립니다. 시간 초과가 발생하면 마지막 시리얼 로그와 `==== test end ====` 출력 여부를 확인하고, 결과를 보고할 때 타임아웃을 명시합니다.
 
 ## 예시 명령
 ```bash

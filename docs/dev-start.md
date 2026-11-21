@@ -51,7 +51,7 @@ make iso TEST=1 >/dev/null
 make test QEMU_DISPNONE=1
 ```
 
-QEMU 테스트에서는 COM1 로그의 `==== test end ====` 요약과 실패 수를 확인한 뒤 Ctrl+C로 종료합니다. 결과를 공유할 때는 실제로 실행한 명령과 결과를 적습니다. [커널 테스트 실행 방법](kernel-test.md)
+QEMU는 테스트 결과를 출력한 뒤 자동으로 종료합니다. COM1 로그의 `==== test end ====` 요약과 `make test`의 종료 상태를 확인합니다. 결과를 공유할 때는 실제로 실행한 명령과 결과를 적습니다. [커널 테스트 실행 방법](kernel-test.md)
 
 ## 초기 보고에 담을 내용
 

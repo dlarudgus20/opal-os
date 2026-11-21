@@ -16,6 +16,14 @@ ifeq ($(QEMU_DISPNONE),1)
 QEMU_FLAGS  += -display none
 endif # QEMU_DISPNONE
 
+ifeq ($(TEST),1)
+QEMU_DEBUG_EXIT ?= 1
+endif # TEST
+
+ifeq ($(QEMU_DEBUG_EXIT),1)
+QEMU_DEBUG_EXIT_FLAGS := -device isa-debug-exit,iobase=0x501,iosize=0x02
+endif # QEMU_DEBUG_EXIT
+
 SUBDIRS     := kernel libkc libkubsan
 
 .DEFAULT_GOAL := all
@@ -39,7 +47,14 @@ $(ISO_FILE): $(KERNEL_BIN) $(GRUB_CONFIG) Makefile
 	grub-mkrescue -o $@ $(ISO_DIR)
 
 run: iso
-	qemu-system-x86_64 $(QEMU_FLAGS) $(QEMU_HDDS) -cdrom $(ISO_FILE) -D qemu.log
+	qemu-system-x86_64 $(QEMU_FLAGS) $(QEMU_DEBUG_EXIT_FLAGS) $(QEMU_HDDS) -cdrom $(ISO_FILE) -D qemu.log; \
+	status=$$?; \
+	if [ "$(QEMU_DEBUG_EXIT)" = "1" ]; then \
+		if [ $$status -eq 33 ]; then exit 0; fi; \
+		if [ $$status -eq 35 ]; then exit 1; fi; \
+		exit 2; \
+	fi; \
+	exit $$status
 
 disk-images:
 	qemu-img create -f qcow2 hda.img 32M

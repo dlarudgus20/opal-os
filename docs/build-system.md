@@ -159,7 +159,7 @@ make gen >/dev/null
 make clean-gen >/dev/null
 ```
 
-테스트는 시리얼 로그의 `==== test end ====` 요약을 확인한 뒤 Ctrl+C로 QEMU를 종료합니다. 현재 구성에서 어떤 소스를 어떻게 빌드하는지 확인하려면 다음 명령을 사용합니다.
+기본 테스트 실행에서는 결과 출력 후 QEMU가 자동으로 종료됩니다. 시리얼 로그의 `==== test end ====` 요약과 `make test`의 종료 상태를 확인합니다. 현재 구성에서 어떤 소스를 어떻게 빌드하는지 확인하려면 다음 명령을 사용합니다.
 
 ```bash
 make -B -n build TEST=1

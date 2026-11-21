@@ -12,6 +12,7 @@
 
 void test_run(void);
 void test_run_heavy(void);
+void test_abort(void);
 
 #ifdef OPAL_TEST
 
@@ -36,7 +37,7 @@ struct test_info {
     [[maybe_unused, gnu::used, gnu::section(".test")]] = &test_item__##name ; \
     PROTOTYPE_TEST(name)
 
-void test_expect_true_failed(const char *expr, const char *file, unsigned line);
+void test_condition_failed(const char *check, const char *expr, const char *file, unsigned line);
 void test_expect_eq_u64_failed(const char *expected_expr, const char *actual_expr,
     uint64_t expected, uint64_t actual, const char *file, unsigned line);
 void test_expect_streq_failed(const char *expected_expr, const char *actual_expr,
@@ -45,11 +46,16 @@ void test_expect_streq_failed(const char *expected_expr, const char *actual_expr
 #define TEST_EXPECT_TRUE(expr) \
     do { \
         if (!(expr)) { \
-            test_expect_true_failed(#expr, __FILE__, __LINE__); \
+            test_condition_failed("EXPECT_TRUE", #expr, __FILE__, __LINE__); \
         } \
     } while (0)
 
-#define TEST_EXPECT_FALSE(expr) TEST_EXPECT_TRUE(!(expr))
+#define TEST_EXPECT_FALSE(expr) \
+    do { \
+        if (expr) { \
+            test_condition_failed("EXPECT_FALSE", #expr, __FILE__, __LINE__); \
+        } \
+    } while (0)
 
 #define TEST_EXPECT_EQ(expected, actual) \
     do { \
@@ -74,12 +80,18 @@ void test_expect_streq_failed(const char *expected_expr, const char *actual_expr
 #define TEST_ASSERT_TRUE(expr) \
     do { \
         if (!(expr)) { \
-            test_expect_true_failed(#expr, __FILE__, __LINE__); \
+            test_condition_failed("ASSERT_TRUE", #expr, __FILE__, __LINE__); \
             return; \
         } \
     } while (0)
 
-#define TEST_ASSERT_FALSE(expr) TEST_ASSERT_TRUE(!(expr))
+#define TEST_ASSERT_FALSE(expr) \
+    do { \
+        if (expr) { \
+            test_condition_failed("ASSERT_FALSE", #expr, __FILE__, __LINE__); \
+            return; \
+        } \
+    } while (0)
 
 #define TEST_ASSERT_EQ(expected, actual) \
     do { \

@@ -1,5 +1,6 @@
 #include <opal/platform/asm.h>
 #include <opal/platform/drivers/uart.h>
+#include <opal/test.h>
 #include <kc/kassert.h>
 
 [[noreturn]] void _panic_format(
@@ -18,6 +19,8 @@
         platform_uart_write_char('\r');
         platform_uart_write_char('\n');
     }
+
+    test_abort();
 
     for (;;) {
         wait_for_interrupt();

@@ -46,6 +46,8 @@ DEFINE_TEST(snprintf_unsigned) {
 3. 각 테스트의 시작과 종료에 `[ RUN      ]`, `[       OK ]` 또는 `[  FAILED  ]`가 표시됩니다. 검증 실패에는 소스 파일, 줄 번호, 조건이나 비교식이 표시됩니다. 값 비교의 경우 기대값과 실제값도 출력됩니다.
 4. 실행기가 `==== test end ====`와 함께 결과를 출력합니다. `run`, `pass`, `fail`은 테스트 함수의 개수입니다. 한 테스트에서 검증이 여러 번 실패해도 `fail`에는 테스트 한 건으로 집계됩니다. 실패한 테스트가 있으면 요약을 출력한 뒤 panic합니다.
 
+테스트 함수에서 panic이 발생하면 `test_abort()`가 해당 테스트를 실패로 집계하고 중단 표시와 요약을 출력한 뒤 QEMU 실패 종료를 요청합니다. 테스트 그룹이 실행 중이 아닐 때 `test_abort()`는 즉시 반환합니다.
+
 세 테스트가 모두 통과한 경우 마지막 줄은 다음과 같습니다.
 
 ```text
@@ -61,7 +63,7 @@ make iso TEST=1 >/dev/null
 make test QEMU_DISPNONE=1
 ```
 
-`QEMU_DISPNONE=1`은 그래픽 창을 끄고 시리얼 출력을 터미널에 남깁니다. 그래픽 창을 사용하려면 `make test`를 실행합니다. 테스트가 끝나면 COM1 요약에서 `run`과 `fail`을 확인하고 Ctrl+C로 QEMU를 종료합니다. QEMU 프로세스가 종료되는 시점과 테스트 완료 시점은 별개입니다.
+`QEMU_DISPNONE=1`은 그래픽 창을 끄고 시리얼 출력을 터미널에 남깁니다. 그래픽 창을 사용하려면 `make test`를 실행합니다. 기본 설정에서는 테스트 결과를 출력한 뒤 QEMU가 자동으로 종료됩니다. COM1의 `==== test end ====` 요약과 `make test`의 종료 상태를 확인합니다.
 
 테스트용 커널만 빌드하거나 릴리스 구성으로 검증할 수도 있습니다.
 
@@ -78,3 +80,21 @@ make test CONFIG=release QEMU_DISPNONE=1
 - `test_run()`과 `test_run_heavy()`는 즉시 반환합니다. 호출하는 쪽은 `OPAL_TEST`를 검사할 필요가 없습니다.
 - 빌드 규칙은 `TEST=1`일 때 테스트 디렉터리를 수집합니다. 공용 소스에서 `DEFINE_TEST()`를 사용하면 일반 빌드에서는 `[[maybe_unused]]` 정적 함수가 생성되고 등록 포인터는 만들어지지 않습니다.
 - 일반 빌드에서 `TEST_EXPECT_*`나 `TEST_ASSERT_*`가 있는 코드 경로를 실제로 실행하면 panic합니다. 일반 커널의 조건 검증에는 `kassert()`를 사용합니다.
+
+## 7. QEMU debug exit
+
+pc-x64의 `<opal/platform/debug_exit.h>`는 플랫폼이 지원한다면 `PLATFORM_HAS_DEBUG_EXIT`를 정의합니다.
+
+```c
+#include <opal/platform/debug_exit.h>
+
+void try_debug_exit(void) {
+#ifdef PLATFORM_HAS_DEBUG_EXIT
+    platform_debug_exit(true);
+#endif
+}
+```
+
+pc-x64에서 `make test`는 QEMU에 `isa-debug-exit` 장치를 추가합니다. `platform_debug_exit()`는 I/O 포트 `0x501`에 성공이면 `0x10`, 실패면 `0x11`을 씁니다. QEMU는 `(code << 1) | 1`을 적용해 각각 `33`과 `35`를 반환합니다. `run` 레시피는 이를 각각 성공 상태 `0`과 테스트 실패 상태 `1`로 변환합니다. 그 외 QEMU 상태는 레시피 오류 `2`로 처리합니다.
+
+`QEMU_DEBUG_EXIT=0`을 지정하면 장치 추가와 종료 상태 변환을 끕니다. 이 경우 테스트 요약을 확인한 뒤 Ctrl+C로 QEMU를 종료합니다. `PLATFORM_HAS_DEBUG_EXIT`는 빌드 시점의 지원 여부를 나타내며, 장치가 없는 QEMU에서는 `platform_debug_exit()`가 반환합니다.
