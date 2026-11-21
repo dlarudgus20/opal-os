@@ -31,15 +31,11 @@
    - wait 대상 권한(parent-child 관계 검증 등)은 해당 모델을 정할 때 함께 확정한다.
 
 5. `uinit` TTY reader 수명 정리
-   - `opsh`에서 `exit`를 반복 입력하면 다음 형태로 deterministic하게 입력이 꼬일 수 있다.
-     - `opsh: /> exit`
-     - `opsh: /> exit`
-     - `exit`
-     - `unknown command: xtexit`
-   - `uinit`은 `/dev/hid`를 한 번 열고 fork로 상속하므로, shell 종료 후 이전 `read_tty()` 프로세스가 살아 있으면 새 reader와 같은 HID file/event를 공유한다.
-   - HID event는 auto-reset event라 입력 하나당 waiter 하나만 깨우고, wait queue가 FIFO라 이전 reader와 새 reader가 입력 문자를 번갈아 받을 수 있다.
-   - 두 번째 `exit\n`에서 이전 reader가 `e`, `i`, `\n`을 받고 종료하면 새 reader에는 `x`, `t`가 line buffer에 남는다. 세 번째 `exit\n`가 이어져 새 shell에는 `xtexit\n`가 전달된다.
-   - shell 프로세스 종료 시 해당 세션의 TTY reader를 함께 정리하거나, `uinit`의 TTY I/O 구조를 reader 누적이 불가능한 방식으로 바꿔야 한다.
+   - `uinit`은 `/dev/hid`를 한 번 열고 fork한 자식들에게 같은 열린 HID 파일을 상속한다.
+   - 셸이 종료되면 `uinit`은 출력 파이프가 닫힌 것을 보고 다음 셸을 시작하지만, 이전 세션의 `read_tty()` 프로세스가 끝났는지는 확인하지 않는다. 따라서 이전 reader와 새 reader가 동시에 같은 HID 입력 버퍼를 읽을 수 있다.
+   - HID 입력이 들어오면 해당 파일의 대기자 전원을 깨운다. 이는 입력 문자를 각 reader에 복제한다는 뜻은 아니다. 먼저 읽은 reader가 버퍼의 문자를 소비하므로, 이전 reader가 새 셸의 입력 일부를 가져갈 수 있다.
+   - 이전 reader가 줄 끝에서 이미 종료된 셸의 입력 파이프에 쓰려고 하면 실패하고 종료할 수 있다. 그 전까지 소비한 문자는 새 reader에 전달되지 않으며, 새 reader에 남은 부분 입력과 다음 입력이 결합하는 등 명령이 꼬일 수 있다.
+   - 셸 종료 시 해당 세션의 TTY reader도 확실히 종료·회수하거나, reader가 세션마다 누적되지 않는 구조로 바꿔야 한다.
 
 ## Known Issues
 

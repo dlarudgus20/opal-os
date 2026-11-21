@@ -3,5 +3,6 @@
     "clangd.arguments": [
         "--query-driver=/home/ikh/.local/x86_64-elf/bin/x86_64-elf-gcc"
     ],
-    "C_Cpp.intelliSenseEngine": "disabled"
+    "C_Cpp.intelliSenseEngine": "disabled",
+    "makefile.configureOnOpen": false
 }

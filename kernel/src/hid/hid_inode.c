@@ -6,7 +6,8 @@
 #include <opal/mm/kmalloc.h>
 #include <opal/fs/kobjfs.h>
 #include <opal/fs/globals.h>
-#include <opal/task/event.h>
+#include <opal/task/wait_list.h>
+#include <opal/task/task.h>
 #include <opal/locks/irqlock.h>
 
 #include "hid_inode.h"
@@ -17,7 +18,7 @@ struct hid_file {
     struct file file;
     struct linkedlist_link link;
 
-    struct event event;
+    struct wait_list waiters;
 
     uint16_t rpos;
     uint16_t wpos;
@@ -79,7 +80,7 @@ void hid_inode_onkey(const struct hid_char *input) {
     linkedlist_foreach(ptr, &g_listeners) {
         struct hid_file *file = container_of(ptr, struct hid_file, link);
         if (hid_file_try_write(file, input)) {
-            event_signal(&file->event);
+            wait_list_wake_all(&file->waiters);
         }
     }
 
@@ -102,7 +103,7 @@ static kerrno_t hid_inode_open(struct inode *inode, enum open_mode mode, struct 
     }
 
     file_init(&file->file, &g_file_ops, fmode_from_omode(mode), inode);
-    event_init(&file->event, true);
+    wait_list_init(&file->waiters);
     file->rpos = 0;
     file->wpos = 0;
     file->count = 0;
@@ -115,8 +116,7 @@ static kerrno_t hid_inode_open(struct inode *inode, enum open_mode mode, struct 
     return OPAL_OK;
 }
 
-static kerrno_t hid_inode_iterate_dir(
-    struct inode *, fs_size_t, inode_iterate_dir_cb, void *) {
+static kerrno_t hid_inode_iterate_dir(struct inode *, fs_size_t, inode_iterate_dir_cb, void *) {
     return OPAL_ENOTDIR;
 }
 
@@ -166,7 +166,7 @@ static fs_ssize_t hid_file_read(struct file *base, fs_size_t *pos, void *buffer,
     fs_ssize_t len;
 
     while ((len = hid_file_try_read(file, buffer, size)) == 0) {
-        event_wait(&file->event, TIMEOUT_INFINITY);
+        task_wait(&file->waiters, TIMEOUT_INFINITY);
     }
 
     irqlock_release(&irqlock);
