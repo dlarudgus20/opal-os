@@ -69,8 +69,10 @@ global isr_%1
 isr_%1:
     push_all
     cld
-    mov rdi, rsp
+    mov rdi, rsp    ; because of error code, rsp is not aligned to 16 bytes
+    sub rsp, 8      ; align rsp for SysV ABI
     call isr_impl_%1
+    add rsp, 8
     pop_all
     add rsp, 8
     iretq
